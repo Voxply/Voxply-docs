@@ -14,6 +14,7 @@ interface Props {
   hubs: Hub[];
   activeHubId: string | null;
   view: "channels" | "dms" | "game";
+  showDiscover: boolean;
   unreadDms: Record<string, boolean>;
   unreadByHub: Record<string, number>;
   pingByHub: Record<string, number | null>;
@@ -24,11 +25,13 @@ interface Props {
   onRemoveHub: (hubId: string) => void;
   onHubReorder: (event: DragEndEvent) => void;
   onAddHub: () => void;
+  onDiscover: () => void;
 }
 
 export function HubSidebar({
-  hubs, activeHubId, view, unreadDms, unreadByHub, pingByHub, hubNotifyMode,
-  hasActiveHub, onSwitchToDms, onSwitchHub, onRemoveHub, onHubReorder, onAddHub,
+  hubs, activeHubId, view, showDiscover, unreadDms, unreadByHub, pingByHub,
+  hubNotifyMode, hasActiveHub, onSwitchToDms, onSwitchHub, onRemoveHub,
+  onHubReorder, onAddHub, onDiscover,
 }: Props) {
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -101,6 +104,14 @@ export function HubSidebar({
         </SortableContext>
       </DndContext>
       <button className="hub-icon add" onClick={onAddHub} title="Add hub">+</button>
+      <div className="hub-sidebar-divider" />
+      <button
+        className={`hub-icon discover ${showDiscover ? "active" : ""}`}
+        onClick={onDiscover}
+        title="Discover hubs"
+      >
+        ⊕
+      </button>
     </div>
   );
 }

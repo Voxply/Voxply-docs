@@ -65,6 +65,7 @@ import { UserContextMenu } from "./components/UserContextMenu";
 import { HubSidebar } from "./components/HubSidebar";
 import { ChannelSidebar } from "./components/ChannelSidebar";
 import { ContentArea } from "./components/ContentArea";
+import { DiscoverPage } from "./components/DiscoverPage";
 
 function App() {
   // Multi-hub state
@@ -797,6 +798,7 @@ function App() {
 
   // Settings
   const [showSettings, setShowSettings] = useState(false);
+  const [showDiscover, setShowDiscover] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("profile");
   const [theme, setTheme] = useState<"calm" | "classic" | "linear" | "light">("calm");
   const [profiles, setProfiles] = useState<NamedProfile[]>([]);
@@ -2923,6 +2925,13 @@ function App() {
     }
   }
 
+  function handleDiscoverJoin(url: string, code: string) {
+    setHubUrl(url);
+    setInviteCode(code);
+    setShowAddHub(true);
+    setShowDiscover(false);
+  }
+
   async function closeSettings() {
     if (micTesting) {
       try {
@@ -3255,18 +3264,25 @@ function App() {
               hubs={hubs}
               activeHubId={activeHubId}
               view={view}
+              showDiscover={showDiscover}
               unreadDms={unreadDms}
               unreadByHub={unreadByHub}
               pingByHub={pingByHub}
               hubNotifyMode={hubNotifyMode}
               hasActiveHub={hasActiveHub}
               onSwitchToDms={() => { setView("dms"); if (hasActiveHub) loadConversations(); }}
-              onSwitchHub={(hubId) => { handleSwitchHub(hubId); setView("channels"); }}
+              onSwitchHub={(hubId) => { handleSwitchHub(hubId); setView("channels"); setShowDiscover(false); }}
               onRemoveHub={handleRemoveHub}
               onHubReorder={handleHubReorder}
               onAddHub={() => setShowAddHub(true)}
+              onDiscover={() => setShowDiscover((v) => !v)}
             />
-            {!hasActiveHub ? (
+            {showDiscover ? (
+              <DiscoverPage
+                onClose={() => setShowDiscover(false)}
+                onJoinHub={handleDiscoverJoin}
+              />
+            ) : !hasActiveHub ? (
               <div className="empty-state welcome">
                 <h1>Welcome to Voxply</h1>
                 <p className="welcome-tagline">

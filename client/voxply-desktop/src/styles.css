@@ -2133,6 +2133,18 @@ select:focus {
   color: var(--bg);
 }
 
+.hub-icon.discover {
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: var(--text-xl);
+}
+
+.hub-icon.discover:hover,
+.hub-icon.discover.active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
 .hub-icon-wrap {
   display: flex;
   flex-direction: column;
@@ -3504,4 +3516,192 @@ select:focus {
 
 .pairing-waiting {
   margin-top: var(--space-3);
+}
+
+/* ============================================================
+   DISCOVER PAGE
+   ============================================================ */
+
+.discover-page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.discover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-6) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.discover-header h1 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+}
+
+.discover-search-bar {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-6);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.discover-search-input {
+  flex: 1;
+}
+
+.discover-lang-input {
+  width: 100px;
+}
+
+.discover-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.discover-grid {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  align-content: start;
+}
+
+.discover-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transition: border-color var(--transition-fast);
+}
+
+.discover-card:hover {
+  border-color: var(--accent);
+}
+
+.discover-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.discover-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-md);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.discover-card-icon.placeholder {
+  background: var(--surface);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.discover-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.discover-card-name {
+  font-weight: var(--weight-medium);
+  font-size: var(--text-md);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.discover-card-url {
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.discover-card-bio {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  line-height: var(--leading-normal);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.discover-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.discover-tag {
+  font-size: var(--text-xs);
+  background: var(--surface);
+  color: var(--text-muted);
+  border-radius: var(--r-pill);
+  padding: 2px var(--space-2);
+}
+
+.discover-tag.lang {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.discover-card-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+.discover-badge {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  background: var(--surface);
+  border-radius: var(--r-pill);
+  padding: 2px var(--space-2);
+}
+
+.discover-join-btn {
+  margin-left: auto;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.discover-loading {
+  text-align: center;
+  padding: var(--space-4);
+}
+
+.discover-load-more {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4) var(--space-6) var(--space-6);
+  flex-shrink: 0;
 }
