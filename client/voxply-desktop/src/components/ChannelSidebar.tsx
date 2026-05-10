@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
   PointerSensor,
   useSensor,
   useSensors,
@@ -18,9 +20,12 @@ import type {
   InstalledGame,
   Conversation,
 } from "../types";
+import type { TreeNode, FlatNode } from "../utils/channels";
 import { colorForKey } from "../utils/format";
 import { PhoneIcon, PhoneOffIcon } from "./Icons";
 import { SortableCategoryItem, SortableChannelItem } from "./SortableItems";
+
+const CHANNEL_INDENT_PX = 16;
 
 interface SelectedAllianceChannel {
   alliance_id: string;
@@ -56,7 +61,7 @@ interface Props {
   installedGames: InstalledGame[];
   selectedGame: InstalledGame | null;
   canManageGames: boolean;
-  channelTree: { node: Channel; children: Channel[] }[];
+  channelTree: TreeNode[];
   effectiveNotifyMode: (hubId: string, channelId: string) => NotifyMode;
   onToggleCategoryCollapsed: (hubId: string, categoryId: string) => void;
   onHubDropdownOpenChange: (v: boolean) => void;
@@ -98,14 +103,46 @@ export function ChannelSidebar({
   onOpenFriends, onToggleSelfMute, onToggleSelfDeafen, onOpenSettings,
   onSetShowInstallGame, onDragEnd,
 }: Props) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
+
+  // DFS-flatten the tree, skipping children of collapsed categories.
+  const flatVisible = useMemo((): FlatNode[] => {
+    const result: FlatNode[] = [];
+    function walk(nodes: TreeNode[]) {
+      for (const n of nodes) {
+        result.push({
+          node: n.node,
+          depth: n.depth,
+          parentId: n.node.parent_id,
+          childrenCount: n.children.length,
+        });
+        const collapsed = !!(activeHubId && collapsedCategories[activeHubId]?.[n.node.id]);
+        if (!collapsed) walk(n.children);
+      }
+    }
+    walk(channelTree);
+    return result;
+  }, [channelTree, activeHubId, collapsedCategories]);
+
+  const activeNode = activeId ? flatVisible.find((n) => n.node.id === activeId) : null;
 
   const activeHub = hubs.find((h) => h.hub_id === activeHubId);
   const myDisplayName = users.find((u) => u.public_key === publicKey)?.display_name;
   const activePing = activeHubId ? pingByHub[activeHubId] : undefined;
   const voiceChannelName = channels.find((c) => c.id === voiceChannelId)?.name;
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(String(event.active.id));
+  }
+
+  function handleDragEndWrapped(event: DragEndEvent) {
+    setActiveId(null);
+    onDragEnd(event);
+  }
 
   return (
     <div className="sidebar">
@@ -206,7 +243,7 @@ export function ChannelSidebar({
               );
             })()}
 
-            {/* Channels */}
+            {/* Channels — single flat SortableContext, DFS order */}
             <div className="sidebar-header">
               <h3>Channels</h3>
               <button
@@ -217,64 +254,60 @@ export function ChannelSidebar({
                 +
               </button>
             </div>
-            <DndContext sensors={dndSensors} onDragEnd={onDragEnd}>
+            <DndContext
+              sensors={dndSensors}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEndWrapped}
+            >
               <SortableContext
-                items={channelTree.map(({ node }) => node.id)}
+                items={flatVisible.map((n) => n.node.id)}
                 strategy={verticalListSortingStrategy}
               >
                 <ul className="channel-list">
-                  {channelTree.map(({ node, children }) =>
-                    node.is_category ? (
+                  {flatVisible.map((n) =>
+                    n.node.is_category ? (
                       <SortableCategoryItem
-                        key={node.id}
-                        channel={node}
-                        collapsed={!!activeHubId && !!collapsedCategories[activeHubId]?.[node.id]}
-                        childCount={children.length}
+                        key={n.node.id}
+                        channel={n.node}
+                        collapsed={!!activeHubId && !!collapsedCategories[activeHubId]?.[n.node.id]}
+                        childCount={n.childrenCount}
+                        style={{ paddingLeft: n.depth * CHANNEL_INDENT_PX }}
                         onToggleCollapsed={() => {
-                          if (activeHubId) onToggleCategoryCollapsed(activeHubId, node.id);
+                          if (activeHubId) onToggleCategoryCollapsed(activeHubId, n.node.id);
                         }}
-                        onContextMenu={(e) => onChannelContextMenu(e, node)}
-                        onAddChannel={() => onOpenCreateChannel(node.id, false)}
-                      >
-                        <SortableContext
-                          items={children.map((c) => c.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          <ul className="channel-sublist">
-                            {children.map((c) => (
-                              <SortableChannelItem
-                                key={c.id}
-                                channel={c}
-                                selected={selectedChannel?.id === c.id}
-                                unread={!!activeHubId && !!unreadByChannel[activeHubId]?.[c.id]}
-                                muted={!!activeHubId && effectiveNotifyMode(activeHubId, c.id) === "silent"}
-                                participants={voicePartByChannel[c.id] ?? []}
-                                isCurrentVoiceChannel={voiceChannelId === c.id}
-                                onClick={() => onSelectChannel(c)}
-                                onDoubleClick={() => { if (voiceChannelId !== c.id) onVoiceJoin(c); }}
-                                onContextMenu={(e) => onChannelContextMenu(e, c)}
-                              />
-                            ))}
-                          </ul>
-                        </SortableContext>
-                      </SortableCategoryItem>
+                        onContextMenu={(e) => onChannelContextMenu(e, n.node)}
+                        onAddChannel={() => onOpenCreateChannel(n.node.id, false)}
+                      />
                     ) : (
                       <SortableChannelItem
-                        key={node.id}
-                        channel={node}
-                        selected={selectedChannel?.id === node.id}
-                        unread={!!activeHubId && !!unreadByChannel[activeHubId]?.[node.id]}
-                        muted={!!activeHubId && effectiveNotifyMode(activeHubId, node.id) === "silent"}
-                        participants={voicePartByChannel[node.id] ?? []}
-                        isCurrentVoiceChannel={voiceChannelId === node.id}
-                        onClick={() => onSelectChannel(node)}
-                        onDoubleClick={() => { if (voiceChannelId !== node.id) onVoiceJoin(node); }}
-                        onContextMenu={(e) => onChannelContextMenu(e, node)}
+                        key={n.node.id}
+                        channel={n.node}
+                        selected={selectedChannel?.id === n.node.id}
+                        unread={!!activeHubId && !!unreadByChannel[activeHubId]?.[n.node.id]}
+                        muted={!!activeHubId && effectiveNotifyMode(activeHubId, n.node.id) === "silent"}
+                        participants={voicePartByChannel[n.node.id] ?? []}
+                        isCurrentVoiceChannel={voiceChannelId === n.node.id}
+                        style={{ paddingLeft: n.depth * CHANNEL_INDENT_PX }}
+                        onClick={() => onSelectChannel(n.node)}
+                        onDoubleClick={() => { if (voiceChannelId !== n.node.id) onVoiceJoin(n.node); }}
+                        onContextMenu={(e) => onChannelContextMenu(e, n.node)}
                       />
                     )
                   )}
                 </ul>
               </SortableContext>
+              <DragOverlay>
+                {activeNode && (
+                  <div
+                    className={`channel-drag-ghost ${activeNode.node.is_category ? "is-category" : ""}`}
+                    style={{ paddingLeft: activeNode.depth * CHANNEL_INDENT_PX }}
+                  >
+                    {activeNode.node.is_category
+                      ? `▾ ${activeNode.node.name.toUpperCase()}`
+                      : `# ${activeNode.node.name}`}
+                  </div>
+                )}
+              </DragOverlay>
             </DndContext>
             {channels.length === 0 && <p className="muted">No channels yet</p>}
 

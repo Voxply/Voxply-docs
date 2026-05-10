@@ -2040,10 +2040,32 @@ select:focus {
 /* ============================================================
    DRAG STATES
    ============================================================ */
-.channel-item.dragging,
+.channel-item-wrap.dragging,
 .category-group.dragging {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: grabbing;
+}
+
+.channel-drag-ghost {
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font-size: var(--text-sm);
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.channel-drag-ghost.is-category {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
 }
 
 /* ============================================================

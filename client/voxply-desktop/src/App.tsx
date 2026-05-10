@@ -40,7 +40,7 @@ import { MAX_ATTACHMENT_BYTES, DEMO_HUB_URL } from "./constants";
 import { formatPubkey, mentionsName, newProfileId } from "./utils/format";
 import { playMentionPing, playVoiceTone } from "./utils/audio";
 import { readFileAsB64 } from "./utils/files";
-import { buildChannelTree } from "./utils/channels";
+import { buildChannelTree, flattenTree, descendantIds } from "./utils/channels";
 import { useReconnectBackoff } from "./hooks/useReconnectBackoff";
 import { Lightbox } from "./components/Lightbox";
 import { WelcomeRecoveryBlock } from "./components/WelcomeRecoveryBlock";
@@ -2953,22 +2953,42 @@ function App() {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const sorted = [...channels].sort((a, b) => a.display_order - b.display_order);
-    const oldIndex = sorted.findIndex((c) => c.id === active.id);
-    const newIndex = sorted.findIndex((c) => c.id === over.id);
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    // Client-side cycle guard: can't drop a node into its own descendant.
+    const forbidden = descendantIds(channelTree, activeId);
+    if (forbidden.has(overId)) return;
+
+    // Determine the new parent: dropping ON a category = nest inside it;
+    // dropping next to anything else = become a sibling of that item.
+    const allFlat = flattenTree(channelTree);
+    const activeFlat = allFlat.find((n) => n.node.id === activeId);
+    const overFlat = allFlat.find((n) => n.node.id === overId);
+    if (!activeFlat || !overFlat) return;
+
+    const newParentId = overFlat.node.is_category ? overFlat.node.id : overFlat.parentId;
+    const parentChanged = newParentId !== activeFlat.node.parent_id;
+
+    // Optimistic parent update so the reorder below sees the new shape.
+    const channelsWithNewParent = parentChanged
+      ? channels.map((c) => (c.id === activeId ? { ...c, parent_id: newParentId } : c))
+      : channels;
+
+    // Reorder within the flat global list.
+    const sorted = [...channelsWithNewParent].sort((a, b) => a.display_order - b.display_order);
+    const oldIndex = sorted.findIndex((c) => c.id === activeId);
+    const newIndex = sorted.findIndex((c) => c.id === overId);
     if (oldIndex < 0 || newIndex < 0) return;
 
     const reordered = arrayMove(sorted, oldIndex, newIndex);
+    setChannels(reordered.map((c, i) => ({ ...c, display_order: i })));
 
-    // Update local state immediately
-    const reIndexed = reordered.map((c, i) => ({ ...c, display_order: i }));
-    setChannels(reIndexed);
-
-    // Persist to hub
     try {
-      await invoke("reorder_channels", {
-        channelIds: reordered.map((c) => c.id),
-      });
+      if (parentChanged) {
+        await invoke("move_channel", { channelId: activeId, parentId: newParentId });
+      }
+      await invoke("reorder_channels", { channelIds: reordered.map((c) => c.id) });
     } catch (e) {
       setError(String(e));
     }

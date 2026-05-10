@@ -4,6 +4,142 @@ Why Voxply is shaped the way it is. Each entry: the decision, the
 alternative we considered, and why we chose this. New decisions go at
 the top.
 
+## Nested channels: DnD interaction model
+
+**Context**: schema already supports arbitrary nesting
+(`channels.parent_id`, `is_category`); server validates cycles and
+parent-must-be-category. The client today builds a one-level tree
+(`buildChannelTree` in `client/voxply-desktop/src/utils/channels.ts`)
+and `handleDragEnd` in `App.tsx` (~line 2952) does a flat global
+`arrayMove` and POSTs to `reorder_channels`. `move_channel` exists but
+is never invoked from drag. Goal of this entry: pick the four
+interaction primitives so implementation can start without re-deriving
+them.
+
+### 1. DnD strategy — Option A (single flat `SortableContext`, DFS order)
+
+**Decision**: collapse the sidebar into a single `SortableContext`
+that lists every visible channel/category in depth-first order, with
+indentation rendered via CSS padding-left keyed off the node's depth.
+Reparenting and reordering are both expressed as "where in the flat
+list did the user drop, and at what indent level."
+
+**Alternatives**: keep nested `SortableContext`s, one per category,
+recursively (Option B); roll a non-dnd-kit tree (Option C).
+
+**Tradeoff**: nested contexts make "move from category X into category
+Y" a context-jump that dnd-kit handles awkwardly — `over` events fire
+inside whichever inner context the pointer is in, and the sortable
+animations fight each other when an item leaves one context for
+another. With unbounded depth (the design rule from
+`future-features.md`), the recursive approach also requires every
+category to instantiate its own context and `useSortable`, multiplying
+re-renders. A single flat context with DFS rendering is what
+dnd-kit's tree examples settle on for the same reason: it gives one
+coherent stream of `over` events, supports any depth without code
+changes, and keeps the indentation purely visual. The cost is that
+we compute drop-target semantics (parent, sibling-index, depth)
+ourselves from the over-id and the pointer's horizontal position
+rather than letting nested contexts encode it.
+
+### 2. Reparenting gesture — Option B (horizontal offset signals nest depth)
+
+**Decision**: while dragging, the pointer's X position relative to the
+sidebar's left edge picks the **target depth**. The drop indicator
+shows a horizontal line at the resolved (parent, index, depth)
+combination. Drag right past the row's indent to nest one level
+deeper; drag left to un-nest. Dropping onto a category header is also
+accepted as a shorthand for "append as last child" (mostly so users
+who don't notice the offset hint still get a sensible result).
+
+**Alternatives**: A — only "drop onto category header" reparents,
+between-item drops always keep the source's parent. C — no DnD
+reparenting; admin modal only.
+
+**Tradeoff**: option A breaks down past two levels — there's no way to
+move a node up to grandparent level without first dragging it onto
+the grandparent header, which means the drop target keeps moving as
+you scroll. Option C is fine but punishes the common case (admins
+shaping their tree). Horizontal offset is the standard tree-DnD
+gesture (file managers, outliners, dnd-kit's own tree example) and
+reads naturally with the indentation we're already drawing. The
+"drop on header = append" fallback covers the discoverability gap
+without conflicting with the offset gesture.
+
+### 3. Cycle detection — both, but client is advisory
+
+**Decision**: server is the source of truth and rejects cycles
+authoritatively (already implemented). Client also computes the
+forbidden descendant set of the dragged node up front and refuses to
+render the drop indicator over any of those rows — this gives
+immediate visual feedback ("you can't drop a category into itself")
+without a server round-trip. If the client check is bypassed somehow
+(stale tree, race), the server rejection plus a toast is the
+backstop.
+
+**Alternatives**: rely on server only (simpler, but drops *appear* to
+succeed for ~100 ms before the toast snaps the tree back, which feels
+broken); client only (federated principle: the client never trusts
+itself for invariants the server enforces).
+
+**Tradeoff**: a few lines of `isDescendant(draggedId, candidateId)`
+in the client buys a much better feel; we keep the server check
+because we have to anyway.
+
+### 4. `buildChannelTree` — make it fully recursive now
+
+**Decision**: rewrite `buildChannelTree` to return a recursive
+`TreeNode { node: Channel; children: TreeNode[] }[]` and produce a
+parallel DFS-flat list (with `depth` annotations) for the
+`SortableContext` to consume. Both shapes come out of the same pass.
+
+**Alternatives**: keep the shallow shape and add a second pass on top;
+recurse only as deep as today's data goes (1–2 levels) and grow it
+later.
+
+**Tradeoff**: the shallow function is already wrong for what we want
+to render (it filters non-root parents into the wrong bucket once
+categories nest under categories). Half-recursing is just another
+place that'll need to change next time, and the recursive version is
+~15 lines. Single source of truth for tree shape beats two
+half-implementations.
+
+### What changes on the implementation side
+
+- `client/voxply-desktop/src/utils/channels.ts`: rewrite
+  `buildChannelTree` to be fully recursive; export a sibling
+  `flattenTree(tree)` that yields `{ node, depth, parentId }[]` in
+  DFS order for the sortable. Also export `descendantIds(tree, id)`
+  for the client-side cycle guard.
+- `ChannelSidebar.tsx`: collapse the two nested `SortableContext`s
+  (lines 221/239) into one driven by the flat DFS list. Render each
+  row with `paddingLeft: depth * INDENT_PX`. Categories still render
+  their header row but no longer wrap their children in a separate
+  context.
+- `App.tsx`'s `handleDragEnd` (~2952): resolve the drop into
+  `(parentId, displayOrder)`. If `parentId` differs from the source's
+  current parent, call `move_channel` first, then `reorder_channels`
+  scoped to the affected sibling group(s). If only the order changed,
+  skip the move call.
+- New `DragOverlay` content: render the dragged row at its current
+  resolved depth (recompute on `onDragMove` from pointer X) so the
+  user sees the indent they're committing to.
+- Tauri side: no changes. `move_channel` and `reorder_channels` are
+  both already wired.
+
+### What's deferred
+
+- **Visual strategy past ~6 levels** (open question in
+  `future-features.md` — horizontal scroll, auto-collapse,
+  breadcrumb): not blocking. Indent past the sidebar width simply
+  truncates with ellipsis until we pick one.
+- **Permission-override UI on nested categories**: separate design.
+- **Permalinks showing the full path** (`Games / LoL / #raid`): a
+  display-only change, not part of this DnD work.
+- **Touch / mobile drag affordances**: out of scope; desktop only.
+
+---
+
 ## First-run / onboarding: enhanced single screen, opt-in demo hub, non-blocking recovery
 
 **Decision**: keep the welcome screen as a single-screen layout (no

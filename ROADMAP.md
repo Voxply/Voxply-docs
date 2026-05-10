@@ -19,7 +19,6 @@ items live in the wiki — see
 
 - **Screen share** — WebRTC or similar; multi-week
 - **E2E encryption for DMs** — sender-key against recipient pubkey; group DMs are the hard part
-- **Onboarding / first-run** — guided first-hub flow, demo hub option
 - **Cross-platform packaging** — installers for macOS / Linux / mobile
 - **Performance ceiling** — load test WS broadcast, search, voice relay
 - **Accessibility + i18n** — keyboard nav audit, screen-reader, localization

@@ -36,6 +36,7 @@ export function SortableChannelItem({
   muted,
   participants,
   isCurrentVoiceChannel,
+  style,
   onClick,
   onDoubleClick,
   onContextMenu,
@@ -46,6 +47,7 @@ export function SortableChannelItem({
   muted: boolean;
   participants: VoiceParticipant[];
   isCurrentVoiceChannel: boolean;
+  style?: React.CSSProperties;
   onClick: () => void;
   onDoubleClick: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
@@ -60,6 +62,7 @@ export function SortableChannelItem({
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
+        ...style,
       }}
     >
       {/* Drag listeners + click/dblclick live on the inner row, not the
@@ -113,14 +116,16 @@ export function SortableCategoryItem({
   children,
   collapsed,
   childCount,
+  style,
   onToggleCollapsed,
   onContextMenu,
   onAddChannel,
 }: {
   channel: Channel;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   collapsed: boolean;
   childCount: number;
+  style?: React.CSSProperties;
   onToggleCollapsed: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
   onAddChannel: () => void;
@@ -135,6 +140,7 @@ export function SortableCategoryItem({
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
+        ...style,
       }}
     >
       <div
