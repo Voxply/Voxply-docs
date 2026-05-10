@@ -3421,3 +3421,87 @@ select:focus {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ============================================================
+   PAIRING
+   ============================================================ */
+
+.pairing-status-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  margin-bottom: var(--space-4);
+}
+
+.pairing-status-card.paired {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.pairing-status-card.legacy {
+  background: var(--surface);
+}
+
+.pairing-status-icon {
+  font-size: var(--text-xl);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.pairing-action-row {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
+.pairing-flow {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.pairing-flow h3 {
+  margin: 0 0 var(--space-3) 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+}
+
+.pairing-hub-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.pairing-code-area {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+  margin-bottom: var(--space-2);
+}
+
+.pairing-fingerprint {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  background: var(--surface);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+}
+
+.pairing-waiting {
+  margin-top: var(--space-3);
+}

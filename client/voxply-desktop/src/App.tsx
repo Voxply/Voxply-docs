@@ -3147,6 +3147,7 @@ function App() {
             tab={settingsTab}
             onTab={setSettingsTab}
             onClose={closeSettings}
+            hubs={hubs}
             profiles={profiles}
             defaultProfileId={defaultProfileId}
             onCreateProfile={handleCreateProfile}

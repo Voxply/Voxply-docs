@@ -1,10 +1,11 @@
-import type { NamedProfile } from "../types";
+import type { Hub, NamedProfile } from "../types";
 import { formatPubkey } from "../utils/format";
 import { MicLevelMeter } from "./MicLevelMeter";
 import { PttKeyBinder } from "./PttKeyBinder";
 import { ThemePicker } from "./ThemePicker";
 import { ProfileTab } from "./ProfileTab";
 import { RestoreIdentitySection } from "./RestoreIdentitySection";
+import { PairingSection } from "./PairingSection";
 
 export type SettingsTab =
   | "profile"
@@ -12,12 +13,14 @@ export type SettingsTab =
   | "appearance"
   | "voice"
   | "security"
+  | "devices"
   | "about";
 
 export interface SettingsPageProps {
   tab: SettingsTab;
   onTab: (t: SettingsTab) => void;
   onClose: () => void;
+  hubs: Hub[];
   // Profile system: multiple named profiles with one marked default.
   profiles: NamedProfile[];
   defaultProfileId: string | null;
@@ -66,6 +69,7 @@ export function SettingsPage(props: SettingsPageProps) {
     { id: "appearance", label: "Appearance" },
     { id: "voice", label: "Voice & Video" },
     { id: "security", label: "Security" },
+    { id: "devices", label: "Devices" },
     { id: "about", label: "About" },
   ];
 
@@ -278,6 +282,16 @@ export function SettingsPage(props: SettingsPageProps) {
               )}
             </div>
             <RestoreIdentitySection onRestore={props.onRecoverIdentity} />
+          </section>
+        )}
+        {props.tab === "devices" && (
+          <section>
+            <h1>Devices</h1>
+            <p className="muted">
+              Link this device to your identity on another machine, or allow a
+              new device to join using your existing identity.
+            </p>
+            <PairingSection hubs={props.hubs} />
           </section>
         )}
         {props.tab === "about" && (
