@@ -1,4 +1,5 @@
 pub mod alliance_models;
+pub mod directory;
 pub mod alliances;
 pub mod channels;
 pub mod dm_models;
