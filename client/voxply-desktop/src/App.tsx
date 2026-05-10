@@ -9,18 +9,8 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
-import {
-  DndContext,
-  DragEndEvent,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import type { DragEndEvent } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 import type {
   Channel,
   Attachment,
@@ -47,38 +37,10 @@ import type {
   AllianceSharedChannel,
 } from "./types";
 import { MAX_ATTACHMENT_BYTES } from "./constants";
-import {
-  formatPubkey,
-  meAction,
-  mentionsName,
-  colorForKey,
-  dayKey,
-  formatDayLabel,
-  formatFullTimestamp,
-  formatRelative,
-} from "./utils/format";
+import { formatPubkey, mentionsName } from "./utils/format";
 import { playMentionPing, playVoiceTone } from "./utils/audio";
-import { PhoneIcon, PhoneOffIcon } from "./components/Icons";
-import { Avatar } from "./components/Avatar";
-import { TypingIndicator } from "./components/TypingIndicator";
 import { Lightbox } from "./components/Lightbox";
-import { MicLevelMeter } from "./components/MicLevelMeter";
 import { WelcomeRecoveryBlock } from "./components/WelcomeRecoveryBlock";
-import { MessageReactions } from "./components/MessageReactions";
-import { ReactionPicker } from "./components/ReactionPicker";
-import {
-  PendingAttachments,
-  MessageAttachments,
-} from "./components/Attachments";
-import { MessageContent } from "./components/MessageContent";
-import {
-  SortableHubIcon,
-  SortableChannelItem,
-  SortableCategoryItem,
-} from "./components/SortableItems";
-import { ThemePicker } from "./components/ThemePicker";
-import { PttKeyBinder } from "./components/PttKeyBinder";
-import { UserListGrouped } from "./components/UserListGrouped";
 import { ChannelPalette } from "./components/ChannelPalette";
 import { ChannelBansModal } from "./components/ChannelBansModal";
 import {
@@ -89,6 +51,17 @@ import {
   HubAdminPage,
   type HubAdminTab,
 } from "./components/HubAdminPage";
+import { AddHubModal } from "./components/AddHubModal";
+import { CreateChannelModal } from "./components/CreateChannelModal";
+import { InstallGameModal } from "./components/InstallGameModal";
+import { EditGameModal } from "./components/EditGameModal";
+import { FriendsModal } from "./components/FriendsModal";
+import { EditDescriptionModal } from "./components/EditDescriptionModal";
+import { ChannelContextMenu } from "./components/ChannelContextMenu";
+import { UserContextMenu } from "./components/UserContextMenu";
+import { HubSidebar } from "./components/HubSidebar";
+import { ChannelSidebar } from "./components/ChannelSidebar";
+import { ContentArea } from "./components/ContentArea";
 
 function App() {
   // Multi-hub state
@@ -2946,6 +2919,27 @@ function App() {
     }
   }
 
+  async function handleRenameChannel(channel: Channel) {
+    const next = prompt("Rename channel", channel.name);
+    if (!next) return;
+    const trimmed = next.trim();
+    if (!trimmed || trimmed === channel.name) return;
+    try {
+      await invoke("rename_channel", { channelId: channel.id, name: trimmed });
+      setChannels((prev) => prev.map((c) => c.id === channel.id ? { ...c, name: trimmed } : c));
+      if (selectedChannel?.id === channel.id) {
+        setSelectedChannel({ ...selectedChannel, name: trimmed });
+      }
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  async function openHubAdminInvites() {
+    await openHubAdmin();
+    setHubAdminTab("invites");
+  }
+
   // Build a nested tree: categories contain their child channels.
   // Top-level = channels with no parent. Sorted by display_order.
   function buildChannelTree(): { node: Channel; children: Channel[] }[] {
@@ -2963,10 +2957,6 @@ function App() {
     }
     return tree;
   }
-
-  const dndSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
-  );
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -3089,6 +3079,7 @@ function App() {
     setContextMenu(null);
   }
 
+
   return (
     <div className="app">
       {toast && (
@@ -3172,24 +3163,12 @@ function App() {
             voiceMode={voiceMode}
             onVoiceModeChange={(m) => {
               setVoiceMode(m);
-              persistVoiceSettings(
-                voiceInputDevice,
-                voiceOutputDevice,
-                vadThreshold,
-                m,
-                pttKey,
-              );
+              persistVoiceSettings(voiceInputDevice, voiceOutputDevice, vadThreshold, m, pttKey);
             }}
             pttKey={pttKey}
             onPttKeyChange={(k) => {
               setPttKey(k);
-              persistVoiceSettings(
-                voiceInputDevice,
-                voiceOutputDevice,
-                vadThreshold,
-                voiceMode,
-                k,
-              );
+              persistVoiceSettings(voiceInputDevice, voiceOutputDevice, vadThreshold, voiceMode, k);
             }}
             mentionPingEnabled={mentionPingEnabled}
             onMentionPingChange={setMentionPingEnabled}
@@ -3202,1866 +3181,314 @@ function App() {
             onClearLocalData={handleClearLocalData}
           />
         ) : (
-        <div className="main-layout">
-          <div className="hub-sidebar">
-            <div className="hub-icon-box">
-              <button
-                className={`hub-icon dm ${view === "dms" ? "active" : ""}`}
-                onClick={() => {
-                  setView("dms");
-                  if (hasActiveHub) loadConversations();
-                }}
-                disabled={!hasActiveHub}
-                title="Direct Messages"
-              >
-                @
-              </button>
-              {Object.keys(unreadDms).length > 0 && view !== "dms" && (
-                <span className="hub-unread-badge">
-                  {Object.keys(unreadDms).length > 99
-                    ? "99+"
-                    : Object.keys(unreadDms).length}
-                </span>
-              )}
-            </div>
-            <div className="hub-sidebar-divider" />
-            <DndContext sensors={dndSensors} onDragEnd={handleHubReorder}>
-              <SortableContext
-                items={hubs.map((h) => h.hub_id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {hubs.map((h) => {
-                  const unread = unreadByHub[h.hub_id] || 0;
-                  const ping = pingByHub[h.hub_id];
-                  const offline = ping === null;
-                  const titleSuffix = offline
-                    ? " — offline"
-                    : ping === undefined
-                    ? ""
-                    : ` — ${ping}ms`;
-                  return (
-                    <SortableHubIcon key={h.hub_id} hubId={h.hub_id}>
-                      <div className="hub-icon-box">
-                        <button
-                          className={`hub-icon ${
-                            h.hub_id === activeHubId && view === "channels" ? "active" : ""
-                          } ${offline ? "offline" : ""} ${
-                            hubNotifyMode[h.hub_id] === "silent" ? "muted" : ""
-                          }`}
-                          onClick={() => {
-                            handleSwitchHub(h.hub_id);
-                            setView("channels");
-                          }}
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            handleRemoveHub(h.hub_id);
-                          }}
-                          title={`${h.hub_name} (${h.hub_url})${titleSuffix}${
-                            hubNotifyMode[h.hub_id] === "silent"
-                              ? " — silenced"
-                              : hubNotifyMode[h.hub_id] === "mentions"
-                              ? " — mentions only"
-                              : ""
-                          }`}
-                        >
-                          {h.hub_icon ? (
-                            <img
-                              src={h.hub_icon}
-                              alt={h.hub_name}
-                              className="hub-icon-image"
-                            />
-                          ) : (
-                            h.hub_name.slice(0, 2).toUpperCase()
-                          )}
-                        </button>
-                        {unread > 0 && hubNotifyMode[h.hub_id] !== "silent" && (
-                          <span className="hub-unread-badge">
-                            {unread > 99 ? "99+" : unread}
-                          </span>
-                        )}
-                        {hubNotifyMode[h.hub_id] === "silent" && (
-                          <span className="hub-muted-badge" title="Silenced">
-                            🔕
-                          </span>
-                        )}
-                        {hubNotifyMode[h.hub_id] === "mentions" && (
-                          <span
-                            className="hub-muted-badge"
-                            title="Mentions only"
-                          >
-                            @
-                          </span>
-                        )}
-                      </div>
-                      {offline && <span className="hub-offline-label">offline</span>}
-                    </SortableHubIcon>
-                  );
-                })}
-              </SortableContext>
-            </DndContext>
-            <button
-              className="hub-icon add"
-              onClick={() => setShowAddHub(true)}
-              title="Add hub"
-            >
-              +
-            </button>
-          </div>
-          {!hasActiveHub ? (
-            <div className="empty-state welcome">
-              <h1>Welcome to Voxply</h1>
-              <p className="welcome-tagline">
-                Decentralized voice chat where you bring your identity
-                with you. No accounts, no central server.
-              </p>
-              <ul className="welcome-points">
-                <li>
-                  <strong>Hubs</strong> are independently-run servers — pick
-                  any one to join, or run your own. The same you works on
-                  every hub.
-                </li>
-                <li>
-                  <strong>Your identity</strong> is a keypair stored on this
-                  device, not an account on a service. Nobody can deplatform
-                  you.
-                </li>
-                <li>
-                  <strong>Alliances</strong> let hubs share channels with
-                  each other so communities stay connected without merging.
-                </li>
-              </ul>
-              <WelcomeRecoveryBlock />
-              <button className="primary" onClick={() => setShowAddHub(true)}>
-                Add your first hub
-              </button>
-              <p className="welcome-hint muted">
-                Don't have one? Ask a friend for a hub URL, paste an
-                invite link, or run a hub yourself — see{" "}
-                <code>docs/hosting.md</code> in the repo.
-              </p>
-            </div>
-          ) : myApprovalStatus === "pending" ? (
-            <div className="empty-state pending-approval">
-              <div className="pending-approval-icon">⏳</div>
-              <h1>Waiting for approval</h1>
-              <p>
-                <strong>
-                  {hubs.find((h) => h.hub_id === activeHubId)?.hub_name ?? "This hub"}
-                </strong>{" "}
-                requires admin approval before new members can join in.
-              </p>
-              <p className="muted">
-                You'll get access automatically once an admin approves your
-                request — feel free to leave the app open or come back later.
-              </p>
-              <button
-                onClick={loadHubData}
-                className="primary"
-              >
-                Check again
-              </button>
-              {hubs.length > 1 && (
-                <p className="muted" style={{ marginTop: "var(--space-4)" }}>
-                  Switch to another hub from the sidebar if you'd like to keep
-                  chatting elsewhere in the meantime.
+          <div className="main-layout">
+            <HubSidebar
+              hubs={hubs}
+              activeHubId={activeHubId}
+              view={view}
+              unreadDms={unreadDms}
+              unreadByHub={unreadByHub}
+              pingByHub={pingByHub}
+              hubNotifyMode={hubNotifyMode}
+              hasActiveHub={hasActiveHub}
+              onSwitchToDms={() => { setView("dms"); if (hasActiveHub) loadConversations(); }}
+              onSwitchHub={(hubId) => { handleSwitchHub(hubId); setView("channels"); }}
+              onRemoveHub={handleRemoveHub}
+              onHubReorder={handleHubReorder}
+              onAddHub={() => setShowAddHub(true)}
+            />
+            {!hasActiveHub ? (
+              <div className="empty-state welcome">
+                <h1>Welcome to Voxply</h1>
+                <p className="welcome-tagline">
+                  Decentralized voice chat where you bring your identity
+                  with you. No accounts, no central server.
                 </p>
-              )}
-            </div>
-          ) : (
-            <>
-          <div className="sidebar">
-            {view === "channels" && (
-              <div className="hub-header">
-                <button
-                  className="hub-header-button"
-                  onClick={() => setHubDropdownOpen(!hubDropdownOpen)}
-                >
-                  <span className="hub-header-name">
-                    {hubs.find((h) => h.hub_id === activeHubId)?.hub_name ?? "Hub"}
-                  </span>
-                  <span className="hub-header-chevron">
-                    {hubDropdownOpen ? "▴" : "▾"}
-                  </span>
+                <ul className="welcome-points">
+                  <li>
+                    <strong>Hubs</strong> are independently-run servers — pick
+                    any one to join, or run your own. The same you works on
+                    every hub.
+                  </li>
+                  <li>
+                    <strong>Your identity</strong> is a keypair stored on this
+                    device, not an account on a service. Nobody can deplatform
+                    you.
+                  </li>
+                  <li>
+                    <strong>Alliances</strong> let hubs share channels with
+                    each other so communities stay connected without merging.
+                  </li>
+                </ul>
+                <WelcomeRecoveryBlock />
+                <button className="primary" onClick={() => setShowAddHub(true)}>
+                  Add your first hub
                 </button>
-                {hubDropdownOpen && (
-                  <div className="hub-dropdown">
-                    {isAdmin && (
-                      <button
-                        className="hub-dropdown-item"
-                        onClick={async () => {
-                          await openHubAdmin();
-                          setHubAdminTab("invites");
-                        }}
-                      >
-                        Invite people
-                      </button>
-                    )}
-                    {isAdmin && (
-                      <button
-                        className="hub-dropdown-item"
-                        onClick={openHubAdmin}
-                      >
-                        Hub settings
-                      </button>
-                    )}
-                    {activeHubId &&
-                      (() => {
-                        const cur = hubNotifyMode[activeHubId] ?? "all";
-                        const items: { mode: NotifyMode; label: string }[] = [
-                          { mode: "all", label: "Notify on all messages" },
-                          { mode: "mentions", label: "Notify on @mentions only" },
-                          { mode: "silent", label: "Silence this hub" },
-                        ];
-                        return items.map(({ mode, label }) => (
-                          <button
-                            key={mode}
-                            className="hub-dropdown-item"
-                            onClick={() => {
-                              setHubDropdownOpen(false);
-                              setHubMode(activeHubId, mode);
-                            }}
-                          >
-                            {cur === mode ? "✓ " : ""}
-                            {label}
-                          </button>
-                        ));
-                      })()}
-                    {activeHubId &&
-                      Object.keys(unreadByChannel[activeHubId] ?? {}).length > 0 && (
-                        <button
-                          className="hub-dropdown-item"
-                          onClick={() => {
-                            setHubDropdownOpen(false);
-                            clearHubUnread(activeHubId);
-                          }}
-                        >
-                          Mark all as read
-                        </button>
-                      )}
-                    <button
-                      className="hub-dropdown-item danger"
-                      onClick={() => {
-                        setHubDropdownOpen(false);
-                        if (activeHubId) handleRemoveHub(activeHubId);
-                      }}
-                    >
-                      Leave hub
-                    </button>
-                  </div>
+                <p className="welcome-hint muted">
+                  Don't have one? Ask a friend for a hub URL, paste an
+                  invite link, or run a hub yourself — see{" "}
+                  <code>docs/hosting.md</code> in the repo.
+                </p>
+              </div>
+            ) : myApprovalStatus === "pending" ? (
+              <div className="empty-state pending-approval">
+                <div className="pending-approval-icon">⏳</div>
+                <h1>Waiting for approval</h1>
+                <p>
+                  <strong>
+                    {hubs.find((h) => h.hub_id === activeHubId)?.hub_name ?? "This hub"}
+                  </strong>{" "}
+                  requires admin approval before new members can join in.
+                </p>
+                <p className="muted">
+                  You'll get access automatically once an admin approves your
+                  request — feel free to leave the app open or come back later.
+                </p>
+                <button onClick={loadHubData} className="primary">
+                  Check again
+                </button>
+                {hubs.length > 1 && (
+                  <p className="muted" style={{ marginTop: "var(--space-4)" }}>
+                    Switch to another hub from the sidebar if you'd like to keep
+                    chatting elsewhere in the meantime.
+                  </p>
                 )}
               </div>
-            )}
-            <div className="sidebar-scroll">
-            {view !== "dms" ? (
-              <>
-            {(() => {
-              const pinned = activeHubId
-                ? channels.filter(
-                    (c) =>
-                      !c.is_category && pinnedChannels[activeHubId]?.[c.id]
-                  )
-                : [];
-              if (pinned.length === 0) return null;
-              return (
-                <>
-                  <div className="sidebar-header">
-                    <h3>📌 Pinned</h3>
-                  </div>
-                  <ul className="channel-list">
-                    {pinned.map((c) => (
-                      <li
-                        key={c.id}
-                        className={`channel-item ${
-                          selectedChannel?.id === c.id ? "selected" : ""
-                        } ${
-                          activeHubId &&
-                          unreadByChannel[activeHubId]?.[c.id]
-                            ? "unread"
-                            : ""
-                        }`}
-                        onClick={() => selectChannel(c)}
-                        onContextMenu={(e) => openContextMenu(e, c)}
-                      >
-                        # {c.name}
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              );
-            })()}
-            <div className="sidebar-header">
-              <h3>Channels</h3>
-              <button
-                className="btn-icon"
-                onClick={() => openCreateChannelUnder(null, false)}
-                title="Create channel"
-              >
-                +
-              </button>
-            </div>
-            <DndContext sensors={dndSensors} onDragEnd={handleDragEnd}>
-              <SortableContext
-                items={buildChannelTree().map(({ node }) => node.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <ul className="channel-list">
-                  {buildChannelTree().map(({ node, children }) =>
-                    node.is_category ? (
-                      <SortableCategoryItem
-                        key={node.id}
-                        channel={node}
-                        collapsed={
-                          !!activeHubId &&
-                          !!collapsedCategories[activeHubId]?.[node.id]
-                        }
-                        childCount={children.length}
-                        onToggleCollapsed={() => {
-                          if (activeHubId)
-                            toggleCategoryCollapsed(activeHubId, node.id);
-                        }}
-                        onContextMenu={(e) => openContextMenu(e, node)}
-                        onAddChannel={() => openCreateChannelUnder(node.id, false)}
-                      >
-                        <SortableContext
-                          items={children.map((c) => c.id)}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          <ul className="channel-sublist">
-                            {children.map((c) => (
-                              <SortableChannelItem
-                                key={c.id}
-                                channel={c}
-                                selected={selectedChannel?.id === c.id}
-                                unread={
-                                  !!activeHubId &&
-                                  !!unreadByChannel[activeHubId]?.[c.id]
-                                }
-                                muted={
-                                  !!activeHubId &&
-                                  effectiveNotifyMode(activeHubId, c.id) ===
-                                    "silent"
-                                }
-                                participants={voicePartByChannel[c.id] ?? []}
-                                isCurrentVoiceChannel={voiceChannelId === c.id}
-                                onClick={() => selectChannel(c)}
-                                onDoubleClick={() => {
-                                  if (voiceChannelId !== c.id) handleVoiceJoin(c);
-                                }}
-                                onContextMenu={(e) => openContextMenu(e, c)}
-                              />
-                            ))}
-                          </ul>
-                        </SortableContext>
-                      </SortableCategoryItem>
-                    ) : (
-                      <SortableChannelItem
-                        key={node.id}
-                        channel={node}
-                        selected={selectedChannel?.id === node.id}
-                        unread={
-                          !!activeHubId &&
-                          !!unreadByChannel[activeHubId]?.[node.id]
-                        }
-                        muted={
-                          !!activeHubId &&
-                          effectiveNotifyMode(activeHubId, node.id) ===
-                            "silent"
-                        }
-                        participants={voicePartByChannel[node.id] ?? []}
-                        isCurrentVoiceChannel={voiceChannelId === node.id}
-                        onClick={() => selectChannel(node)}
-                        onDoubleClick={() => {
-                          if (voiceChannelId !== node.id) handleVoiceJoin(node);
-                        }}
-                        onContextMenu={(e) => openContextMenu(e, node)}
-                      />
-                    )
-                  )}
-                </ul>
-              </SortableContext>
-            </DndContext>
-            {channels.length === 0 && (
-              <p className="muted">No channels yet</p>
-            )}
-
-            {userAlliances.length > 0 && (
-              <div className="sidebar-alliances">
-                {userAlliances.map((a) => {
-                  const allChans = allianceChannels[a.id] ?? [];
-                  // Hide local channels of this hub -- they already appear in
-                  // the main Channels list above; surfacing them again would
-                  // just duplicate.
-                  const remoteOnly = allChans.filter(
-                    (c) => !channels.find((local) => local.id === c.channel_id)
-                  );
-                  if (remoteOnly.length === 0) return null;
-                  return (
-                    <div key={a.id} className="sidebar-alliance-group">
-                      <div className="sidebar-header sidebar-header-alliance">
-                        <h3>🤝 {a.name}</h3>
-                      </div>
-                      <ul className="channel-list">
-                        {remoteOnly.map((c) => {
-                          const isSelected =
-                            selectedAllianceChannel?.alliance_id === a.id &&
-                            selectedAllianceChannel.channel.channel_id ===
-                              c.channel_id;
-                          return (
-                            <li
-                              key={c.channel_id}
-                              className={`channel-item ${isSelected ? "selected" : ""}`}
-                              onClick={() => selectAllianceChannel(a, c)}
-                              title={`Hosted on ${c.hub_name}`}
-                            >
-                              # {c.channel_name}
-                              <span className="alliance-channel-host">
-                                {c.hub_name}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className="sidebar-header sidebar-header-games">
-              <h3>Games</h3>
-              {canManageGames && (
-                <button
-                  className="btn-icon"
-                  onClick={() => setShowInstallGame(true)}
-                  title="Install game"
-                >
-                  +
-                </button>
-              )}
-            </div>
-            <ul className="channel-list">
-              {installedGames.map((g) => (
-                <li
-                  key={g.id}
-                  className={`channel-item game-item ${
-                    view === "game" && selectedGame?.id === g.id ? "selected" : ""
-                  }`}
-                  onClick={() => launchGame(g)}
-                  title={g.description ?? ""}
-                >
-                  <span className="game-item-label">🎮 {g.name}</span>
-                  {canManageGames && (
-                    <button
-                      className="game-item-gear"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEditGame(g);
-                      }}
-                      title="Game settings"
-                      aria-label={`Settings for ${g.name}`}
-                    >
-                      ⚙
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-            {installedGames.length === 0 && (
-              <p className="muted">
-                {canManageGames ? "No games yet — click + to install." : "No games yet."}
-              </p>
-            )}
-
-              </>
             ) : (
               <>
-                <div className="sidebar-header">
-                  <h3>Direct Messages</h3>
-                  <button
-                    className="btn-icon"
-                    onClick={openFriends}
-                    title="Friends"
-                  >
-                    👥
-                  </button>
-                </div>
-                <ul className="channel-list">
-                  {[...conversations]
-                    .sort(
-                      (a, b) =>
-                        (b.last_activity_at ?? b.created_at) -
-                        (a.last_activity_at ?? a.created_at),
-                    )
-                    .map((c) => {
-                    const others = c.members.filter((m) => m !== publicKey);
-                    const label = others
-                      .map((k) => {
-                        const u = users.find((u) => u.public_key === k);
-                        return u?.display_name || k.slice(0, 12);
-                      })
-                      .join(", ");
-                    const unread = !!unreadDms[c.id];
-                    return (
-                      <li
-                        key={c.id}
-                        className={`channel-item ${
-                          selectedConversation?.id === c.id ? "selected" : ""
-                        } ${unread ? "unread" : ""}`}
-                        onClick={() => selectConversation(c)}
-                      >
-                        {unread && <span className="channel-unread-dot" />}
-                        @ {label || "(empty)"}
-                      </li>
-                    );
-                  })}
-                </ul>
-                {conversations.length === 0 && (
-                  <p className="muted">No conversations. Start one from your friends list.</p>
-                )}
+                <ChannelSidebar
+                  view={view}
+                  activeHubId={activeHubId}
+                  hubs={hubs}
+                  channels={channels}
+                  selectedChannel={selectedChannel}
+                  pinnedChannels={pinnedChannels}
+                  unreadByChannel={unreadByChannel}
+                  collapsedCategories={collapsedCategories}
+                  voicePartByChannel={voicePartByChannel}
+                  voiceChannelId={voiceChannelId}
+                  selfMuted={selfMuted}
+                  selfDeafened={selfDeafened}
+                  users={users}
+                  publicKey={publicKey}
+                  pingByHub={pingByHub}
+                  isAdmin={isAdmin}
+                  hubNotifyMode={hubNotifyMode}
+                  hubDropdownOpen={hubDropdownOpen}
+                  userAlliances={userAlliances}
+                  allianceChannels={allianceChannels}
+                  selectedAllianceChannel={selectedAllianceChannel}
+                  conversations={conversations}
+                  selectedConversation={selectedConversation}
+                  unreadDms={unreadDms}
+                  installedGames={installedGames}
+                  selectedGame={selectedGame}
+                  canManageGames={canManageGames}
+                  buildChannelTree={buildChannelTree}
+                  effectiveNotifyMode={effectiveNotifyMode}
+                  onToggleCategoryCollapsed={toggleCategoryCollapsed}
+                  onHubDropdownOpenChange={setHubDropdownOpen}
+                  onSetHubMode={setHubMode}
+                  onClearHubUnread={clearHubUnread}
+                  onRemoveHub={handleRemoveHub}
+                  onOpenHubAdmin={openHubAdmin}
+                  onOpenHubAdminInvites={openHubAdminInvites}
+                  onOpenCreateChannel={openCreateChannelUnder}
+                  onSelectChannel={selectChannel}
+                  onChannelContextMenu={openContextMenu}
+                  onVoiceJoin={handleVoiceJoin}
+                  onVoiceLeave={handleVoiceLeave}
+                  onLaunchGame={launchGame}
+                  onOpenEditGame={openEditGame}
+                  onSelectAllianceChannel={selectAllianceChannel}
+                  onSelectConversation={selectConversation}
+                  onOpenFriends={openFriends}
+                  onToggleSelfMute={toggleSelfMute}
+                  onToggleSelfDeafen={toggleSelfDeafen}
+                  onOpenSettings={openSettings}
+                  onSetShowInstallGame={setShowInstallGame}
+                  onDragEnd={handleDragEnd}
+                />
+                <ContentArea
+                  view={view}
+                  activeHubId={activeHubId}
+                  hubs={hubs}
+                  theme={theme}
+                  selectedChannel={selectedChannel}
+                  selectedConversation={selectedConversation}
+                  selectedAllianceChannel={selectedAllianceChannel}
+                  selectedGame={selectedGame}
+                  messages={messages}
+                  searchResults={searchResults}
+                  searchOpen={searchOpen}
+                  searchQuery={searchQuery}
+                  dmMessages={dmMessages}
+                  allianceMessages={allianceMessages}
+                  users={users}
+                  publicKey={publicKey}
+                  blockedUsers={blockedUsers}
+                  knownDisplayNames={knownDisplayNames}
+                  myDisplayName={myDisplayName}
+                  isAdmin={isAdmin}
+                  myRoles={myRoles}
+                  editingMessageId={editingMessageId}
+                  editingDraft={editingDraft}
+                  replyTarget={replyTarget}
+                  pendingAttachments={pendingAttachments}
+                  stickToBottom={stickToBottom}
+                  newWhileScrolledUp={newWhileScrolledUp}
+                  hubConnected={hubConnected}
+                  reconnectingHubs={reconnectingHubs}
+                  memberSidebarHidden={memberSidebarHidden}
+                  voiceActiveUsers={voiceActiveUsers}
+                  inputText={inputText}
+                  typingByKey={typingByKey}
+                  dmTypingByKey={dmTypingByKey}
+                  messagesEndRef={messagesEndRef}
+                  messagesContainerRef={messagesContainerRef}
+                  messageInputRef={messageInputRef}
+                  onReconnect={handleReconnect}
+                  onCloseGame={() => { setSelectedGame(null); setView("channels"); }}
+                  onToggleReaction={toggleReaction}
+                  onSetReplyTarget={setReplyTarget}
+                  onSaveEdit={handleSaveEditedMessage}
+                  onCancelEdit={cancelEditingMessage}
+                  onStartEdit={startEditingMessage}
+                  onDeleteMessage={handleDeleteMessage}
+                  onSend={handleSend}
+                  onSendDm={handleSendDm}
+                  onSendAllianceMessage={handleSendAllianceMessage}
+                  onPingTyping={pingTyping}
+                  onPingDmTyping={pingDmTyping}
+                  onSetPendingAttachments={setPendingAttachments}
+                  onAttachFiles={attachFiles}
+                  onOpenEditDescription={openEditDescription}
+                  onScrollToMessage={scrollToMessage}
+                  onSetMemberSidebarHidden={setMemberSidebarHidden}
+                  onSetSearchOpen={setSearchOpen}
+                  onSetSearchQuery={setSearchQuery}
+                  onCloseSearch={closeSearch}
+                  onJumpToBottom={jumpToBottom}
+                  onMessagesScroll={handleMessagesScroll}
+                  onSetUserContextMenu={setUserContextMenu}
+                  onSetEditingDraft={setEditingDraft}
+                  onInputTextChange={setInputText}
+                  onKeyDown={handleKeyDown}
+                  onOpenImage={openImage}
+                  onToast={setToast}
+                  onError={setError}
+                />
               </>
             )}
-            </div>
-            <div className="user-info">
-              {voiceChannelId && (
-                <div className="voice-status">
-                  <span className="status-dot online" />
-                  <span className="voice-status-label">
-                    In voice: #{channels.find((c) => c.id === voiceChannelId)?.name}
-                  </span>
-                  {activeHubId && pingByHub[activeHubId] !== undefined && (
-                    <span
-                      className={`voice-ping ${
-                        pingByHub[activeHubId] === null
-                          ? "offline"
-                          : (pingByHub[activeHubId] as number) < 150
-                          ? "good"
-                          : (pingByHub[activeHubId] as number) < 400
-                          ? "okay"
-                          : "bad"
-                      }`}
-                    >
-                      {pingByHub[activeHubId] === null
-                        ? "offline"
-                        : `${pingByHub[activeHubId]}ms`}
-                    </span>
-                  )}
-                </div>
-              )}
-              <div className="user-footer">
-                <span
-                  className="user-footer-name"
-                  title={publicKey ?? undefined}
-                >
-                  {users.find((u) => u.public_key === publicKey)?.display_name
-                    || publicKey?.slice(0, 12)
-                    || "You"}
-                </span>
-                {voiceChannelId && (
-                  <>
-                    <button
-                      onClick={toggleSelfMute}
-                      className={`btn-icon-gear ${selfMuted ? "active" : ""}`}
-                      title={selfMuted ? "Unmute mic" : "Mute mic"}
-                    >
-                      {selfMuted ? "🚫🎙️" : "🎙️"}
-                    </button>
-                    <button
-                      onClick={toggleSelfDeafen}
-                      className={`btn-icon-gear ${selfDeafened ? "active" : ""}`}
-                      title={selfDeafened ? "Undeafen" : "Deafen"}
-                    >
-                      {selfDeafened ? "🚫🔊" : "🔊"}
-                    </button>
-                  </>
-                )}
-                {/* Phone toggle: joins the selected channel when not in
-                    voice (disabled if no leaf channel is selected),
-                    leaves voice when in. Inline SVGs (not emoji) so the
-                    icon respects CSS color and we get a proper handset-
-                    down shape for leave instead of just a tinted ring
-                    around the same glyph. */}
-                {voiceChannelId ? (
-                  <button
-                    onClick={handleVoiceLeave}
-                    className="btn-icon-gear voice-call-btn end"
-                    title="Leave voice"
-                    aria-label="Leave voice"
-                  >
-                    <PhoneOffIcon />
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleVoiceJoin()}
-                    className="btn-icon-gear voice-call-btn start"
-                    disabled={!selectedChannel || selectedChannel.is_category}
-                    title={
-                      !selectedChannel || selectedChannel.is_category
-                        ? "Select a channel first to join voice"
-                        : `Join voice on #${selectedChannel.name}`
-                    }
-                    aria-label="Join voice"
-                  >
-                    <PhoneIcon />
-                  </button>
-                )}
-                <button
-                  onClick={openSettings}
-                  className="btn-icon-gear"
-                  title="Settings"
-                >
-                  ⚙
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="content">
-            {activeHubId && hubConnected[activeHubId] === false && (
-              <div className="reconnect-banner">
-                <span>
-                  {reconnectingHubs[activeHubId]
-                    ? "Reconnecting…"
-                    : "Disconnected from hub."}
-                </span>
-                <button
-                  className="btn-small"
-                  onClick={handleReconnect}
-                  disabled={!!reconnectingHubs[activeHubId]}
-                >
-                  {reconnectingHubs[activeHubId] ? "Working…" : "Reconnect"}
-                </button>
-              </div>
-            )}
-            {view === "game" && selectedGame ? (
-              <>
-                <div className="channel-header">
-                  <div className="channel-header-info">
-                    <h3>🎮 {selectedGame.name}</h3>
-                    {selectedGame.description && (
-                      <p className="channel-description">
-                        {selectedGame.description}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    className="btn-small"
-                    onClick={() => {
-                      setSelectedGame(null);
-                      setView("channels");
-                    }}
-                  >
-                    Close
-                  </button>
-                </div>
-                <iframe
-                  key={`${selectedGame.id}:${theme}`}
-                  src={`${selectedGame.entry_url}${selectedGame.entry_url.includes("?") ? "&" : "?"}theme=${theme}`}
-                  className="game-frame"
-                  sandbox="allow-scripts"
-                  title={selectedGame.name}
-                />
-              </>
-            ) : view === "dms" ? (
-              selectedConversation ? (
-                <>
-                  <div className="channel-header">
-                    <h3>
-                      @{" "}
-                      {selectedConversation.members
-                        .filter((m) => m !== publicKey)
-                        .map((k) => {
-                          const u = users.find((u) => u.public_key === k);
-                          return u?.display_name || k.slice(0, 12);
-                        })
-                        .join(", ")}
-                    </h3>
-                  </div>
-                  <div className="messages">
-                    {(dmMessages[selectedConversation.id] || [])
-                      .filter((m) => !blockedUsers.has(m.sender))
-                      .map((m, i) => {
-                      const senderLabel =
-                        users.find((u) => u.public_key === m.sender)
-                          ?.display_name ||
-                        m.sender_name ||
-                        formatPubkey(m.sender);
-                      // Only show "delivery failed" on outgoing messages —
-                      // it'd be confusing on a received message we read fine.
-                      const showFailed =
-                        m.delivery_failed === true && m.sender === publicKey;
-                      const failedBadge = showFailed ? (
-                        <span
-                          className="dm-delivery-failed"
-                          title="The sender's hub couldn't deliver this to one or more recipients after retries."
-                        >
-                          ⚠ Delivery failed
-                        </span>
-                      ) : null;
-                      const actionText = meAction(m.content);
-                      if (actionText !== null) {
-                        return (
-                          <div key={i} className="message message-action">
-                            <span className="action-asterisk">*</span>
-                            <span
-                              className="message-sender"
-                              style={{ color: colorForKey(m.sender) }}
-                            >
-                              {senderLabel}
-                            </span>
-                            <span className="action-text">
-                              <MessageContent
-                                content={actionText}
-                                knownNames={knownDisplayNames}
-                                myName={myDisplayName}
-                              />
-                            </span>
-                            <span
-                              className="message-time"
-                              title={formatFullTimestamp(m.timestamp)}
-                            >
-                              {formatRelative(m.timestamp)}
-                            </span>
-                            {failedBadge}
-                          </div>
-                        );
-                      }
-                      return (
-                        <div key={i} className="message">
-                          <span
-                            className="message-sender"
-                            style={{ color: colorForKey(m.sender) }}
-                          >
-                            {senderLabel}
-                          </span>
-                          <span
-                            className="message-time"
-                            title={formatFullTimestamp(m.timestamp)}
-                          >
-                            {formatRelative(m.timestamp)}
-                          </span>
-                          <span className="message-content"><MessageContent content={m.content} knownNames={knownDisplayNames} myName={myDisplayName} /></span>
-                          {m.attachments && m.attachments.length > 0 && (
-                            <MessageAttachments items={m.attachments} onImageClick={openImage} />
-                          )}
-                          {failedBadge}
-                        </div>
-                      );
-                    })}
-                    <div ref={messagesEndRef} />
-                  </div>
-                  <TypingIndicator typers={Object.values(dmTypingByKey)} />
-                  {pendingAttachments.length > 0 && (
-                    <PendingAttachments
-                      items={pendingAttachments}
-                      onRemove={(i) =>
-                        setPendingAttachments(
-                          pendingAttachments.filter((_, idx) => idx !== i)
-                        )
-                      }
-                    />
-                  )}
-                  <div
-                    className="input-area"
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "copy";
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (e.dataTransfer.files.length > 0) {
-                        attachFiles(e.dataTransfer.files);
-                      }
-                    }}
-                  >
-                    <label className="btn-attach" title="Attach file">
-                      📎
-                      <input
-                        type="file"
-                        multiple
-                        style={{ display: "none" }}
-                        onChange={(e) => {
-                          attachFiles(e.target.files);
-                          e.target.value = "";
-                        }}
-                      />
-                    </label>
-                    <input
-                      type="text"
-                      value={inputText}
-                      onChange={(e) => {
-                        setInputText(e.target.value);
-                        if (e.target.value.length > 0) pingDmTyping();
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendDm();
-                        }
-                      }}
-                      placeholder="Send a message..."
-                    />
-                    <button onClick={handleSendDm}>Send</button>
-                  </div>
-                </>
-              ) : (
-                <div className="no-channel">
-                  <p>Select a conversation</p>
-                </div>
-              )
-            ) : selectedChannel ? (
-              <>
-                <div className="channel-header">
-                  <div className="channel-header-info">
-                    <h3># {selectedChannel.name}</h3>
-                    {selectedChannel.description ? (
-                      <p
-                        className={`channel-description ${
-                          isAdmin ? "editable" : ""
-                        }`}
-                        onClick={() => {
-                          if (isAdmin) openEditDescription(selectedChannel);
-                        }}
-                        title={isAdmin ? "Click to edit" : undefined}
-                      >
-                        {selectedChannel.description}
-                      </p>
-                    ) : isAdmin ? (
-                      <p
-                        className="channel-description editable muted"
-                        onClick={() => openEditDescription(selectedChannel)}
-                        title="Click to add a description"
-                      >
-                        Add a description…
-                      </p>
-                    ) : null}
-                  </div>
-                  <button
-                    onClick={() =>
-                      searchOpen ? closeSearch() : setSearchOpen(true)
-                    }
-                    className="btn-icon-header"
-                    title="Search messages"
-                  >
-                    🔍
-                  </button>
-                  <button
-                    onClick={() => setMemberSidebarHidden(!memberSidebarHidden)}
-                    className="btn-icon-header"
-                    title={
-                      memberSidebarHidden
-                        ? "Show member list"
-                        : "Hide member list"
-                    }
-                  >
-                    {memberSidebarHidden ? "👥" : "👤"}
-                  </button>
-                </div>
-                {searchOpen && (
-                  <div className="search-bar">
-                    <input
-                      type="text"
-                      autoFocus
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Escape") closeSearch();
-                      }}
-                      placeholder={`Search in #${selectedChannel.name}…`}
-                    />
-                    {searchResults !== null && (
-                      <span className="muted search-count">
-                        {searchResults.length} match
-                        {searchResults.length === 1 ? "" : "es"}
-                      </span>
-                    )}
-                    <button onClick={closeSearch} className="btn-small">
-                      Close
-                    </button>
-                  </div>
-                )}
-                {/* The old in-channel voice-bar moved out: participants are
-                    nested under each channel in the sidebar (see
-                    SortableChannelItem) and mute/deafen live in the user
-                    footer next to the settings gear. */}
-                <div
-                  className="messages"
-                  ref={messagesContainerRef}
-                  onScroll={handleMessagesScroll}
-                >
-                  {(searchResults ?? messages).length === 0 && (
-                    <div className="channel-empty">
-                      {searchResults !== null ? (
-                        <p>No messages match your search.</p>
-                      ) : (
-                        <>
-                          <div className="channel-empty-icon">👋</div>
-                          <h2>Welcome to #{selectedChannel.name}</h2>
-                          <p>
-                            {selectedChannel.description
-                              ? selectedChannel.description
-                              : "This is the start of the channel — say hello!"}
-                          </p>
-                          <ul className="channel-empty-tips">
-                            <li>
-                              <strong>Double-click</strong> any channel in
-                              the sidebar to jump into voice.
-                            </li>
-                            <li>
-                              <strong>Drag a file</strong> into the message
-                              area to share it (up to 3 MB).
-                            </li>
-                            <li>
-                              Type <code>@name</code> to mention someone,{" "}
-                              <code>/me</code> for an action, or paste a
-                              code block with <code>```</code>.
-                            </li>
-                            <li>
-                              Press <kbd>Ctrl</kbd>+<kbd>K</kbd> to jump to
-                              another channel from anywhere.
-                            </li>
-                          </ul>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  {(searchResults ?? messages)
-                    .filter((m) => !blockedUsers.has(m.sender))
-                    .map((m, i, arr) => {
-                    const showSeparator =
-                      i === 0 ||
-                      dayKey(m.created_at) !== dayKey(arr[i - 1].created_at);
-                    const isMine = m.sender === publicKey;
-                    const canDelete =
-                      isMine ||
-                      myRoles.some((r) =>
-                        r.permissions.some(
-                          (p) => p === "admin" || p === "manage_messages"
-                        )
-                      );
-                    const isEditing = editingMessageId === m.id;
-                    const senderUser = users.find(
-                      (u) => u.public_key === m.sender
-                    );
-                    const senderLabel =
-                      senderUser?.display_name ||
-                      m.sender_name ||
-                      formatPubkey(m.sender);
-                    const isMentioned =
-                      m.sender !== publicKey &&
-                      mentionsName(m.content, myDisplayName);
-                    const actionText = meAction(m.content);
-                    if (actionText !== null) {
-                      return (
-                        <React.Fragment key={m.id}>
-                          {showSeparator && (
-                            <div className="day-separator">
-                              <span className="day-separator-label">
-                                {formatDayLabel(m.created_at)}
-                              </span>
-                            </div>
-                          )}
-                          <div
-                            id={`msg-${m.id}`}
-                            className={`message message-action ${
-                              isMentioned ? "message-mentioned" : ""
-                            }`}
-                          >
-                            <span className="action-asterisk">*</span>
-                            <span
-                              className="message-sender"
-                              style={{ color: colorForKey(m.sender) }}
-                            >
-                              {senderLabel}
-                            </span>
-                            <span className="action-text">
-                              <MessageContent
-                                content={actionText}
-                                knownNames={knownDisplayNames}
-                                myName={myDisplayName}
-                              />
-                            </span>
-                          </div>
-                        </React.Fragment>
-                      );
-                    }
-                    return (
-                      <React.Fragment key={m.id}>
-                        {showSeparator && (
-                          <div className="day-separator">
-                            <span className="day-separator-label">
-                              {formatDayLabel(m.created_at)}
-                            </span>
-                          </div>
-                        )}
-                      <div
-                        id={`msg-${m.id}`}
-                        className={`message ${isMentioned ? "message-mentioned" : ""}`}
-                      >
-                        {m.reply_to && (
-                          <div
-                            className="message-reply-preview"
-                            onClick={() =>
-                              m.reply_to && scrollToMessage(m.reply_to.message_id)
-                            }
-                            title="Jump to original"
-                          >
-                            <span className="reply-arrow">↪</span>
-                            <span className="reply-author">
-                              {m.reply_to.sender_name ||
-                                formatPubkey(m.reply_to.sender)}
-                            </span>
-                            <span className="reply-snippet">
-                              {m.reply_to.content_preview}
-                            </span>
-                          </div>
-                        )}
-                        <Avatar
-                          src={senderUser?.avatar}
-                          name={senderLabel}
-                          size={28}
-                        />
-                        <span
-                          className="message-sender"
-                          style={{ color: colorForKey(m.sender) }}
-                        >
-                          {senderLabel}
-                        </span>
-                        {isEditing ? (
-                          <span className="message-edit">
-                            <input
-                              type="text"
-                              value={editingDraft}
-                              onChange={(e) => setEditingDraft(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") handleSaveEditedMessage();
-                                if (e.key === "Escape") cancelEditingMessage();
-                              }}
-                              autoFocus
-                            />
-                            <button
-                              onClick={handleSaveEditedMessage}
-                              className="btn-small"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={cancelEditingMessage}
-                              className="btn-small btn-secondary-small"
-                            >
-                              Cancel
-                            </button>
-                          </span>
-                        ) : (
-                          <>
-                            <span
-                              className="message-time"
-                              title={formatFullTimestamp(m.created_at)}
-                            >
-                              {formatRelative(m.created_at)}
-                            </span>
-                            <span className="message-content"><MessageContent content={m.content} knownNames={knownDisplayNames} myName={myDisplayName} /></span>
-                        {m.attachments && m.attachments.length > 0 && <MessageAttachments items={m.attachments} onImageClick={openImage} />}
-                            {m.edited_at && (
-                              <span
-                                className="message-edited-tag"
-                                title={`Edited ${formatFullTimestamp(m.edited_at)}`}
-                              >
-                                (edited)
-                              </span>
-                            )}
-                            <span className="message-actions">
-                              <ReactionPicker
-                                onPick={(emoji) => toggleReaction(m.id, emoji)}
-                              />
-                              <button
-                                className="message-action"
-                                onClick={() => setReplyTarget(m)}
-                                title="Reply"
-                              >
-                                ↩
-                              </button>
-                              <button
-                                className="message-action"
-                                onClick={async () => {
-                                  const hub = hubs.find(
-                                    (h) => h.hub_id === activeHubId,
-                                  );
-                                  if (!hub) return;
-                                  // voxply:// URL is informational for now --
-                                  // there's no handler that opens it. Foundation
-                                  // for a "jump to message" feature later.
-                                  const link = `voxply://${hub.hub_url.replace(
-                                    /^https?:\/\//,
-                                    "",
-                                  )}/channel/${m.channel_id}/message/${m.id}`;
-                                  try {
-                                    await navigator.clipboard.writeText(link);
-                                    setToast("Link copied");
-                                  } catch (e) {
-                                    setError(String(e));
-                                  }
-                                }}
-                                title="Copy link"
-                              >
-                                🔗
-                              </button>
-                              {isMine && (
-                                <button
-                                  className="message-action"
-                                  onClick={() => startEditingMessage(m)}
-                                  title="Edit"
-                                >
-                                  ✎
-                                </button>
-                              )}
-                              {canDelete && (
-                                <button
-                                  className="message-action danger"
-                                  onClick={() => handleDeleteMessage(m.id)}
-                                  title="Delete"
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </span>
-                            {m.reactions && m.reactions.length > 0 && (
-                              <MessageReactions
-                                reactions={m.reactions}
-                                onToggle={(emoji) => toggleReaction(m.id, emoji)}
-                              />
-                            )}
-                          </>
-                        )}
-                      </div>
-                      </React.Fragment>
-                    );
-                  })}
-                  <div ref={messagesEndRef} />
-                </div>
-                {!stickToBottom && newWhileScrolledUp > 0 && (
-                  <button className="jump-to-bottom" onClick={jumpToBottom}>
-                    ↓ {newWhileScrolledUp} new
-                  </button>
-                )}
-                <TypingIndicator typers={Object.values(typingByKey)} />
-                {replyTarget && (
-                  <div className="reply-banner">
-                    <span className="muted">Replying to </span>
-                    <strong>
-                      {users.find((u) => u.public_key === replyTarget.sender)
-                        ?.display_name ||
-                        replyTarget.sender_name ||
-                        formatPubkey(replyTarget.sender)}
-                    </strong>
-                    <span className="reply-snippet">
-                      {replyTarget.content.slice(0, 80)}
-                    </span>
-                    <button
-                      className="reply-banner-close"
-                      onClick={() => setReplyTarget(null)}
-                      title="Cancel reply"
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
-                {pendingAttachments.length > 0 && (
-                  <PendingAttachments
-                    items={pendingAttachments}
-                    onRemove={(i) =>
-                      setPendingAttachments(
-                        pendingAttachments.filter((_, idx) => idx !== i)
-                      )
-                    }
-                  />
-                )}
-                <div
-                  className="input-area"
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "copy";
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    if (e.dataTransfer.files.length > 0) {
-                      attachFiles(e.dataTransfer.files);
-                    }
-                  }}
-                >
-                  <label className="btn-attach" title="Attach file">
-                    📎
-                    <input
-                      type="file"
-                      multiple
-                      style={{ display: "none" }}
-                      onChange={(e) => {
-                        attachFiles(e.target.files);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
-                  <input
-                    ref={messageInputRef}
-                    type="text"
-                    value={inputText}
-                    onChange={(e) => {
-                      setInputText(e.target.value);
-                      if (e.target.value.length > 0) pingTyping();
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape" && replyTarget) {
-                        e.preventDefault();
-                        setReplyTarget(null);
-                        return;
-                      }
-                      handleKeyDown(e);
-                    }}
-                    placeholder={
-                      replyTarget
-                        ? `Reply to ${
-                            users.find(
-                              (u) => u.public_key === replyTarget.sender
-                            )?.display_name ?? "user"
-                          }`
-                        : `Message #${selectedChannel.name}`
-                    }
-                  />
-                  <button onClick={handleSend}>Send</button>
-                </div>
-              </>
-            ) : selectedAllianceChannel ? (
-              <>
-                <div className="channel-header">
-                  <div className="channel-header-info">
-                    <h3># {selectedAllianceChannel.channel.channel_name}</h3>
-                    <p className="channel-description">
-                      🤝 {selectedAllianceChannel.alliance_name} · hosted on{" "}
-                      {selectedAllianceChannel.channel.hub_name}
-                    </p>
-                  </div>
-                </div>
-                <div className="messages">
-                  {allianceMessages.map((m) => {
-                    const senderLabel =
-                      m.sender_name || formatPubkey(m.sender);
-                    return (
-                      <div key={m.id} className="message">
-                        <Avatar src={null} name={senderLabel} size={28} />
-                        <span
-                          className="message-sender"
-                          style={{ color: colorForKey(m.sender) }}
-                        >
-                          {senderLabel}
-                        </span>
-                        <span className="message-content"><MessageContent content={m.content} knownNames={knownDisplayNames} myName={myDisplayName} /></span>
-                        {m.attachments && m.attachments.length > 0 && <MessageAttachments items={m.attachments} onImageClick={openImage} />}
-                        <span
-                          className="message-time"
-                          title={formatFullTimestamp(m.created_at)}
-                        >
-                          {formatRelative(m.created_at)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                  {allianceMessages.length === 0 && (
-                    <p className="muted" style={{ padding: "1rem" }}>
-                      No messages yet in this alliance channel.
-                    </p>
-                  )}
-                </div>
-                <div className="input-area">
-                  <input
-                    type="text"
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendAllianceMessage();
-                      }
-                    }}
-                    placeholder={`Message ${selectedAllianceChannel.channel.hub_name} · #${selectedAllianceChannel.channel.channel_name}`}
-                  />
-                  <button onClick={handleSendAllianceMessage}>Send</button>
-                </div>
-              </>
-            ) : (
-              <div className="no-channel">
-                <p>Select a channel to start chatting</p>
-              </div>
-            )}
-          </div>
-
-          {view === "channels" && !memberSidebarHidden && (
-            <aside className="user-list-sidebar">
-              <UserListGrouped
-                users={users}
-                inVoice={voiceActiveUsers}
-                onContextMenu={(e, u) => {
-                  e.preventDefault();
-                  setUserContextMenu({ x: e.clientX, y: e.clientY, user: u });
-                }}
-              />
-            </aside>
-          )}
-
-            </>
-          )}
-        </div>
-        )}
-
-        {showCreateChannel && (
-          <div className="modal-overlay" onClick={() => setShowCreateChannel(false)}>
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
-              <h3>
-                Create {newChannelIsCategory ? "Category" : "Channel"}
-                {newChannelParentId && " (under category)"}
-              </h3>
-              <input
-                type="text"
-                value={newChannelName}
-                onChange={(e) => setNewChannelName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCreateChannel();
-                  if (e.key === "Escape") setShowCreateChannel(false);
-                }}
-                placeholder={newChannelIsCategory ? "category-name" : "channel-name"}
-                autoFocus
-              />
-              {!newChannelIsCategory && (
-                <textarea
-                  value={newChannelDescription}
-                  onChange={(e) => setNewChannelDescription(e.target.value)}
-                  placeholder="Channel description (optional) — shown in the channel header"
-                  rows={3}
-                />
-              )}
-              {!newChannelParentId && (
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={newChannelIsCategory}
-                    onChange={(e) => setNewChannelIsCategory(e.target.checked)}
-                  />
-                  Create as category (holds other channels)
-                </label>
-              )}
-              <div className="modal-actions">
-                <button onClick={() => setShowCreateChannel(false)} className="btn-secondary">
-                  Cancel
-                </button>
-                <button onClick={handleCreateChannel}>Create</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showInstallGame && (
-          <div className="modal-overlay" onClick={() => setShowInstallGame(false)}>
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
-              <h3>Install game</h3>
-              <p className="muted">
-                Give the game a name and the URL where its HTML lives.
-                The hub takes care of the rest.
-              </p>
-              <label className="settings-label" style={{ marginTop: "8px" }}>
-                Name
-              </label>
-              <input
-                type="text"
-                value={installSimpleName}
-                onChange={(e) => setInstallSimpleName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleQuickInstallGame();
-                  if (e.key === "Escape") setShowInstallGame(false);
-                }}
-                placeholder="My Cool Game"
-                autoFocus
-              />
-              <label className="settings-label" style={{ marginTop: "8px" }}>
-                Game URL
-              </label>
-              <input
-                type="text"
-                value={installSimpleEntryUrl}
-                onChange={(e) => setInstallSimpleEntryUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleQuickInstallGame();
-                  if (e.key === "Escape") setShowInstallGame(false);
-                }}
-                placeholder="https://example.com/my-game/index.html"
-              />
-              <details className="install-game-help">
-                <summary>More options</summary>
-                <label className="settings-label" style={{ marginTop: "10px" }}>
-                  Description
-                </label>
-                <input
-                  type="text"
-                  value={installDescription}
-                  onChange={(e) => setInstallDescription(e.target.value)}
-                  placeholder="Short description shown in the games list"
-                />
-                <label className="settings-label" style={{ marginTop: "8px" }}>
-                  Thumbnail URL
-                </label>
-                <input
-                  type="text"
-                  value={installThumbnailUrl}
-                  onChange={(e) => setInstallThumbnailUrl(e.target.value)}
-                  placeholder="https://example.com/my-game/thumb.png"
-                />
-                <label className="settings-label" style={{ marginTop: "8px" }}>
-                  Author
-                </label>
-                <input
-                  type="text"
-                  value={installAuthor}
-                  onChange={(e) => setInstallAuthor(e.target.value)}
-                  placeholder="Who made this game"
-                />
-              </details>
-              <div className="modal-actions" style={{ marginTop: "16px" }}>
-                <button
-                  onClick={handleInstallDemoGame}
-                  className="btn-secondary"
-                  title="Install a tiny bundled demo to verify the platform works"
-                >
-                  Install demo dice game
-                </button>
-                <button
-                  onClick={() => {
-                    resetInstallForm();
-                    setShowInstallGame(false);
-                  }}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button onClick={handleQuickInstallGame}>Install</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {editingGame && (
-          <div className="modal-overlay" onClick={closeEditGame}>
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
-              <h3>Game settings</h3>
-              <p className="muted">
-                Update the game's metadata or uninstall it. Changes apply
-                to everyone on this hub.
-              </p>
-              <label className="settings-label" style={{ marginTop: "8px" }}>
-                Name
-              </label>
-              <input
-                type="text"
-                value={editGameName}
-                onChange={(e) => setEditGameName(e.target.value)}
-                autoFocus
-              />
-              <label className="settings-label" style={{ marginTop: "8px" }}>
-                Game URL
-              </label>
-              <input
-                type="text"
-                value={editGameEntryUrl}
-                onChange={(e) => setEditGameEntryUrl(e.target.value)}
-              />
-              <label className="settings-label" style={{ marginTop: "8px" }}>
-                Description
-              </label>
-              <input
-                type="text"
-                value={editGameDescription}
-                onChange={(e) => setEditGameDescription(e.target.value)}
-                placeholder="Short description shown in the games list"
-              />
-              <label className="settings-label" style={{ marginTop: "8px" }}>
-                Thumbnail URL
-              </label>
-              <input
-                type="text"
-                value={editGameThumbnailUrl}
-                onChange={(e) => setEditGameThumbnailUrl(e.target.value)}
-                placeholder="https://example.com/my-game/thumb.png"
-              />
-              {editGameThumbnailUrl.trim() && (
-                <img
-                  src={editGameThumbnailUrl.trim()}
-                  alt=""
-                  className="game-thumbnail-preview"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
-                  onLoad={(e) => {
-                    (e.target as HTMLImageElement).style.display = "";
-                  }}
-                />
-              )}
-              <label className="settings-label" style={{ marginTop: "8px" }}>
-                Author
-              </label>
-              <input
-                type="text"
-                value={editGameAuthor}
-                onChange={(e) => setEditGameAuthor(e.target.value)}
-              />
-              <div className="modal-actions" style={{ marginTop: "16px" }}>
-                <button
-                  onClick={handleDeleteGameFromEditor}
-                  className="btn-secondary game-delete-btn"
-                  title="Uninstall this game from the hub"
-                >
-                  Uninstall
-                </button>
-                <button onClick={closeEditGame} className="btn-secondary">
-                  Cancel
-                </button>
-                <button onClick={handleSaveGameEdit}>Save</button>
-              </div>
-            </div>
           </div>
         )}
 
         {showAddHub && (
-          <div className="modal-overlay" onClick={() => setShowAddHub(false)}>
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
-              <h3>Add Hub</h3>
-              <p className="muted" style={{ marginBottom: "var(--space-3)" }}>
-                Paste the URL of a hub you want to join. The hub's name
-                and description will appear below as you type.
-              </p>
-              <input
-                type="text"
-                value={hubUrl}
-                onChange={(e) => setHubUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleAddHub();
-                  if (e.key === "Escape") setShowAddHub(false);
-                }}
-                placeholder="https://hub.example.com"
-                autoFocus
-              />
-              {hubPreview.state === "loading" && (
-                <p className="muted hub-preview-status">Looking up hub…</p>
-              )}
-              {hubPreview.state === "error" && (
-                <p className="hub-preview-error">{hubPreview.message}</p>
-              )}
-              {hubPreview.state === "ok" && (
-                <div className="hub-preview">
-                  {hubPreview.icon ? (
-                    <img
-                      src={hubPreview.icon}
-                      alt=""
-                      className="hub-preview-icon"
-                    />
-                  ) : (
-                    <div className="hub-preview-icon placeholder">
-                      {hubPreview.name.slice(0, 2).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="hub-preview-info">
-                    <strong>{hubPreview.name}</strong>
-                    {hubPreview.description && (
-                      <p className="muted">{hubPreview.description}</p>
-                    )}
-                    {hubPreview.invite_only && (
-                      <p className="muted hub-preview-warn">
-                        🔒 Invite-only — you'll need an invite to join
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-              <div className="modal-actions">
-                <button onClick={() => setShowAddHub(false)} className="btn-secondary">
-                  Cancel
-                </button>
-                <button onClick={handleAddHub} disabled={loading}>
-                  {loading ? "Connecting..." : "Connect"}
-                </button>
-              </div>
-              {error && <div className="error">{error}</div>}
-            </div>
-          </div>
+          <AddHubModal
+            hubUrl={hubUrl}
+            onHubUrlChange={setHubUrl}
+            hubPreview={hubPreview}
+            loading={loading}
+            error={error}
+            onAdd={handleAddHub}
+            onClose={() => setShowAddHub(false)}
+          />
+        )}
+
+        {showCreateChannel && (
+          <CreateChannelModal
+            name={newChannelName}
+            onNameChange={setNewChannelName}
+            description={newChannelDescription}
+            onDescriptionChange={setNewChannelDescription}
+            isCategory={newChannelIsCategory}
+            onIsCategoryChange={setNewChannelIsCategory}
+            parentId={newChannelParentId}
+            onCreate={handleCreateChannel}
+            onClose={() => setShowCreateChannel(false)}
+          />
+        )}
+
+        {showInstallGame && (
+          <InstallGameModal
+            name={installSimpleName}
+            onNameChange={setInstallSimpleName}
+            entryUrl={installSimpleEntryUrl}
+            onEntryUrlChange={setInstallSimpleEntryUrl}
+            description={installDescription}
+            onDescriptionChange={setInstallDescription}
+            thumbnailUrl={installThumbnailUrl}
+            onThumbnailUrlChange={setInstallThumbnailUrl}
+            author={installAuthor}
+            onAuthorChange={setInstallAuthor}
+            onInstall={handleQuickInstallGame}
+            onInstallDemo={handleInstallDemoGame}
+            onClose={() => { resetInstallForm(); setShowInstallGame(false); }}
+          />
+        )}
+
+        {editingGame && (
+          <EditGameModal
+            game={editingGame}
+            name={editGameName}
+            onNameChange={setEditGameName}
+            entryUrl={editGameEntryUrl}
+            onEntryUrlChange={setEditGameEntryUrl}
+            description={editGameDescription}
+            onDescriptionChange={setEditGameDescription}
+            thumbnailUrl={editGameThumbnailUrl}
+            onThumbnailUrlChange={setEditGameThumbnailUrl}
+            author={editGameAuthor}
+            onAuthorChange={setEditGameAuthor}
+            onSave={handleSaveGameEdit}
+            onDelete={handleDeleteGameFromEditor}
+            onClose={closeEditGame}
+          />
         )}
 
         {showFriends && (
-          <div className="modal-overlay" onClick={() => setShowFriends(false)}>
-            <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
-              <h3>Friends</h3>
-
-              <div className="settings-section">
-                <label className="settings-label">Add friend</label>
-                <div className="settings-row">
-                  <input
-                    type="text"
-                    value={friendRequestKey}
-                    onChange={(e) => setFriendRequestKey(e.target.value)}
-                    placeholder="Public key (paste here)"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSendFriendRequest();
-                    }}
-                  />
-                </div>
-                <div className="settings-row" style={{ marginTop: "6px" }}>
-                  <input
-                    type="text"
-                    value={friendRequestHubUrl}
-                    onChange={(e) => setFriendRequestHubUrl(e.target.value)}
-                    placeholder="Hub URL (optional — leave blank if friend is on this hub)"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleSendFriendRequest();
-                    }}
-                  />
-                  <button onClick={handleSendFriendRequest}>Send</button>
-                </div>
-                <p className="muted" style={{ marginTop: "6px", fontSize: "12px" }}>
-                  Same-hub friends require the other person to accept your
-                  request. Cross-hub friends (with a Hub URL) are added
-                  immediately as a one-sided address book entry.
-                </p>
-              </div>
-
-              {pendingFriends.length > 0 && (
-                <div className="settings-section">
-                  <label className="settings-label">
-                    Pending requests ({pendingFriends.length})
-                  </label>
-                  <ul className="friend-list">
-                    {pendingFriends.map((f) => (
-                      <li key={f.public_key} className="friend-item">
-                        <span className="friend-name">
-                          {f.display_name || f.public_key.slice(0, 16)}
-                        </span>
-                        <button onClick={() => handleAcceptFriend(f.public_key)}>
-                          Accept
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <div className="settings-section">
-                <label className="settings-label">Friends ({friends.length})</label>
-                {friends.length === 0 ? (
-                  <p className="muted">No friends yet</p>
-                ) : (
-                  <ul className="friend-list">
-                    {friends.map((f) => (
-                      <li key={f.public_key} className="friend-item">
-                        <span className="friend-name">
-                          {f.display_name || f.public_key.slice(0, 16)}
-                          {f.hub_url && (
-                            <span
-                              className="muted"
-                              title={`Reachable on ${f.hub_url}`}
-                              style={{ marginLeft: "6px", fontSize: "12px" }}
-                            >
-                              🌐 {f.hub_url}
-                            </span>
-                          )}
-                        </span>
-                        <div style={{ display: "flex", gap: "6px" }}>
-                          <button onClick={() => startDmWith(f.public_key, f.hub_url)}>
-                            Message
-                          </button>
-                          <button
-                            onClick={() => handleRemoveFriend(f.public_key)}
-                            className="btn-secondary"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <div className="modal-actions">
-                <button onClick={() => setShowFriends(false)}>Close</button>
-              </div>
-            </div>
-          </div>
+          <FriendsModal
+            friends={friends}
+            pendingFriends={pendingFriends}
+            requestKey={friendRequestKey}
+            onRequestKeyChange={setFriendRequestKey}
+            requestHubUrl={friendRequestHubUrl}
+            onRequestHubUrlChange={setFriendRequestHubUrl}
+            onSendRequest={handleSendFriendRequest}
+            onAcceptFriend={handleAcceptFriend}
+            onMessage={startDmWith}
+            onRemoveFriend={handleRemoveFriend}
+            onClose={() => setShowFriends(false)}
+          />
         )}
 
         {contextMenu && (
-          <div
-            className="context-menu-overlay"
-            onClick={() => setContextMenu(null)}
-            onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
-          >
-            <div
-              className="context-menu"
-              style={{ top: contextMenu.y, left: contextMenu.x }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {!contextMenu.channel.is_category && (
-                <>
-                  <button
-                    className="context-menu-item"
-                    onClick={async () => {
-                      const ch = contextMenu.channel;
-                      setContextMenu(null);
-                      const next = prompt("Rename channel", ch.name);
-                      if (!next) return;
-                      const trimmed = next.trim();
-                      if (!trimmed || trimmed === ch.name) return;
-                      try {
-                        await invoke("rename_channel", {
-                          channelId: ch.id,
-                          name: trimmed,
-                        });
-                        setChannels((prev) =>
-                          prev.map((c) =>
-                            c.id === ch.id ? { ...c, name: trimmed } : c,
-                          ),
-                        );
-                        if (selectedChannel?.id === ch.id) {
-                          setSelectedChannel({ ...selectedChannel, name: trimmed });
-                        }
-                      } catch (e) {
-                        setError(String(e));
-                      }
-                    }}
-                  >
-                    Rename channel…
-                  </button>
-                  <button
-                    className="context-menu-item"
-                    onClick={() => openEditDescription(contextMenu.channel)}
-                  >
-                    Edit description
-                  </button>
-                  <button
-                    className="context-menu-item"
-                    onClick={() => {
-                      const ch = contextMenu.channel;
-                      setContextMenu(null);
-                      handleSetTalkPower(ch.id);
-                    }}
-                  >
-                    Set talk power…
-                  </button>
-                  <button
-                    className="context-menu-item"
-                    onClick={() => {
-                      const ch = contextMenu.channel;
-                      setContextMenu(null);
-                      setChannelBansModal({ channelId: ch.id, channelName: ch.name });
-                    }}
-                  >
-                    Manage channel bans…
-                  </button>
-                  {activeHubId &&
-                    (() => {
-                      const cur = effectiveNotifyMode(
-                        activeHubId,
-                        contextMenu.channel.id,
-                      );
-                      const items: { mode: NotifyMode; label: string }[] = [
-                        { mode: "all", label: "All messages" },
-                        { mode: "mentions", label: "Only @mentions" },
-                        { mode: "silent", label: "Silent" },
-                      ];
-                      return items.map(({ mode, label }) => (
-                        <button
-                          key={mode}
-                          className="context-menu-item"
-                          onClick={() => {
-                            const ch = contextMenu.channel;
-                            setContextMenu(null);
-                            setChannelMode(activeHubId, ch.id, mode);
-                          }}
-                        >
-                          {cur === mode ? "✓ " : ""}
-                          {label}
-                        </button>
-                      ));
-                    })()}
-                  {activeHubId && (
-                    <button
-                      className="context-menu-item"
-                      onClick={() => {
-                        const ch = contextMenu.channel;
-                        setContextMenu(null);
-                        toggleChannelPin(activeHubId, ch.id);
-                      }}
-                    >
-                      {pinnedChannels[activeHubId]?.[contextMenu.channel.id]
-                        ? "Unpin channel"
-                        : "Pin channel"}
-                    </button>
-                  )}
-                  {contextMenu.channel.parent_id && (
-                    <button
-                      className="context-menu-item"
-                      onClick={() =>
-                        handleMoveChannel(contextMenu.channel.id, null)
-                      }
-                    >
-                      Move to top level
-                    </button>
-                  )}
-                  {channels
-                    .filter(
-                      (c) =>
-                        c.is_category && c.id !== contextMenu.channel.parent_id
-                    )
-                    .map((cat) => (
-                      <button
-                        key={cat.id}
-                        className="context-menu-item"
-                        onClick={() =>
-                          handleMoveChannel(contextMenu.channel.id, cat.id)
-                        }
-                      >
-                        Move to {cat.name}
-                      </button>
-                    ))}
-                </>
-              )}
-              <button
-                className="context-menu-item danger"
-                onClick={() => handleDeleteChannel(contextMenu.channel.id)}
-              >
-                Delete {contextMenu.channel.is_category ? "category" : "channel"}
-              </button>
-            </div>
-          </div>
+          <ChannelContextMenu
+            menu={contextMenu}
+            activeHubId={activeHubId}
+            channels={channels}
+            pinnedChannels={pinnedChannels}
+            effectiveNotifyMode={effectiveNotifyMode}
+            onClose={() => setContextMenu(null)}
+            onRename={handleRenameChannel}
+            onEditDescription={openEditDescription}
+            onSetTalkPower={handleSetTalkPower}
+            onManageBans={(channelId, channelName) => setChannelBansModal({ channelId, channelName })}
+            onSetMode={setChannelMode}
+            onTogglePin={toggleChannelPin}
+            onMoveChannel={handleMoveChannel}
+            onDelete={handleDeleteChannel}
+          />
         )}
 
         {editDescriptionChannel && (
-          <div
-            className="modal-overlay"
-            onClick={() => setEditDescriptionChannel(null)}
-          >
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
-              <h3>Edit description — #{editDescriptionChannel.name}</h3>
-              <textarea
-                value={editDescriptionValue}
-                onChange={(e) => setEditDescriptionValue(e.target.value)}
-                placeholder="What's this channel for?"
-                rows={4}
-                autoFocus
-              />
-              <div className="modal-actions">
-                <button
-                  onClick={() => setEditDescriptionChannel(null)}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </button>
-                <button onClick={handleSaveDescription}>Save</button>
-              </div>
-            </div>
-          </div>
+          <EditDescriptionModal
+            channel={editDescriptionChannel}
+            description={editDescriptionValue}
+            onDescriptionChange={setEditDescriptionValue}
+            onSave={handleSaveDescription}
+            onClose={() => setEditDescriptionChannel(null)}
+          />
         )}
 
         {channelBansModal && (
@@ -5078,10 +3505,7 @@ function App() {
           <ChannelPalette
             channels={channels.filter((c) => !c.is_category)}
             onClose={() => setPaletteOpen(false)}
-            onSelect={(c) => {
-              setPaletteOpen(false);
-              selectChannel(c);
-            }}
+            onSelect={(c) => { setPaletteOpen(false); selectChannel(c); }}
           />
         )}
 
@@ -5094,66 +3518,17 @@ function App() {
         )}
 
         {userContextMenu && (
-          <div
-            className="context-menu-overlay"
-            onClick={() => setUserContextMenu(null)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              setUserContextMenu(null);
-            }}
-          >
-            <div
-              className="context-menu"
-              style={{ top: userContextMenu.y, left: userContextMenu.x }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="context-menu-header">
-                {userContextMenu.user.display_name ||
-                  formatPubkey(userContextMenu.user.public_key)}
-              </div>
-              {userContextMenu.user.public_key !== publicKey && (
-                <>
-                  <button
-                    className="context-menu-item"
-                    onClick={() => handleUserDm(userContextMenu.user)}
-                  >
-                    Direct message
-                  </button>
-                  <button
-                    className="context-menu-item"
-                    onClick={() => handleUserAddFriend(userContextMenu.user)}
-                  >
-                    Add friend
-                  </button>
-                </>
-              )}
-              <button
-                className="context-menu-item"
-                onClick={() => handleCopyUserKey(userContextMenu.user)}
-              >
-                Copy public key
-              </button>
-              {userContextMenu.user.public_key !== publicKey && (
-                <button
-                  className="context-menu-item"
-                  onClick={() => {
-                    const u = userContextMenu.user;
-                    setUserContextMenu(null);
-                    toggleBlockUser(u.public_key);
-                    setToast(
-                      blockedUsers.has(u.public_key)
-                        ? "Unblocked"
-                        : "Blocked. Their messages will be hidden.",
-                    );
-                  }}
-                >
-                  {blockedUsers.has(userContextMenu.user.public_key)
-                    ? "Unblock user"
-                    : "Block user"}
-                </button>
-              )}
-            </div>
-          </div>
+          <UserContextMenu
+            menu={userContextMenu}
+            publicKey={publicKey}
+            blockedUsers={blockedUsers}
+            onClose={() => setUserContextMenu(null)}
+            onDm={handleUserDm}
+            onAddFriend={handleUserAddFriend}
+            onCopyKey={handleCopyUserKey}
+            onToggleBlock={toggleBlockUser}
+            onToast={setToast}
+          />
         )}
       </>
     </div>
