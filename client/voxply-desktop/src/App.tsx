@@ -3630,12 +3630,14 @@ function App() {
             menu={userContextMenu}
             publicKey={publicKey}
             blockedUsers={blockedUsers}
+            activeHubUrl={hubs.find((h) => h.hub_id === activeHubId)?.hub_url ?? ""}
             onClose={() => setUserContextMenu(null)}
             onDm={handleUserDm}
             onAddFriend={handleUserAddFriend}
             onCopyKey={handleCopyUserKey}
             onToggleBlock={toggleBlockUser}
             onToast={setToast}
+            onJoinHub={handleDiscoverJoin}
           />
         )}
       </>

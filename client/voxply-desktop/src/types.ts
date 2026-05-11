@@ -221,3 +221,18 @@ export interface AllianceSharedChannel {
   hub_public_key: string;
   hub_name: string;
 }
+
+export interface PublicHubEntry {
+  hub_url: string;
+  hub_name: string;
+  joined_at: number;
+}
+
+export interface PublicHubProfile {
+  pubkey: string;
+  display_name: string;
+  avatar: string | null;
+  public_hubs: PublicHubEntry[];
+  issued_at: number;
+  signature: string;
+}

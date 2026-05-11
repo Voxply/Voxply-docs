@@ -292,3 +292,49 @@ pub enum PairingStatus {
     Expired,
 }
 
+/// One entry in a user's public hub list.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PublicHubEntry {
+    pub hub_url: String,
+    pub hub_name: String,
+    pub joined_at: u64,
+}
+
+/// Master-signed public profile declaring which hubs a user wants others
+/// to discover them on. Stored by hubs and served without authentication.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PublicHubProfile {
+    /// The user's identity public key (hex). This is the stable user ID on hubs.
+    pub pubkey: String,
+    pub display_name: String,
+    #[serde(default)]
+    pub avatar: Option<String>,
+    pub public_hubs: Vec<PublicHubEntry>,
+    pub issued_at: u64,
+    pub signature: String,
+}
+
+impl PublicHubProfile {
+    pub fn signing_bytes(pubkey: &str, public_hubs: &[PublicHubEntry], issued_at: u64) -> Vec<u8> {
+        let mut buf = Vec::new();
+        buf.extend_from_slice(b"voxply/public-hub-profile/v1\0");
+        write_str(&mut buf, pubkey);
+        write_u64_le(&mut buf, issued_at);
+        write_u32_le(&mut buf, public_hubs.len() as u32);
+        for entry in public_hubs {
+            write_str(&mut buf, &entry.hub_url);
+            write_str(&mut buf, &entry.hub_name);
+            write_u64_le(&mut buf, entry.joined_at);
+        }
+        buf
+    }
+
+    pub fn to_signing_bytes(&self) -> Vec<u8> {
+        Self::signing_bytes(&self.pubkey, &self.public_hubs, self.issued_at)
+    }
+
+    pub fn verify(&self) -> anyhow::Result<()> {
+        check_sig(&self.pubkey, &self.to_signing_bytes(), &self.signature)
+    }
+}
+

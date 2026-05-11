@@ -553,6 +553,16 @@ pub async fn run(pool: &SqlitePool) -> Result<()> {
     .execute(pool)
     .await?;
 
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS public_hub_profiles (
+            pubkey       TEXT PRIMARY KEY,
+            profile_json TEXT NOT NULL,
+            updated_at   INTEGER NOT NULL
+        )",
+    )
+    .execute(pool)
+    .await?;
+
     tracing::info!("Database migrations complete");
     Ok(())
 }

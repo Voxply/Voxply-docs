@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import type { Hub, NamedProfile } from "../types";
 import { formatPubkey } from "../utils/format";
 import { MicLevelMeter } from "./MicLevelMeter";
@@ -63,6 +65,29 @@ export interface SettingsPageProps {
 }
 
 export function SettingsPage(props: SettingsPageProps) {
+  const [publicProfileEnabled, setPublicProfileEnabled] = useState(false);
+  const [publicHubIds, setPublicHubIds] = useState<Set<string>>(new Set());
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | string>("idle");
+
+  async function handleSavePublicProfile() {
+    try {
+      const entries = publicProfileEnabled
+        ? props.hubs
+            .filter((h) => publicHubIds.has(h.hub_id))
+            .map((h) => ({
+              hub_url: h.hub_url,
+              hub_name: h.hub_name,
+              joined_at: Math.floor(Date.now() / 1000),
+            }))
+        : [];
+      await invoke("save_public_profile", { entries });
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    } catch (e) {
+      setSaveStatus(String(e));
+    }
+  }
+
   const tabs: { id: SettingsTab; label: string }[] = [
     { id: "profile", label: "Profile" },
     { id: "account", label: "Account" },
@@ -141,6 +166,54 @@ export function SettingsPage(props: SettingsPageProps) {
               >
                 Clear local data…
               </button>
+            </div>
+            <div className="settings-section">
+              <label className="settings-label">Public hub profile</label>
+              <p className="muted">
+                Let people see which hubs you're on. Visible to anyone who views your profile.
+              </p>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={publicProfileEnabled}
+                  onChange={(e) => setPublicProfileEnabled(e.target.checked)}
+                />
+                Make my hub list public
+              </label>
+              {publicProfileEnabled && (
+                <div style={{ marginTop: "8px" }}>
+                  {props.hubs.map((h) => (
+                    <div key={h.hub_id} className="settings-row">
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={publicHubIds.has(h.hub_id)}
+                          onChange={(e) => {
+                            setPublicHubIds((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(h.hub_id);
+                              else next.delete(h.hub_id);
+                              return next;
+                            });
+                          }}
+                        />
+                        {h.hub_name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="settings-row" style={{ marginTop: "8px" }}>
+                <button className="btn-secondary" onClick={handleSavePublicProfile}>
+                  Save
+                </button>
+                {saveStatus === "saved" && (
+                  <span className="muted">Saved</span>
+                )}
+                {saveStatus !== "idle" && saveStatus !== "saved" && (
+                  <span style={{ color: "var(--color-error, red)" }}>{saveStatus}</span>
+                )}
+              </div>
             </div>
           </section>
         )}

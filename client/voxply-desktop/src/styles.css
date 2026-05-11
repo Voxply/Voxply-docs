@@ -3705,3 +3705,34 @@ select:focus {
   padding: var(--space-4) var(--space-6) var(--space-6);
   flex-shrink: 0;
 }
+
+/* ============================================================
+   PUBLIC PROFILE (context menu)
+   ============================================================ */
+
+.their-hubs-header {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  font-weight: var(--weight-bold);
+}
+
+.their-hub-item {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: var(--space-1) var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+
+.their-hub-item:hover {
+  background: var(--surface);
+  color: var(--accent);
+}

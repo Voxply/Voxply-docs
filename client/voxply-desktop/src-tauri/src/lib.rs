@@ -3088,6 +3088,108 @@ async fn update_hub_branding(
     Ok(())
 }
 
+/// Input type for one hub entry when publishing a public hub profile.
+#[derive(Serialize, Deserialize)]
+struct PublicHubEntryInput {
+    hub_url: String,
+    hub_name: String,
+    joined_at: u64,
+}
+
+/// Publish or update the signed public hub profile for the current identity.
+/// Signs with the local identity key and PUTs to the active hub.
+#[tauri::command]
+async fn save_public_profile(
+    entries: Vec<PublicHubEntryInput>,
+    display_name: String,
+    avatar: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    use voxply_identity::{PublicHubEntry, PublicHubProfile};
+
+    let identity_path = Identity::default_path().map_err(|e| format!("Identity path: {e}"))?;
+    let identity = Identity::load(&identity_path).map_err(|e| format!("Load identity: {e}"))?;
+    let pubkey = identity.public_key_hex();
+
+    let issued_at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    let public_hubs: Vec<PublicHubEntry> = entries
+        .into_iter()
+        .map(|e| PublicHubEntry {
+            hub_url: e.hub_url,
+            hub_name: e.hub_name,
+            joined_at: e.joined_at,
+        })
+        .collect();
+
+    let signing_bytes = PublicHubProfile::signing_bytes(&pubkey, &public_hubs, issued_at);
+    let signature = hex::encode(identity.sign(&signing_bytes).to_bytes());
+
+    let profile = PublicHubProfile {
+        pubkey: pubkey.clone(),
+        display_name,
+        avatar,
+        public_hubs,
+        issued_at,
+        signature,
+    };
+
+    let (hub_url, token) = active_session(&state)?;
+    let client = reqwest::Client::new();
+    let resp = client
+        .put(format!("{hub_url}/profile/{pubkey}"))
+        .bearer_auth(&token)
+        .json(&profile)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        return Err(format!(
+            "Hub rejected profile update: {}",
+            resp.text().await.unwrap_or_default()
+        ));
+    }
+
+    Ok(())
+}
+
+/// Fetch the public hub profile for any user from any hub.
+/// Returns None if the profile is not found (404), or Err on other failures.
+#[tauri::command]
+async fn fetch_public_profile(
+    hub_url: String,
+    pubkey: String,
+) -> Result<Option<serde_json::Value>, String> {
+    let client = reqwest::Client::new();
+    let hub_url = hub_url.trim_end_matches('/');
+    let resp = client
+        .get(format!("{hub_url}/profile/{pubkey}"))
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+
+    if !resp.status().is_success() {
+        return Err(format!(
+            "Hub returned error: {}",
+            resp.text().await.unwrap_or_default()
+        ));
+    }
+
+    let v: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("Parse response: {e}"))?;
+    Ok(Some(v))
+}
+
 /// Sign a directory listing with the hub's private key and submit it to the
 /// Voxply discovery directory. The hub must be the active session.
 #[tauri::command]
@@ -3547,6 +3649,8 @@ pub fn run() {
             pairing::claim_pairing_offer,
             pairing::save_paired_identity,
             pairing::get_paired_identity,
+            save_public_profile,
+            fetch_public_profile,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -13,6 +13,7 @@ pub mod identity;
 pub mod me;
 pub mod pairing;
 pub mod messages;
+pub mod profile;
 pub mod invite_models;
 pub mod invites;
 pub mod moderation;
