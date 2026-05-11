@@ -678,6 +678,12 @@ fn active_session(state: &AppState) -> Result<(String, String), String> {
     Ok((s.hub_url.clone(), s.token.clone()))
 }
 
+#[tauri::command]
+async fn get_hub_ws_info(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let (hub_url, token) = active_session(&state)?;
+    Ok(serde_json::json!({ "hub_url": hub_url, "token": token }))
+}
+
 /// Get the active session's WS sender.
 fn active_ws_tx(state: &AppState) -> Result<mpsc::UnboundedSender<WsCommand>, String> {
     let active_id = state
@@ -3651,6 +3657,7 @@ pub fn run() {
             pairing::get_paired_identity,
             save_public_profile,
             fetch_public_profile,
+            get_hub_ws_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

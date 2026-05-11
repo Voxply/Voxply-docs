@@ -44,6 +44,8 @@ async fn setup_with_pool() -> (TestServer, sqlx::SqlitePool) {
         voice_event_tx,
         dm_tx: broadcast::channel(16).0,
         online_users: RwLock::new(std::collections::HashSet::new()),
+        screen_shares: RwLock::new(HashMap::new()),
+        screen_share_tx: broadcast::channel(16).0,
     });
     let app = server::create_router(state);
     (TestServer::new(app), pool_handle)
@@ -241,6 +243,8 @@ async fn start_real_hub(name: &str) -> String {
         voice_event_tx,
         dm_tx: broadcast::channel(16).0,
         online_users: RwLock::new(std::collections::HashSet::new()),
+        screen_shares: RwLock::new(HashMap::new()),
+        screen_share_tx: broadcast::channel(16).0,
     });
     let app = server::create_router(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -313,6 +317,8 @@ async fn start_real_hub_with_state(name: &str) -> (String, Arc<AppState>) {
         voice_event_tx,
         dm_tx: broadcast::channel(16).0,
         online_users: RwLock::new(std::collections::HashSet::new()),
+        screen_shares: RwLock::new(HashMap::new()),
+        screen_share_tx: broadcast::channel(16).0,
     });
     let app = server::create_router(state.clone());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -464,6 +470,8 @@ async fn dm_retries_when_recipient_hub_comes_online() {
         voice_event_tx: voice_event_tx_b,
         dm_tx: broadcast::channel(16).0,
         online_users: RwLock::new(std::collections::HashSet::new()),
+        screen_shares: RwLock::new(HashMap::new()),
+        screen_share_tx: broadcast::channel(16).0,
     });
     let app_b = server::create_router(hub_b_state.clone());
     let listener_b = tokio::net::TcpListener::bind(format!("127.0.0.1:{dead_port}"))

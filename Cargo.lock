@@ -6610,6 +6610,7 @@ dependencies = [
  "axum",
  "axum-server",
  "axum-test",
+ "bytes",
  "futures-util",
  "hex",
  "rand 0.8.5",

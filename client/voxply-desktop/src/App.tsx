@@ -35,7 +35,13 @@ import type {
   DmMessageFull,
   AllianceInfo,
   AllianceSharedChannel,
+  ActiveStream,
+  ScreenShareOpts,
 } from "./types";
+import type { ScreenShareViewerRef } from "./components/ScreenShareViewer";
+import { ScreenSharePicker } from "./components/ScreenSharePicker";
+import { useScreenShare } from "./hooks/useScreenShare";
+import { useScreenShareViewer } from "./hooks/useScreenShareViewer";
 import { MAX_ATTACHMENT_BYTES, DEMO_HUB_URL } from "./constants";
 import { formatPubkey, mentionsName, newProfileId } from "./utils/format";
 import { playMentionPing, playVoiceTone } from "./utils/audio";
@@ -795,6 +801,25 @@ function App() {
   // join starts unmuted/un-deafened (no surprise carryover).
   const [selfMuted, setSelfMuted] = useState(false);
   const [selfDeafened, setSelfDeafened] = useState(false);
+
+  // Screen share
+  const [showSharePicker, setShowSharePicker] = useState(false);
+  const { sharing, startShare, stopShare } = useScreenShare(voiceChannelId);
+  const { streams: activeScreenShares, viewerRef: screenShareViewerRef } =
+    useScreenShareViewer(voiceChannelId);
+
+  async function handleScreenShare() {
+    if (sharing) {
+      stopShare();
+    } else {
+      setShowSharePicker(true);
+    }
+  }
+
+  async function handleShareStart(opts: ScreenShareOpts) {
+    setShowSharePicker(false);
+    await startShare(opts);
+  }
 
   // Settings
   const [showSettings, setShowSettings] = useState(false);
@@ -3405,6 +3430,8 @@ function App() {
                   onOpenSettings={openSettings}
                   onSetShowInstallGame={setShowInstallGame}
                   onDragEnd={handleDragEnd}
+                  sharing={sharing}
+                  onScreenShare={handleScreenShare}
                 />
                 <ContentArea
                   view={view}
@@ -3483,6 +3510,8 @@ function App() {
                   onOpenImage={openImage}
                   onToast={setToast}
                   onError={setError}
+                  activeScreenShares={activeScreenShares}
+                  screenShareViewerRef={screenShareViewerRef}
                 />
               </>
             )}
@@ -3638,6 +3667,13 @@ function App() {
             onToggleBlock={toggleBlockUser}
             onToast={setToast}
             onJoinHub={handleDiscoverJoin}
+          />
+        )}
+
+        {showSharePicker && (
+          <ScreenSharePicker
+            onStart={handleShareStart}
+            onCancel={() => setShowSharePicker(false)}
           />
         )}
       </>

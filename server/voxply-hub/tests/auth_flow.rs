@@ -37,6 +37,8 @@ async fn setup() -> TestServer {
         voice_event_tx: broadcast::channel(16).0,
         dm_tx: broadcast::channel(16).0,
         online_users: RwLock::new(std::collections::HashSet::new()),
+        screen_shares: RwLock::new(HashMap::new()),
+        screen_share_tx: broadcast::channel(16).0,
     });
 
     let app = server::create_router(state);

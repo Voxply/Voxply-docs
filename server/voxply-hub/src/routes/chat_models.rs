@@ -142,6 +142,19 @@ pub enum ChatEvent {
         display_name: Option<String>,
         typing: bool,
     },
+    ScreenShareStarted {
+        channel_id: String,
+        stream_id: String,
+        sharer_pubkey: String,
+        kind: String,
+        mime: String,
+        has_audio: bool,
+    },
+    ScreenShareStopped {
+        channel_id: String,
+        stream_id: String,
+        sharer_pubkey: String,
+    },
 }
 
 impl ChatEvent {
@@ -151,7 +164,9 @@ impl ChatEvent {
             | ChatEvent::Edited { channel_id, .. }
             | ChatEvent::Deleted { channel_id, .. }
             | ChatEvent::ReactionsUpdated { channel_id, .. }
-            | ChatEvent::Typing { channel_id, .. } => channel_id,
+            | ChatEvent::Typing { channel_id, .. }
+            | ChatEvent::ScreenShareStarted { channel_id, .. }
+            | ChatEvent::ScreenShareStopped { channel_id, .. } => channel_id,
         }
     }
 }
@@ -189,6 +204,26 @@ pub enum WsClientMessage {
     Typing { channel_id: String, typing: bool },
     #[serde(rename = "dm_typing")]
     DmTyping { conversation_id: String, typing: bool },
+    #[serde(rename = "screen_share_start")]
+    ScreenShareStart {
+        channel_id: String,
+        stream_id: String,
+        kind: String,
+        mime: String,
+        has_audio: bool,
+    },
+    #[serde(rename = "screen_share_chunk")]
+    ScreenShareChunk {
+        channel_id: String,
+        stream_id: String,
+        seq: u32,
+        is_init: bool,
+    },
+    #[serde(rename = "screen_share_stop")]
+    ScreenShareStop {
+        channel_id: String,
+        stream_id: String,
+    },
 }
 
 #[derive(Serialize, Clone)]
@@ -266,6 +301,29 @@ pub enum WsServerMessage {
         sender: String,
         sender_name: Option<String>,
         typing: bool,
+    },
+    #[serde(rename = "screen_share_started")]
+    ScreenShareStarted {
+        channel_id: String,
+        stream_id: String,
+        sharer_pubkey: String,
+        kind: String,
+        mime: String,
+        has_audio: bool,
+    },
+    #[serde(rename = "screen_share_chunk")]
+    ScreenShareChunkOut {
+        channel_id: String,
+        stream_id: String,
+        sharer_pubkey: String,
+        seq: u32,
+        is_init: bool,
+    },
+    #[serde(rename = "screen_share_stopped")]
+    ScreenShareStopped {
+        channel_id: String,
+        stream_id: String,
+        sharer_pubkey: String,
     },
 }
 

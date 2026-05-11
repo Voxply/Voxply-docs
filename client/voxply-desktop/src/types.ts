@@ -236,3 +236,43 @@ export interface PublicHubProfile {
   issued_at: number;
   signature: string;
 }
+
+export interface WsScreenShareStarted {
+  type: "screen_share_started";
+  channel_id: string;
+  stream_id: string;
+  sharer_pubkey: string;
+  kind: "screen" | "webcam";
+  mime: string;
+  has_audio: boolean;
+}
+
+export interface WsScreenShareChunkOut {
+  type: "screen_share_chunk";
+  channel_id: string;
+  stream_id: string;
+  sharer_pubkey: string;
+  seq: number;
+  is_init: boolean;
+}
+
+export interface WsScreenShareStopped {
+  type: "screen_share_stopped";
+  channel_id: string;
+  stream_id: string;
+  sharer_pubkey: string;
+}
+
+export interface ActiveStream {
+  stream_id: string;
+  sharer_pubkey: string;
+  kind: "screen" | "webcam";
+  mime: string;
+  has_audio: boolean;
+}
+
+export interface ScreenShareOpts {
+  includeAudio: boolean;
+  includeWebcam: boolean;
+  webcamDeviceId: string;
+}

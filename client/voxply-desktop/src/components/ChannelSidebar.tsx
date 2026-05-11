@@ -85,6 +85,8 @@ interface Props {
   onOpenSettings: () => void;
   onSetShowInstallGame: (v: boolean) => void;
   onDragEnd: (event: DragEndEvent) => void;
+  sharing: boolean;
+  onScreenShare: () => void;
 }
 
 export function ChannelSidebar({
@@ -101,7 +103,7 @@ export function ChannelSidebar({
   onSelectChannel, onChannelContextMenu, onVoiceJoin, onVoiceLeave,
   onLaunchGame, onOpenEditGame, onSelectAllianceChannel, onSelectConversation,
   onOpenFriends, onToggleSelfMute, onToggleSelfDeafen, onOpenSettings,
-  onSetShowInstallGame, onDragEnd,
+  onSetShowInstallGame, onDragEnd, sharing, onScreenShare,
 }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -474,6 +476,13 @@ export function ChannelSidebar({
                 title={selfDeafened ? "Undeafen" : "Deafen"}
               >
                 {selfDeafened ? "🚫🔊" : "🔊"}
+              </button>
+              <button
+                onClick={onScreenShare}
+                className={`btn-icon-gear ${sharing ? "active" : ""}`}
+                title={sharing ? "Stop sharing" : "Share screen"}
+              >
+                {sharing ? "⏹" : "🖥"}
               </button>
             </>
           )}

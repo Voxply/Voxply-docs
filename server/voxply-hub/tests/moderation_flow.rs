@@ -36,6 +36,8 @@ async fn setup() -> TestServer {
         voice_event_tx,
         dm_tx: broadcast::channel(16).0,
         online_users: RwLock::new(std::collections::HashSet::new()),
+        screen_shares: RwLock::new(HashMap::new()),
+        screen_share_tx: broadcast::channel(16).0,
     });
     let app = server::create_router(state);
     TestServer::new(app)
@@ -330,6 +332,8 @@ async fn spawn_real_hub() -> (String, Arc<AppState>) {
         voice_event_tx: broadcast::channel(16).0,
         dm_tx: broadcast::channel(16).0,
         online_users: RwLock::new(std::collections::HashSet::new()),
+        screen_shares: RwLock::new(HashMap::new()),
+        screen_share_tx: broadcast::channel(16).0,
     });
     let app = server::create_router(state.clone());
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

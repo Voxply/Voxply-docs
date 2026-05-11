@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::time::Instant;
 
+use bytes::Bytes;
 use sqlx::SqlitePool;
 use tokio::sync::{broadcast, RwLock};
 use voxply_identity::Identity;
@@ -41,6 +42,35 @@ impl DmEvent {
     }
 }
 
+/// Metadata for a single active screen-share stream.
+#[derive(Clone)]
+pub struct ScreenStreamMeta {
+    pub kind: String,
+    pub mime: String,
+    pub has_audio: bool,
+    pub sharer_pubkey: String,
+    /// Cached WebM init segment for late joiners. Set on the first chunk
+    /// where `is_init == true`.
+    pub init_chunk: Option<Bytes>,
+}
+
+/// All active streams in one channel.
+pub struct ActiveShare {
+    /// stream_id → metadata
+    pub streams: HashMap<String, ScreenStreamMeta>,
+}
+
+/// A screen-share chunk broadcast to all WS connections.
+#[derive(Clone)]
+pub struct ScreenChunkEvent {
+    pub channel_id: String,
+    pub stream_id: String,
+    pub sharer_pubkey: String,
+    pub seq: u32,
+    pub is_init: bool,
+    pub data: Bytes,
+}
+
 pub struct AppState {
     pub hub_name: String,
     pub hub_identity: Identity,
@@ -57,6 +87,11 @@ pub struct AppState {
     pub dm_tx: broadcast::Sender<DmEvent>,
     // Online users: public_key set (updated by WS connect/disconnect)
     pub online_users: RwLock<std::collections::HashSet<String>>,
+    /// Active screen-share sessions: channel_id → ActiveShare.
+    /// In-memory only — cleared on process restart.
+    pub screen_shares: RwLock<HashMap<String, ActiveShare>>,
+    /// Broadcast channel carrying binary chunk events to all WS connections.
+    pub screen_share_tx: broadcast::Sender<ScreenChunkEvent>,
 }
 
 pub struct PendingChallenge {

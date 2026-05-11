@@ -11,7 +11,10 @@ import type {
   Conversation,
   AllianceSharedChannel,
   VoiceParticipant,
+  ActiveStream,
 } from "../types";
+import { ScreenShareViewer } from "./ScreenShareViewer";
+import type { ScreenShareViewerRef } from "./ScreenShareViewer";
 import {
   formatPubkey,
   meAction,
@@ -108,6 +111,8 @@ interface Props {
   onOpenImage: (src: string, alt: string) => void;
   onToast: (msg: string) => void;
   onError: (msg: string) => void;
+  activeScreenShares: ActiveStream[];
+  screenShareViewerRef: React.RefObject<ScreenShareViewerRef | null>;
 }
 
 export function ContentArea({
@@ -131,6 +136,7 @@ export function ContentArea({
   onJumpToBottom, onMessagesScroll,
   onSetUserContextMenu, onSetEditingDraft, onInputTextChange, onKeyDown,
   onOpenImage, onToast, onError,
+  activeScreenShares, screenShareViewerRef,
 }: Props) {
   return (
     <>
@@ -328,6 +334,12 @@ export function ContentArea({
                 )}
                 <button onClick={onCloseSearch} className="btn-small">Close</button>
               </div>
+            )}
+            {activeScreenShares.length > 0 && (
+              <ScreenShareViewer
+                ref={screenShareViewerRef}
+                streams={activeScreenShares}
+              />
             )}
             <div className="messages" ref={messagesContainerRef} onScroll={onMessagesScroll}>
               {(searchResults ?? messages).length === 0 && (
