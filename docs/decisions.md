@@ -4,6 +4,126 @@ Why Voxply is shaped the way it is. Each entry: the decision, the
 alternative we considered, and why we chose this. New decisions go at
 the top.
 
+## Packaging: Tauri bundler + GitHub Actions, not custom scripts
+
+**Decision**: cross-platform packaging is delegated to Tauri 2's
+built-in bundler (`tauri build --bundles`) driven from two GitHub
+Actions workflows — one for release tags, one for PR validation. NSIS
+on Windows, universal DMG on macOS, AppImage (plus `.deb`/`.rpm`) on
+Linux. Auto-update goes through `tauri-plugin-updater` with a Tauri-
+generated Ed25519 keypair and an endpoint at
+`releases.voxply.io/latest.json`. The hub server ships separately as a
+Docker image (`ghcr.io/voxply/hub`) plus a static musl binary. Full
+design in [`docs/packaging.md`](packaging.md).
+
+**Alternatives considered**:
+
+- **Custom packaging scripts per platform** — `cargo-wix` directly for
+  MSI, `create-dmg` + `codesign` + `notarytool` invocations for macOS,
+  `appimagetool` + a hand-rolled AppDir on Linux. Rejected: it
+  reinvents what the Tauri bundler already does correctly, and every
+  Tauri upgrade would risk silently breaking our packaging path.
+- **Electron-Builder-style framework** — none of the Rust-native
+  options (cargo-bundle, cargo-packager) match Tauri 2's tight
+  integration with the updater plugin, the entitlements plumbing on
+  macOS, and the embedded WebView config on Windows. Picking a second
+  framework on top of Tauri is two systems to reason about.
+- **One workflow that always bundles** — bundling on every PR burns CI
+  minutes and produces unsigned artifacts of dubious value. Splitting
+  into `build.yml` (cheap `cargo check` + `tsc --noEmit` for PRs) and
+  `release.yml` (full bundle on tag) keeps the feedback loop fast.
+- **Single arch on macOS** (separate `x86_64.dmg` + `aarch64.dmg`).
+  Universal binary is two compiles + a `lipo`, but produces one
+  artifact users don't have to think about. Worth the build minutes.
+
+**Tradeoff**: the Tauri bundler hides a lot — exactly which `notarytool`
+flags get used, exactly what NSIS template ships, what AppImage runtime
+gets bundled. We accept that opacity in exchange for not owning a per-
+platform packaging codebase. The escape hatch (drop down to platform-
+native tools) exists if Tauri's defaults ever stop fitting.
+
+**What changes on the implementation side**:
+
+- `tauri.conf.json` grows the `bundle.*` fields, `plugins.updater.*`
+  block (endpoints + pubkey), and a macOS entitlements plist path.
+- `Cargo.toml` (client) adds `tauri-plugin-updater`; `lib.rs` registers
+  it next to the existing deep-link and shell plugins.
+- New `.github/workflows/release.yml` (tag-triggered, matrix bundle +
+  GitHub Release upload) and `.github/workflows/build.yml` (PR
+  validation: `cargo check` + `tsc --noEmit`).
+- New `server/voxply-hub/Dockerfile` (multi-stage, distroless final
+  image) and a sample `docker-compose.yml` for self-hosters.
+- `CHANGELOG.md` created at repo root, Keep a Changelog format.
+- Secrets configured in GitHub: the updater key, the Apple notarization
+  set, and (when procured) Windows Authenticode credentials.
+
+**What's deferred**:
+
+- Hub-server auto-update (operator-driven today; revisit once farms
+  exist).
+- Mobile (iOS / Android) packaging — separate signing pipelines, separate
+  store policies, sandbox conflicts with `voxply://` and voice capture.
+- Windows Store / Mac App Store distribution — sandboxing breaks our
+  deep-link + filesystem + mic-access model.
+- Delta updates — full installer download is fine at current binary
+  size.
+- Windows Authenticode cert procurement — release Windows builds are
+  unsigned until then, with a release-notes caveat. Updater payload
+  signature is unaffected (separate key).
+
+## E2E DMs v1: static ECDH + AES-GCM, group DMs deferred
+
+**Decision**: ship E2E encryption for 1:1 DMs using a deterministically
+derived X25519 keypair (from the existing Ed25519 identity seed),
+static-ECDH key agreement, HKDF-SHA256 to a per-conversation key, and
+AES-256-GCM with an Ed25519 signature over the envelope. Group DMs stay
+plaintext in v1. Full design in
+[`docs/e2e-encryption.md`](e2e-encryption.md).
+
+**Alternatives considered**:
+
+- **Double Ratchet (Signal protocol) in v1** — proper forward secrecy
+  and post-compromise security from day one. Rejected for v1 only:
+  thousands of LoC, a stateful key store on every client, edge cases
+  around out-of-order delivery and multi-device that the rest of Voxply
+  hasn't paid for yet. v2 path is preserved by carrying `dh_pubkey_hex`
+  per message — the same slot the ratchet's ephemeral key occupies.
+- **A separate encryption keypair stored alongside the identity** —
+  more storage, another secret to back up and worry about, and a real
+  risk of the two getting out of sync. The Ed25519→X25519 derivation
+  (`crypto_sign_ed25519_sk_to_curve25519`) is well-studied and gives us
+  zero-storage DH keys for free.
+- **Encrypt groups now with pairwise ECDH** — N(N−1)/2 key agreements
+  per group, re-encrypting every message N−1 times, no clean story for
+  membership change. Rejected; sender-key (Signal-style) is the right
+  shape and goes in v2.
+- **Per-conversation symmetric key negotiated once** — same forward-
+  secrecy hole as static ECDH but with extra key-rotation ceremony and
+  worse multi-device behaviour. Static ECDH derives the same key
+  deterministically from `(dh_priv, dh_pub, conv_id)`, which is
+  strictly better.
+
+**Tradeoff**: we accept "no forward secrecy in v1" in exchange for an
+implementation that fits in a couple hundred lines and reuses the
+existing identity seed, signing pattern (`shared/voxply-identity/src/wire.rs:32-66`),
+and DM storage path (`server/voxply-hub/src/routes/dms.rs:132-288`).
+The hub goes from "reads everything" to "stores opaque ciphertexts and
+verified envelopes" — a step change in trust posture — without a
+protocol rewrite. The forward-secrecy gap is real and documented; it
+becomes a hard requirement when v2 lands.
+
+**What changes on the implementation side**: new `dh_keys` table and
+`GET/PUT /identity/:pubkey/dh-key` routes on the hub; `is_encrypted`
+and `ciphertext_json` columns added to `dm_messages` (additive); a
+`Identity::dh_keypair()` method on the shared identity crate; client
+encrypts on send when the recipient has a published DH key, warns and
+falls back to plaintext otherwise; per-message lock-icon UI signals
+mixed conversations during the transition.
+
+**What's deferred**: group DM encryption (v2 sender-key scheme),
+forward secrecy via Double Ratchet (v2), encrypted search, voice/video
+encryption (separate design), metadata hiding (out of scope).
+
 ## Screen share v1: hub-relayed WebSocket chunks, not WebRTC P2P
 
 **Decision**: ship screen share as WebM chunks (`MediaRecorder`,

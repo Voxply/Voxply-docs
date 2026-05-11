@@ -8,6 +8,8 @@ shipped features, design questions — lives in the wiki at
 ## 🔨 Next up
 
 - **Screen share (v1)** — WS-relayed WebM chunks, source picker, viewer panel, optional webcam. Designed in [`docs/screen-share.md`](docs/screen-share.md). v2 WebRTC migration deferred.
+- **E2E encryption for DMs (v1)** — 1:1 only, static ECDH + AES-GCM, Ed25519-derived X25519 keys, signed envelopes. Designed in [`docs/e2e-encryption.md`](docs/e2e-encryption.md). Group DMs and forward secrecy deferred to v2.
+- **Cross-platform packaging** — Tauri bundler (NSIS / universal DMG / AppImage), `tauri-plugin-updater` auto-update, GitHub Actions release pipeline, hub Docker image. Designed in [`docs/packaging.md`](docs/packaging.md). Mobile and store distribution deferred.
 
 ## 📌 Wishlist (undesigned)
 
@@ -17,8 +19,6 @@ items live in the wiki — see
 [`farm-model.md`](docs/farm-model.md),
 [`gaming.md`](docs/gaming.md).
 
-- **E2E encryption for DMs** — sender-key against recipient pubkey; group DMs are the hard part
-- **Cross-platform packaging** — installers for macOS / Linux / mobile
 - **Performance ceiling** — load test WS broadcast, search, voice relay
 - **Accessibility + i18n** — keyboard nav audit, screen-reader, localization
 - **Key revocation** — leaked-key story; today is "regen + notify friends"

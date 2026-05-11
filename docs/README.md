@@ -22,6 +22,7 @@ If you're new, read in this order:
 ### Running a hub
 
 - [hosting.md](hosting.md) — practical guide: systemd, TLS, backups, upgrades
+- [packaging.md](packaging.md) — cross-platform packaging, code signing, auto-update, CI/CD, hub Docker image
 
 ### Future direction (designed, not built)
 
@@ -29,7 +30,8 @@ If you're new, read in this order:
 12. [gaming.md](gaming.md) — game distribution platform + tier progression
 13. [home-hub.md](home-hub.md) — personal-axis state: home hub list, replication, DM canonicalization
 14. [multi-device.md](multi-device.md) — master+subkey identity, QR pairing protocol
-15. [future-features.md](future-features.md) — anti-spam, moderation, recovery, bots
+15. [e2e-encryption.md](e2e-encryption.md) — E2E encrypted DMs: X25519 from Ed25519 seed, static ECDH + AES-GCM, signed envelopes
+16. [future-features.md](future-features.md) — anti-spam, moderation, recovery, bots
 
 ## Find by feature
 
@@ -55,6 +57,7 @@ Reading order is for learning the system end-to-end. This section is for
 - **Typing indicators (channel + DM)** — [client.md](client.md)
 - **Pin / unpin channels** — [client.md](client.md)
 - **Direct messages (federated outbox)** — [federation.md](federation.md), [data-model.md](data-model.md)
+- **E2E encrypted DMs (designed, not built)** — [e2e-encryption.md](e2e-encryption.md)
 - **Friends (local + cross-hub via stored hub URL)** — [federation.md](federation.md)
 
 ### Voice (in any channel — every channel is unified text + voice)
