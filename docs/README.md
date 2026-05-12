@@ -33,6 +33,7 @@ If you're new, read in this order:
 15. [e2e-encryption.md](e2e-encryption.md) — E2E encrypted DMs: X25519 from Ed25519 seed, static ECDH + AES-GCM, signed envelopes
 16. [future-features.md](future-features.md) — anti-spam, moderation, recovery, bots
 17. [browser-client.md](browser-client.md) — second client (no Tauri), platform adapter, IndexedDB identity, voice deferred
+18. [android-client.md](android-client.md) — Tauri 2 Android wrapper around the browser platform layer, side-loaded APK
 
 ## Find by feature
 
