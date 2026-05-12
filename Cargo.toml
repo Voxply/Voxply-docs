@@ -8,6 +8,7 @@ members = [
     # Client
     "client/voxply-tui",
     "client/voxply-desktop/src-tauri",
+    "client/voxply-android/src-tauri",
 
     # Shared
     "shared/voxply-identity",
