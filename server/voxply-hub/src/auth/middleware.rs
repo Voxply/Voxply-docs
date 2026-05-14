@@ -45,6 +45,20 @@ impl FromRequestParts<Arc<AppState>> for AuthUser {
         let (public_key, approval_status) = row
             .ok_or((StatusCode::UNAUTHORIZED, "Invalid or expired token".to_string()))?;
 
+        // Reject revoked keys. In the current single-key model public_key == subkey_pubkey;
+        // this check is forward-compatible with the master+subkey design.
+        let is_revoked: bool = sqlx::query_scalar(
+            "SELECT COUNT(*) > 0 FROM subkey_revocations WHERE subkey_pubkey = ?",
+        )
+        .bind(&public_key)
+        .fetch_one(&state.db)
+        .await
+        .unwrap_or(false);
+
+        if is_revoked {
+            return Err((StatusCode::UNAUTHORIZED, "Key has been revoked".to_string()));
+        }
+
         if approval_status == "pending" {
             let path = parts.uri.path();
             if !PENDING_ALLOWED_PATHS.iter().any(|p| path == *p) {

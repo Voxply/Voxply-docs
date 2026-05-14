@@ -301,3 +301,76 @@ async fn master_hijack_attempt_is_blocked_by_coalesce() {
         .unwrap();
     assert_eq!(user_count, 2);
 }
+
+// ---------------------------------------------------------------------------
+// Revocation enforcement in the HTTP auth middleware
+// ---------------------------------------------------------------------------
+
+/// Insert a revocation row directly into the DB, bypassing signature checks.
+/// The middleware only checks the presence of the row; signature verification
+/// lives in the identity route that accepts the POST.
+async fn insert_revocation(db: &SqlitePool, subkey_pubkey: &str) {
+    sqlx::query(
+        "INSERT OR IGNORE INTO subkey_revocations
+         (master_pubkey, subkey_pubkey, revoked_at, signature, registered_at)
+         VALUES ('test-master', ?, 1, 'test-sig', 1)",
+    )
+    .bind(subkey_pubkey)
+    .execute(db)
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn revoked_key_is_rejected_by_middleware() {
+    let (server, db) = setup().await;
+
+    // Alice authenticates normally.
+    let alice = Identity::generate();
+    let token = auth_legacy(&server, &alice).await;
+
+    // /me works before revocation.
+    server
+        .get("/me")
+        .authorization_bearer(&token)
+        .await
+        .assert_status_ok();
+
+    // Revoke Alice's key.
+    insert_revocation(&db, &alice.public_key_hex()).await;
+
+    // Existing token is now rejected — 401 with the revocation message.
+    let resp = server
+        .get("/me")
+        .authorization_bearer(&token)
+        .await;
+    resp.assert_status_unauthorized();
+    assert!(resp.text().contains("revoked"));
+}
+
+#[tokio::test]
+async fn non_revoked_key_is_not_affected() {
+    let (server, db) = setup().await;
+
+    let alice = Identity::generate();
+    let bob = Identity::generate();
+    let alice_token = auth_legacy(&server, &alice).await;
+    let bob_token = auth_legacy(&server, &bob).await;
+
+    // Only Bob's key is revoked.
+    insert_revocation(&db, &bob.public_key_hex()).await;
+
+    // Alice is unaffected.
+    server
+        .get("/me")
+        .authorization_bearer(&alice_token)
+        .await
+        .assert_status_ok();
+
+    // Bob is rejected.
+    server
+        .get("/me")
+        .authorization_bearer(&bob_token)
+        .await
+        .assert_status_unauthorized();
+}

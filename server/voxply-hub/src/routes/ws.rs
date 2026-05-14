@@ -28,6 +28,18 @@ pub async fn ws_handler(
     let public_key = public_key
         .ok_or((StatusCode::UNAUTHORIZED, "Invalid token".to_string()))?;
 
+    let is_revoked: bool = sqlx::query_scalar(
+        "SELECT COUNT(*) > 0 FROM subkey_revocations WHERE subkey_pubkey = ?",
+    )
+    .bind(&public_key)
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(false);
+
+    if is_revoked {
+        return Err((StatusCode::UNAUTHORIZED, "Key has been revoked".to_string()));
+    }
+
     tracing::info!("WebSocket connected: {}", &public_key[..16]);
 
     Ok(ws.on_upgrade(move |socket| handle_socket(socket, state, public_key)))
