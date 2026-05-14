@@ -118,8 +118,8 @@ before they can decode anything.
 
 Two new envelope variants on the existing typed message channel in
 `server/voxply-hub/src/routes/chat_models.rs` (the same enum that
-already carries `Subscribe` / `Unsubscribe` / `SubscribeAll` at
-lines 175-181):
+already carries `Subscribe` / `Unsubscribe` at
+lines 175-181 (`SubscribeAll` removed — hub auto-subscribes on connect)):
 
 ```
 // Client → Hub

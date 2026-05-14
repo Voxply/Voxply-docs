@@ -448,13 +448,13 @@ design entry — it is not part of first-run.
 
 **Decision**: a four-part answer to the notification model question.
 
-1. **Subscription protocol stays client-driven (status quo).** The client
-   sends `subscribe_all` on connect; the hub continues to firehose every
-   channel the user can read. The client filters by per-channel
-   `NotifyMode`. Per-channel `subscribe`/`unsubscribe` based on mode is
-   designed-but-deferred — the wire shape (`WsClientMessage::Subscribe`
-   / `Unsubscribe`) already exists in `chat_models.rs:175-181` so the
-   switchover is a client-side change when scale demands it.
+1. **Subscription protocol: hub auto-subscribes on connect.** On WS
+   connect the hub queries all non-category channels the user is not
+   banned from and populates the subscription set server-side. The client
+   never sends `subscribe_all`; `WsClientMessage::SubscribeAll` has been
+   removed. Per-channel `subscribe`/`unsubscribe` messages remain on the
+   wire for clients to manage new channels created after connect. The
+   client still filters events by per-channel `NotifyMode`.
 2. **Two distinct features, both gated by the same `NotifyMode`.**
    These are not two tiers of one thing; they are separate features that
    happen to share the mode knob.
@@ -562,17 +562,18 @@ design entry — it is not part of first-run.
   affordance. On channel select, if `firstNotifyingMessageId` is present
   and that message is not in view, render the button. Click scrolls to
   that message id; the button hides on scroll-into-view or on click.
-- *Server*: no changes. The reserved per-channel `Subscribe` /
-  `Unsubscribe` wire types stay reserved. The hidden-channel gate is
-  client-side only — the hub keeps firehosing.
+- *Server*: auto-subscribe on connect landed (`ws.rs` — query channels
+  minus bans on handshake). `SubscribeAll` removed from the protocol.
+  The hidden-channel client-side gate is still the right defence for
+  race conditions (channel deleted mid-session, etc.).
 - *Docs*: cross-link this entry from `client.md` notification bullets.
 
 **Deferred**:
-- Per-channel firehose-off (Option A migration): defer until a real
-  bandwidth/battery measurement justifies it. Trigger conditions:
-  (a) median user is on >10 hubs with >50 channels each, or
-  (b) mobile client lands and battery telemetry shows WS traffic as a
-  top drain.
+- Per-channel firehose-off: **shipped** — hub now auto-subscribes to
+  accessible channels on connect; `subscribe_all` removed. The next
+  step (subscribe only to the active channel for content, all others
+  for unread bumps only) deferred until battery/bandwidth telemetry
+  on mobile justifies the added complexity.
 - Quiet hours / DND windows: not in this decision. If added later, they
   layer on top as a global override that downgrades all modes one step
   (`all` → `mentions`, `mentions` → `silent`, `silent` stays).
