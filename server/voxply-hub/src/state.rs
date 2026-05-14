@@ -52,6 +52,10 @@ pub struct ScreenStreamMeta {
     /// Cached WebM init segment for late joiners. Set on the first chunk
     /// where `is_init == true`.
     pub init_chunk: Option<Bytes>,
+    /// Wall time when this stream was registered. Used to distinguish
+    /// "share started before I subscribed" (push needed) from
+    /// "share started after I subscribed" (broadcast delivers it).
+    pub started_at: Instant,
 }
 
 /// All active streams in one channel.

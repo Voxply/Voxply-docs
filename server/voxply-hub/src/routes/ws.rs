@@ -51,6 +51,11 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>, public_key: Stri
 
     let (mut ws_tx, mut ws_rx) = socket.split();
     let mut chat_rx = state.chat_tx.subscribe();
+    // Record the time we subscribed to the broadcast channel. The auto-subscribe
+    // push below only sends ScreenShareStarted for streams whose started_at
+    // predates this instant — streams started after this instant arrive via
+    // the broadcast and don't need an explicit push.
+    let chat_rx_since = std::time::Instant::now();
     let mut dm_rx = state.dm_tx.subscribe();
     let mut voice_rx = state.voice_event_tx.subscribe();
     let mut screen_share_rx = state.screen_share_tx.subscribe();
@@ -85,6 +90,45 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>, public_key: Stri
     .unwrap_or_default()
     .into_iter()
     .collect();
+
+    // Push any in-progress screen shares to this client immediately at connect
+    // so they don't miss a share that started before they subscribed to the
+    // broadcast. Shares started after chat_rx_since will arrive via the
+    // broadcast channel and must not be pushed here (would duplicate them).
+    {
+        let shares = state.screen_shares.read().await;
+        for channel_id in &subscribed {
+            if let Some(active) = shares.get(channel_id) {
+                for (stream_id, meta) in &active.streams {
+                    if meta.started_at >= chat_rx_since {
+                        continue;
+                    }
+                    let started = WsServerMessage::ScreenShareStarted {
+                        channel_id: channel_id.clone(),
+                        stream_id: stream_id.clone(),
+                        sharer_pubkey: meta.sharer_pubkey.clone(),
+                        kind: meta.kind.clone(),
+                        mime: meta.mime.clone(),
+                        has_audio: meta.has_audio,
+                    };
+                    let json = serde_json::to_string(&started).unwrap();
+                    let _ = ws_tx.send(Message::Text(json.into())).await;
+                    if let Some(init_bytes) = &meta.init_chunk {
+                        let chunk_envelope = WsServerMessage::ScreenShareChunkOut {
+                            channel_id: channel_id.clone(),
+                            stream_id: stream_id.clone(),
+                            sharer_pubkey: meta.sharer_pubkey.clone(),
+                            seq: 0,
+                            is_init: true,
+                        };
+                        let json = serde_json::to_string(&chunk_envelope).unwrap();
+                        let _ = ws_tx.send(Message::Text(json.into())).await;
+                        let _ = ws_tx.send(Message::Binary(init_bytes.to_vec().into())).await;
+                    }
+                }
+            }
+        }
+    }
 
     loop {
         tokio::select! {
@@ -147,8 +191,11 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>, public_key: Stri
                     Some(Ok(Message::Text(text))) => {
                         match serde_json::from_str::<WsClientMessage>(&text) {
                             Ok(WsClientMessage::Subscribe { channel_id }) => {
-                                subscribed.insert(channel_id.clone());
-                                // Push active screen shares to late joiners.
+                                let newly_subscribed = subscribed.insert(channel_id.clone());
+                                // Push active screen shares only for channels not already in
+                                // the subscribed set. Auto-subscribed channels are handled at
+                                // connect time above; re-subscribing would produce duplicates.
+                                if !newly_subscribed { continue; }
                                 let shares = state.screen_shares.read().await;
                                 if let Some(active) = shares.get(&channel_id) {
                                     for (stream_id, meta) in &active.streams {
@@ -384,6 +431,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>, public_key: Stri
                                         has_audio,
                                         sharer_pubkey: public_key.clone(),
                                         init_chunk: None,
+                                        started_at: std::time::Instant::now(),
                                     });
                                 }
                                 let _ = state.chat_tx.send(crate::routes::chat_models::ChatEvent::ScreenShareStarted {
