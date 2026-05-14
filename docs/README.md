@@ -35,6 +35,7 @@ If you're new, read in this order:
 17. [browser-client.md](browser-client.md) — second client (no Tauri), platform adapter, IndexedDB identity, voice deferred
 18. [android-client.md](android-client.md) — Tauri 2 Android wrapper around the browser platform layer, side-loaded APK
 19. [install-android.md](install-android.md) — end-user guide: enable unknown sources, download APK, Play Protect warning
+20. [brand.md](brand.md) — motto, one-liner, logo brief and asset checklist
 
 ## Find by feature
 
