@@ -7,10 +7,8 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **Screen share (v1)** — WS-relayed WebM chunks, source picker, viewer panel, optional webcam. Designed in [`docs/screen-share.md`](docs/screen-share.md). v2 WebRTC migration deferred.
-- **E2E encryption for DMs (v1)** — 1:1 only, static ECDH + AES-GCM, Ed25519-derived X25519 keys, signed envelopes. Designed in [`docs/e2e-encryption.md`](docs/e2e-encryption.md). Group DMs and forward secrecy deferred to v2.
-- **Cross-platform packaging** — Tauri bundler (NSIS / AppImage), `tauri-plugin-updater` auto-update, GitHub Actions release pipeline, hub Docker image. Windows + Linux only; macOS deferred (cost). Designed in [`docs/packaging.md`](docs/packaging.md).
-- **Android client** — Tauri 2 shell + browser platform layer. Designed in [`docs/android-client.md`](docs/android-client.md). Release APK builds and signs. Remaining: real app icons.
+- **Android client icons** — placeholder solid-color PNGs in `client/voxply-android/src-tauri/icons/`. Run `cargo tauri icon <1024x1024.png>` once a logo exists.
+- **`subscribe_all` firehose fix** — every client receives every channel's WS messages just for unread tracking; replace with per-channel subscription on select.
 
 ## 📌 Wishlist (undesigned)
 
@@ -26,7 +24,6 @@ items live in the wiki — see
 
 ## ⚠️ Known issues
 
-- `subscribe_all` firehose — every client receives every channel's messages just for unread tracking. Fine at current scale
 - Avatars uploaded full-resolution to every hub — base64 in `users.avatar`; doesn't scale
 - No custom display font — system stack only
 
