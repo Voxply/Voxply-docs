@@ -215,9 +215,20 @@ pub async fn complete_pairing(
     };
     cert.verify().map_err(|e| format!("cert self-verify: {e}"))?;
 
-    // Placeholder until X25519-ECIES wrap lands with the prefs-blob
-    // sync feature. 32 zero bytes is recognizable as "no real key".
-    let wrapped_blob_key_hex = hex::encode([0u8; 32]);
+    // Derive blob key from master and wrap it for the new device.
+    let blob_key = crate::prefs_blob::derive_blob_key(&master);
+    let wrapped_blob_key_hex =
+        voxply_identity::wrap_blob_key(&blob_key, &cert.subkey_pubkey)
+            .map_err(|e| format!("ECIES wrap failed: {e}"))?;
+
+    // Push a fresh blob to all home hubs so the new device can pull it after pairing.
+    let home_hubs = crate::home_hub::read_cached_designation()
+        .map(|d| d.hubs)
+        .unwrap_or_default();
+    if !home_hubs.is_empty() {
+        let client = http_client()?;
+        let _ = crate::prefs_blob::push_prefs_blob(&master, &blob_key, &home_hubs, &client).await;
+    }
 
     let complete = PairingComplete {
         pairing_token,
@@ -373,15 +384,18 @@ pub async fn claim_pairing_offer(
 /// matching the offer, the UI calls this to persist the new identity
 /// at ~/.voxply/paired_identity.json. The cert's master signature is
 /// verified again here as a final guard.
+/// Also attempts to unwrap the prefs blob key and pull current prefs
+/// from the home hubs.
 #[tauri::command]
-pub fn save_paired_identity(
+pub async fn save_paired_identity(
     master_pubkey: String,
     subkey_pubkey: String,
     subkey_secret_hex: String,
     device_label: String,
     cert: SubkeyCert,
     home_hubs: Vec<String>,
-) -> Result<(), String> {
+    wrapped_blob_key_hex: String,
+) -> Result<SyncResult, String> {
     cert.verify()
         .map_err(|e| format!("cert signature: {e}"))?;
     if cert.master_pubkey != master_pubkey {
@@ -405,12 +419,12 @@ pub fn save_paired_identity(
     }
 
     let identity = PairedIdentity {
-        master_pubkey,
+        master_pubkey: master_pubkey.clone(),
         subkey_pubkey,
-        subkey_secret_hex,
+        subkey_secret_hex: subkey_secret_hex.clone(),
         device_label,
         cert,
-        home_hubs,
+        home_hubs: home_hubs.clone(),
     };
 
     let path = paired_identity_path()?;
@@ -419,7 +433,49 @@ pub fn save_paired_identity(
     }
     let text = serde_json::to_string_pretty(&identity).map_err(|e| e.to_string())?;
     std::fs::write(&path, text).map_err(|e| format!("write: {e}"))?;
-    Ok(())
+
+    // Attempt to unwrap the blob key and pull current prefs from the home hubs.
+    let sync_result = if !wrapped_blob_key_hex.is_empty()
+        && wrapped_blob_key_hex != hex::encode([0u8; 32])
+    {
+        match voxply_identity::unwrap_blob_key(&wrapped_blob_key_hex, &secret_array) {
+            Ok(blob_key) => {
+                let client = http_client().unwrap_or_else(|_| reqwest::Client::new());
+                match crate::prefs_blob::pull_prefs_blob(
+                    &master_pubkey,
+                    &home_hubs,
+                    &blob_key,
+                    &client,
+                )
+                .await
+                {
+                    Ok(prefs) => {
+                        let _ = crate::save_blocked_users_raw(&prefs.blocked_users);
+                        let _ = crate::save_voice_settings_to_disk(&prefs.voice_settings);
+                        SyncResult { synced: true, error: None }
+                    }
+                    Err(e) => SyncResult { synced: false, error: Some(e.to_string()) },
+                }
+            }
+            Err(e) => SyncResult {
+                synced: false,
+                error: Some(format!("unwrap failed: {e}")),
+            },
+        }
+    } else {
+        SyncResult {
+            synced: false,
+            error: Some("no blob key in pairing response".to_string()),
+        }
+    };
+
+    Ok(sync_result)
+}
+
+#[derive(serde::Serialize)]
+pub struct SyncResult {
+    pub synced: bool,
+    pub error: Option<String>,
 }
 
 /// Read the locally-stored paired identity, if any.

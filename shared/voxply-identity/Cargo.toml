@@ -39,3 +39,8 @@ x25519-dalek = { version = "2", features = ["static_secrets"] }
 
 # aes-gcm — AES-256-GCM authenticated encryption for DM ciphertext.
 aes-gcm = "0.10"
+
+# curve25519-dalek — low-level Curve25519 arithmetic (CompressedEdwardsY,
+# Montgomery conversion). Indirect dep via ed25519-dalek / x25519-dalek;
+# declared directly here so we can use the point-conversion API in ecies.rs.
+curve25519-dalek = "4"

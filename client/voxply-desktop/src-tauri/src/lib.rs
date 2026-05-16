@@ -12,6 +12,7 @@ use x25519_dalek;
 mod auth_creds;
 mod home_hub;
 mod pairing;
+mod prefs_blob;
 
 // --- Shared state ---
 
@@ -60,8 +61,8 @@ struct VoiceSession {
     deafened: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default)]
-struct StoredVoiceSettings {
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+pub(crate) struct StoredVoiceSettings {
     input_device: Option<String>,
     output_device: Option<String>,
     /// Range [0.001, 0.2]. Higher = less sensitive.
@@ -451,6 +452,16 @@ fn load_blocked_users() -> Result<Vec<String>, String> {
     }
     let text = std::fs::read_to_string(&path).map_err(|e| format!("read: {e}"))?;
     serde_json::from_str(&text).map_err(|e| format!("parse: {e}"))
+}
+
+pub(crate) fn save_blocked_users_raw(users: &[String]) -> Result<(), String> {
+    let path = blocked_users_path()?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("mkdir: {e}"))?;
+    }
+    let text = serde_json::to_string(users).map_err(|e| e.to_string())?;
+    std::fs::write(&path, text).map_err(|e| format!("write: {e}"))?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -2115,6 +2126,58 @@ fn get_my_public_key() -> Result<String, String> {
     let path = Identity::default_path().map_err(|e| e.to_string())?;
     let (identity, _) = Identity::load_or_create(&path).map_err(|e| e.to_string())?;
     Ok(identity.public_key_hex())
+}
+
+fn load_master_identity() -> Result<voxply_identity::MasterIdentity, String> {
+    let path = Identity::default_path().map_err(|e| e.to_string())?;
+    let identity = Identity::load(&path).map_err(|e| e.to_string())?;
+    identity.master().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn push_prefs_blob() -> Result<(), String> {
+    let master = load_master_identity()?;
+    let blob_key = prefs_blob::derive_blob_key(&master);
+    let home_hubs = crate::home_hub::read_cached_designation()
+        .map(|d| d.hubs)
+        .unwrap_or_default();
+    if home_hubs.is_empty() {
+        return Err("No home hubs configured".to_string());
+    }
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| e.to_string())?;
+    prefs_blob::push_prefs_blob(&master, &blob_key, &home_hubs, &client)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn pull_and_apply_prefs_blob() -> Result<prefs_blob::LocalPrefs, String> {
+    let master = load_master_identity()?;
+    let blob_key = prefs_blob::derive_blob_key(&master);
+    let home_hubs = crate::home_hub::read_cached_designation()
+        .map(|d| d.hubs)
+        .unwrap_or_default();
+    if home_hubs.is_empty() {
+        return Err("No home hubs configured".to_string());
+    }
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let prefs = prefs_blob::pull_prefs_blob(
+        &master.public_key_hex(),
+        &home_hubs,
+        &blob_key,
+        &client,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+    let _ = save_blocked_users_raw(&prefs.blocked_users);
+    let _ = save_voice_settings_to_disk(&prefs.voice_settings);
+    Ok(prefs)
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -3935,6 +3998,8 @@ pub fn run() {
             pairing::claim_pairing_offer,
             pairing::save_paired_identity,
             pairing::get_paired_identity,
+            push_prefs_blob,
+            pull_and_apply_prefs_blob,
             save_public_profile,
             fetch_public_profile,
             get_hub_ws_info,

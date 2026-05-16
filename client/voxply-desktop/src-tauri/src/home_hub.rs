@@ -21,7 +21,7 @@ fn load_master() -> Result<MasterIdentity, String> {
     identity.master().map_err(|e| e.to_string())
 }
 
-fn read_cached_designation() -> Option<HomeHubList> {
+pub(crate) fn read_cached_designation() -> Option<HomeHubList> {
     let path = home_hub_list_path().ok()?;
     if !path.exists() {
         return None;

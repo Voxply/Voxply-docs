@@ -45,4 +45,10 @@ impl MasterIdentity {
     pub fn verifying_key(&self) -> VerifyingKey {
         self.signing_key.verifying_key()
     }
+
+    /// Raw 32-byte seed of the master signing key.
+    /// Used to derive the prefs blob encryption key.
+    pub fn secret_seed(&self) -> [u8; 32] {
+        self.signing_key.to_bytes()
+    }
 }

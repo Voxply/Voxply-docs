@@ -1,3 +1,4 @@
+pub mod ecies;
 mod master;
 mod pow;
 mod recovery;
@@ -14,6 +15,7 @@ use std::path::{Path, PathBuf};
 
 use x25519_dalek;
 
+pub use ecies::{unwrap_blob_key, wrap_blob_key};
 pub use master::MasterIdentity;
 pub use pow::{compute_security_level, leading_zero_bits, verify_security_level};
 pub use subkey::DeviceSubkey;

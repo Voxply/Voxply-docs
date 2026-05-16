@@ -52,4 +52,10 @@ impl DeviceSubkey {
     pub fn verifying_key(&self) -> VerifyingKey {
         self.signing_key.verifying_key()
     }
+
+    /// Raw 32-byte seed of this device's signing key.
+    /// Used to unwrap the prefs blob key during pairing.
+    pub fn secret_seed(&self) -> [u8; 32] {
+        self.signing_key.to_bytes()
+    }
 }
