@@ -299,7 +299,7 @@ function App() {
   useEffect(() => {
     invoke<Record<string, Record<string, boolean>>>("load_unread_state")
       .then((s) => setUnreadByChannel(s ?? {}))
-      .catch(() => {});
+      .catch(console.error);
   }, []);
 
   // Hydrate persisted notification modes on launch. Old persisted shape
@@ -333,28 +333,28 @@ function App() {
         setHubNotifyMode(hubMap);
         setChannelNotifyMode(chanMap);
       })
-      .catch(() => {});
+      .catch(console.error);
   }, []);
 
   // Hydrate pinned-channel state on launch.
   useEffect(() => {
     invoke<Record<string, Record<string, boolean>>>("load_pinned_channels")
       .then((s) => setPinnedChannels(s ?? {}))
-      .catch(() => {});
+      .catch(console.error);
   }, []);
 
   // Hydrate collapsed-category state on launch.
   useEffect(() => {
     invoke<Record<string, Record<string, boolean>>>("load_collapsed_categories")
       .then((s) => setCollapsedCategories(s ?? {}))
-      .catch(() => {});
+      .catch(console.error);
   }, []);
 
   // Hydrate blocked-users list on launch.
   useEffect(() => {
     invoke<string[]>("load_blocked_users")
       .then((s) => setBlockedUsers(new Set(s ?? [])))
-      .catch(() => {});
+      .catch(console.error);
   }, []);
 
   // Poll voice channel populations + active-user set while a hub is active.
