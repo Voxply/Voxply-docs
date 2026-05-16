@@ -278,3 +278,8 @@ export interface ScreenShareOpts {
   includeWebcam: boolean;
   webcamDeviceId: string;
 }
+
+export interface SyncResult {
+  synced: boolean;
+  error: string | null;
+}

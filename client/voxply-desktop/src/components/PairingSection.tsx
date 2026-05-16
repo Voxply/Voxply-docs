@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { Hub } from "../types";
+import type { Hub, SyncResult } from "../types";
 
 interface PairedIdentityInfo {
   master_pubkey: string;
@@ -66,6 +66,7 @@ export function PairingSection({ hubs }: { hubs: Hub[] }) {
     masterPubkey: string; homeHubs: string[];
   } | null>(null);
   const [claimError, setClaimError] = useState("");
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
 
   const [copied, setCopied] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -103,6 +104,7 @@ export function PairingSection({ hubs }: { hubs: Hub[] }) {
     setClaimStep("pasting");
     setPollInfo(null);
     setClaimError("");
+    setSyncResult(null);
     setCopied(false);
   }
 
@@ -234,14 +236,16 @@ export function PairingSection({ hubs }: { hubs: Hub[] }) {
         });
         if (status.state === "complete") {
           stopPoll();
-          await invoke("save_paired_identity", {
+          const result = await invoke<SyncResult>("save_paired_identity", {
             masterPubkey: saved.masterPubkey,
             subkeyPubkey: saved.subkeyPubkey,
             subkeySecretHex: saved.subkeySecretHex,
             deviceLabel: saved.deviceLabel,
             cert: status.cert,
             homeHubs: saved.homeHubs,
+            wrappedBlobKeyHex: status.wrapped_blob_key_hex,
           });
+          setSyncResult(result);
           setClaimStep("done");
         } else if (status.state === "expired") {
           stopPoll();
@@ -486,6 +490,15 @@ export function PairingSection({ hubs }: { hubs: Hub[] }) {
           {claimStep === "done" && (
             <>
               <p>✅ This device is now paired.</p>
+              {syncResult?.synced ? (
+                <p className="muted">Done! Preferences synced from your other device.</p>
+              ) : (
+                <p className="muted">
+                  {"Done! (Preferences sync skipped"}
+                  {syncResult?.error ? `: ${syncResult.error}` : ""}
+                  {")"}
+                </p>
+              )}
               <p className="muted">
                 Restart Voxply to connect with your shared identity.
               </p>
