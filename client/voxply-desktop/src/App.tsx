@@ -810,7 +810,7 @@ function App() {
 
   // Screen share
   const [showSharePicker, setShowSharePicker] = useState(false);
-  const { sharing, startShare, stopShare } = useScreenShare(voiceChannelId);
+  const { sharing, startShare, stopShare, kbps: shareKbps } = useScreenShare(voiceChannelId);
   const { streams: activeScreenShares, viewerRef: screenShareViewerRef } =
     useScreenShareViewer(voiceChannelId);
 
@@ -3565,6 +3565,9 @@ function App() {
                   onError={setError}
                   activeScreenShares={activeScreenShares}
                   screenShareViewerRef={screenShareViewerRef}
+                  sharing={sharing}
+                  shareKbps={shareKbps}
+                  onStopShare={stopShare}
                 />
               </>
             )}

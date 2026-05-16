@@ -113,6 +113,9 @@ interface Props {
   onError: (msg: string) => void;
   activeScreenShares: ActiveStream[];
   screenShareViewerRef: React.RefObject<ScreenShareViewerRef | null>;
+  sharing: boolean;
+  shareKbps: number;
+  onStopShare: () => void;
 }
 
 export function ContentArea({
@@ -137,6 +140,7 @@ export function ContentArea({
   onSetUserContextMenu, onSetEditingDraft, onInputTextChange, onKeyDown,
   onOpenImage, onToast, onError,
   activeScreenShares, screenShareViewerRef,
+  sharing, shareKbps, onStopShare,
 }: Props) {
   return (
     <>
@@ -350,6 +354,17 @@ export function ContentArea({
                 ref={screenShareViewerRef}
                 streams={activeScreenShares}
               />
+            )}
+            {sharing && (
+              <div className="screen-share-active-bar">
+                <span>You're sharing</span>
+                {shareKbps > 0 && (
+                  <span className="muted">{shareKbps} kbps</span>
+                )}
+                <button className="stop-btn" onClick={onStopShare}>
+                  Stop sharing
+                </button>
+              </div>
             )}
             <div className="messages" ref={messagesContainerRef} onScroll={onMessagesScroll}>
               {(searchResults ?? messages).length === 0 && (

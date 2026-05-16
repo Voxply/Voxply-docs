@@ -26,11 +26,15 @@ function buildWsUrl(hubUrl: string, token: string): string {
 export function useScreenShare(channelId: string | null) {
   const [sharing, setSharing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [kbps, setKbps] = useState(0);
 
   const wsRef = useRef<WebSocket | null>(null);
   const recordersRef = useRef<MediaRecorder[]>([]);
   const streamsRef = useRef<MediaStream[]>([]);
   const streamIdsRef = useRef<string[]>([]);
+  // Rolling byte counter for bandwidth display. Reset on each startShare.
+  const bytesInWindowRef = useRef(0);
+  const kbpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   async function startShare(opts: ScreenShareOpts) {
     if (!channelId) return;
@@ -131,6 +135,13 @@ export function useScreenShare(channelId: string | null) {
       stopShare();
     });
 
+    bytesInWindowRef.current = 0;
+    kbpsIntervalRef.current = setInterval(() => {
+      const bytes = bytesInWindowRef.current;
+      bytesInWindowRef.current = 0;
+      setKbps(Math.round((bytes * 8) / 1000));
+    }, 1000);
+
     setSharing(true);
   }
 
@@ -152,6 +163,7 @@ export function useScreenShare(channelId: string | null) {
     recorder.ondataavailable = async (e) => {
       if (e.data.size === 0 || ws.readyState !== WebSocket.OPEN) return;
       const buf = await e.data.arrayBuffer();
+      bytesInWindowRef.current += buf.byteLength;
       ws.send(JSON.stringify({
         type: "screen_share_chunk",
         channel_id: channelId,
@@ -190,12 +202,18 @@ export function useScreenShare(channelId: string | null) {
       ws.close();
     }
 
+    if (kbpsIntervalRef.current !== null) {
+      clearInterval(kbpsIntervalRef.current);
+      kbpsIntervalRef.current = null;
+    }
+    bytesInWindowRef.current = 0;
     wsRef.current = null;
     recordersRef.current = [];
     streamsRef.current = [];
     streamIdsRef.current = [];
     setSharing(false);
+    setKbps(0);
   }
 
-  return { sharing, startShare, stopShare, error };
+  return { sharing, startShare, stopShare, error, kbps };
 }
