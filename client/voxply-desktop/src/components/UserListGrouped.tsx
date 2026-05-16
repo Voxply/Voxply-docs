@@ -85,6 +85,7 @@ export function UserListGrouped({
                 <span className="status-dot online" />
                 <span className="user-name">
                   {u.display_name || u.public_key.slice(0, 16)}
+                  {u.is_bot && <span className="bot-badge">BOT</span>}
                 </span>
                 {inVoice?.has(u.public_key) && (
                   <span className="user-in-voice" title="In voice">
@@ -112,6 +113,7 @@ export function UserListGrouped({
                 <span className="status-dot offline" />
                 <span className="user-name">
                   {u.display_name || u.public_key.slice(0, 16)}
+                  {u.is_bot && <span className="bot-badge">BOT</span>}
                 </span>
                 {inVoice?.has(u.public_key) && (
                   <span className="user-in-voice" title="In voice">

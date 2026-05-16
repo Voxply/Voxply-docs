@@ -16,6 +16,7 @@ import { RoleCreator } from "./RoleCreator";
 import { RoleEditor } from "./RoleEditor";
 import { AlliancesSection } from "./AlliancesSection";
 import { HubIconsSection } from "./HubIconsSection";
+import { HubBotsSection } from "./HubBotsSection";
 
 export type HubAdminTab =
   | "overview"
@@ -24,7 +25,8 @@ export type HubAdminTab =
   | "bans"
   | "invites"
   | "alliances"
-  | "icons";
+  | "icons"
+  | "bots";
 
 export interface HubAdminPageProps {
   tab: HubAdminTab;
@@ -129,6 +131,7 @@ export function HubAdminPage(props: HubAdminPageProps) {
     { id: "invites", label: "Invites" },
     { id: "alliances", label: "Alliances" },
     { id: "icons", label: "Icons" },
+    { id: "bots", label: "Bots" },
   ];
 
   return (
@@ -492,6 +495,16 @@ export function HubAdminPage(props: HubAdminPageProps) {
               categories from the appearance editor.
             </p>
             <HubIconsSection />
+          </section>
+        )}
+        {props.tab === "bots" && (
+          <section>
+            <h1>Bots</h1>
+            <p className="muted">
+              Bots are hub members with a long-lived API token. Tokens are only
+              shown once — copy them immediately after creating or rotating.
+            </p>
+            <HubBotsSection />
           </section>
         )}
       </main>

@@ -66,6 +66,15 @@ export interface User {
   avatar: string | null;
   online: boolean;
   group_role: string | null;
+  is_bot?: boolean;
+}
+
+export interface BotInfo {
+  public_key: string;
+  display_name: string;
+  created_by: string;
+  created_at: number;
+  token?: string;
 }
 
 export interface VoiceParticipant {
