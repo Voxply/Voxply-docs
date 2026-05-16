@@ -7,7 +7,7 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **Prefs blob sync** — QR pairing infrastructure is in place; the encrypted blob key is a placeholder (32 zero bytes). Real X25519 ECIES wrap + blob fetch on new-device pair is the remaining piece.
+_(nothing queued — see wishlist below)_
 
 ## 🚧 Blocked
 
