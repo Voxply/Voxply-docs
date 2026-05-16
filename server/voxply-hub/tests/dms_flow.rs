@@ -607,3 +607,145 @@ async fn list_dm_messages_returns_delivery_failed_false_for_local_conversation()
     assert_eq!(arr[0]["delivery_failed"], false);
 }
 
+// ---------------------------------------------------------------------------
+// Phase 5: home-hub designation routing
+// ---------------------------------------------------------------------------
+
+/// When a recipient has a home_hub_designations row, send_dm should route via
+/// each URL in hubs_json instead of conversation_members.hub_url.
+#[tokio::test]
+async fn send_dm_uses_home_hub_designation_when_present() {
+    let (hub_a, hub_a_state) = start_real_hub_with_state("hub-a-desig").await;
+    let hub_b = start_real_hub("hub-b-desig").await;
+    let client = reqwest::Client::new();
+
+    let alice = Identity::generate();
+    let bob = Identity::generate();
+    let bob_master = Identity::generate();
+    let alice_token = authenticate_http(&hub_a, &alice).await;
+    authenticate_http(&hub_b, &bob).await;
+
+    // Alice creates a conversation on Hub A. She supplies an unreachable
+    // placeholder as Bob's hub_url — the designation should override it.
+    let placeholder_url = "http://placeholder.invalid";
+    let resp = client
+        .post(format!("{hub_a}/conversations"))
+        .bearer_auth(&alice_token)
+        .json(&json!({
+            "members": [bob.public_key_hex()],
+            "member_hubs": { bob.public_key_hex(): placeholder_url },
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert!(resp.status().is_success());
+    let conv: ConversationResponse = resp.json().await.unwrap();
+
+    // Give Bob a master_pubkey in Hub A's users table.
+    let bob_master_hex = bob_master.public_key_hex();
+    sqlx::query("UPDATE users SET master_pubkey = ? WHERE public_key = ?")
+        .bind(&bob_master_hex)
+        .bind(bob.public_key_hex())
+        .execute(&hub_a_state.db)
+        .await
+        .unwrap();
+
+    // Insert a designation row pointing at the real Hub B.
+    let hubs_json = serde_json::to_string(&vec![hub_b.clone()]).unwrap();
+    let now_ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    sqlx::query(
+        "INSERT INTO home_hub_designations
+         (master_pubkey, hubs_json, issued_at, sequence, signature, updated_at)
+         VALUES (?, ?, ?, 1, 'test', ?)",
+    )
+    .bind(&bob_master_hex)
+    .bind(&hubs_json)
+    .bind(now_ts)
+    .bind(now_ts)
+    .execute(&hub_a_state.db)
+    .await
+    .unwrap();
+
+    // Alice sends a DM. Hub A should route via the designation to Hub B,
+    // ignoring the placeholder hub_url.
+    let resp = client
+        .post(format!("{hub_a}/conversations/{}/messages", conv.id))
+        .bearer_auth(&alice_token)
+        .json(&json!({ "content": "routed via designation" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), reqwest::StatusCode::CREATED);
+
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
+    // Bob reads from Hub B — message should have arrived via the designation.
+    let bob_token = authenticate_http(&hub_b, &bob).await;
+    let resp = client
+        .get(format!("{hub_b}/conversations/{}/messages", conv.id))
+        .bearer_auth(&bob_token)
+        .send()
+        .await
+        .unwrap();
+    assert!(resp.status().is_success());
+    let messages: serde_json::Value = resp.json().await.unwrap();
+    let arr = messages.as_array().unwrap();
+    assert_eq!(arr.len(), 1, "message should have been routed to Hub B via designation");
+    assert_eq!(arr[0]["content"], "routed via designation");
+}
+
+/// When no home_hub_designations row exists, send_dm falls back to the
+/// hub_url from conversation_members (existing behaviour, no regression).
+#[tokio::test]
+async fn send_dm_falls_back_to_hub_url_when_no_designation() {
+    let hub_a = start_real_hub("hub-a-fallback").await;
+    let hub_b = start_real_hub("hub-b-fallback").await;
+    let client = reqwest::Client::new();
+
+    let alice = Identity::generate();
+    let bob = Identity::generate();
+    let alice_token = authenticate_http(&hub_a, &alice).await;
+    authenticate_http(&hub_b, &bob).await;
+
+    // No designation row — only hub_url in member_hubs.
+    let resp = client
+        .post(format!("{hub_a}/conversations"))
+        .bearer_auth(&alice_token)
+        .json(&json!({
+            "members": [bob.public_key_hex()],
+            "member_hubs": { bob.public_key_hex(): hub_b.clone() },
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert!(resp.status().is_success());
+    let conv: ConversationResponse = resp.json().await.unwrap();
+
+    let resp = client
+        .post(format!("{hub_a}/conversations/{}/messages", conv.id))
+        .bearer_auth(&alice_token)
+        .json(&json!({ "content": "fallback delivery" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), reqwest::StatusCode::CREATED);
+
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
+    let bob_token = authenticate_http(&hub_b, &bob).await;
+    let resp = client
+        .get(format!("{hub_b}/conversations/{}/messages", conv.id))
+        .bearer_auth(&bob_token)
+        .send()
+        .await
+        .unwrap();
+    assert!(resp.status().is_success());
+    let messages: serde_json::Value = resp.json().await.unwrap();
+    let arr = messages.as_array().unwrap();
+    assert_eq!(arr.len(), 1, "message should have been delivered via fallback hub_url");
+    assert_eq!(arr[0]["content"], "fallback delivery");
+}
+

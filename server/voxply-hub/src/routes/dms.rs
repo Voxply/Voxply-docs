@@ -260,24 +260,51 @@ pub async fn send_dm(
     });
 
     // Federate to each remote member's delivery hub.
+    // Phase 5: if the member has a HomeHubList designation stored here, deliver
+    // to every URL in that list (one outbox row per URL). Otherwise fall back to
+    // the single hub_url recorded in conversation_members.
     let member_keys: Vec<String> = members.iter().map(|m| m.public_key.clone()).collect();
     for m in &members {
         if m.public_key == user.public_key {
             continue;
         }
-        let Some(hub_url) = &m.hub_url else { continue };
 
-        sqlx::query(
-            "INSERT OR IGNORE INTO dm_outbox
-             (message_id, recipient_hub_url, attempts, next_attempt_at)
-             VALUES (?, ?, 0, ?)",
-        )
-        .bind(&message_id)
-        .bind(hub_url)
-        .bind(now)
-        .execute(&state.db)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {e}")))?;
+        // Resolve delivery URLs via the home-hub designation when available.
+        let delivery_urls: Vec<String> = {
+            // Step 1: look up master_pubkey for this member.
+            let master_pubkey: Option<String> = sqlx::query_scalar(
+                "SELECT master_pubkey FROM users WHERE public_key = ?",
+            )
+            .bind(&m.public_key)
+            .fetch_optional(&state.db)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {e}")))?
+            .flatten();
+
+            // Step 2: if a master is known, try the designation table.
+            let designation_urls: Option<Vec<String>> = if let Some(ref mpk) = master_pubkey {
+                let hubs_json: Option<String> = sqlx::query_scalar(
+                    "SELECT hubs_json FROM home_hub_designations WHERE master_pubkey = ?",
+                )
+                .bind(mpk)
+                .fetch_optional(&state.db)
+                .await
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {e}")))?;
+
+                hubs_json.and_then(|j| serde_json::from_str::<Vec<String>>(&j).ok())
+            } else {
+                None
+            };
+
+            // Step 3: use the designation list, or fall back to the stored hub_url.
+            match designation_urls {
+                Some(urls) if !urls.is_empty() => urls,
+                _ => match &m.hub_url {
+                    Some(url) => vec![url.clone()],
+                    None => continue,
+                },
+            }
+        };
 
         let envelope = FederatedDmRequest {
             message_id: message_id.clone(),
@@ -292,32 +319,46 @@ pub async fn send_dm(
             encrypted_envelope: req.encrypted_envelope.clone(),
         };
 
-        match deliver_federated_dm(&state, hub_url, &envelope).await {
-            Ok(()) => {
-                let _ = sqlx::query(
-                    "DELETE FROM dm_outbox WHERE message_id = ? AND recipient_hub_url = ?",
-                )
-                .bind(&message_id)
-                .bind(hub_url)
-                .execute(&state.db)
-                .await;
-            }
-            Err(e) => {
-                tracing::warn!(
-                    "DM {} to {} failed immediately, leaving in outbox for retry: {e}",
-                    &message_id[..8],
-                    hub_url
-                );
-                let _ = sqlx::query(
-                    "UPDATE dm_outbox SET attempts = 1, next_attempt_at = ?, last_error = ?
-                     WHERE message_id = ? AND recipient_hub_url = ?",
-                )
-                .bind(now + 10)
-                .bind(&e)
-                .bind(&message_id)
-                .bind(hub_url)
-                .execute(&state.db)
-                .await;
+        for hub_url in &delivery_urls {
+            sqlx::query(
+                "INSERT OR IGNORE INTO dm_outbox
+                 (message_id, recipient_hub_url, attempts, next_attempt_at)
+                 VALUES (?, ?, 0, ?)",
+            )
+            .bind(&message_id)
+            .bind(hub_url)
+            .bind(now)
+            .execute(&state.db)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {e}")))?;
+
+            match deliver_federated_dm(&state, hub_url, &envelope).await {
+                Ok(()) => {
+                    let _ = sqlx::query(
+                        "DELETE FROM dm_outbox WHERE message_id = ? AND recipient_hub_url = ?",
+                    )
+                    .bind(&message_id)
+                    .bind(hub_url)
+                    .execute(&state.db)
+                    .await;
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "DM {} to {} failed immediately, leaving in outbox for retry: {e}",
+                        &message_id[..8],
+                        hub_url
+                    );
+                    let _ = sqlx::query(
+                        "UPDATE dm_outbox SET attempts = 1, next_attempt_at = ?, last_error = ?
+                         WHERE message_id = ? AND recipient_hub_url = ?",
+                    )
+                    .bind(now + 10)
+                    .bind(&e)
+                    .bind(&message_id)
+                    .bind(hub_url)
+                    .execute(&state.db)
+                    .await;
+                }
             }
         }
     }
