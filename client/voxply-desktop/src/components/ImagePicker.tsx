@@ -1,9 +1,10 @@
 import { useState } from "react";
 
 /**
- * Drop-zone + button file picker that base64-encodes the chosen image
- * and hands it back as a data URL. Shared between the avatar and hub-icon
- * editors so they look and behave the same. Hard 256 KB cap.
+ * Drop-zone + button file picker. Resizes the chosen image to 128×128 JPEG
+ * (center-crop, quality 0.85) before handing back a data URL. Keeps the
+ * payload small regardless of what the user drags in. Shared between the
+ * avatar and hub-icon editors.
  */
 export function ImagePicker({
   onPick,
@@ -19,20 +20,35 @@ export function ImagePicker({
   const [dragOver, setDragOver] = useState(false);
 
   function handleFile(file: File) {
-    if (file.size > 256 * 1024) {
-      alert("Image too large (max 256 KB)");
-      return;
-    }
     if (!file.type.startsWith("image/")) {
       alert("Pick an image file");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result;
-      if (typeof result === "string") onPick(result);
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Image too large (max 10 MB)");
+      return;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const SIZE = 128;
+      const canvas = document.createElement("canvas");
+      canvas.width = SIZE;
+      canvas.height = SIZE;
+      const ctx = canvas.getContext("2d")!;
+      // Center-crop: scale so the shorter side fills the square
+      const scale = Math.max(SIZE / img.naturalWidth, SIZE / img.naturalHeight);
+      const w = img.naturalWidth * scale;
+      const h = img.naturalHeight * scale;
+      ctx.drawImage(img, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
+      onPick(canvas.toDataURL("image/jpeg", 0.85));
+      URL.revokeObjectURL(objectUrl);
     };
-    reader.readAsDataURL(file);
+    img.onerror = () => {
+      alert("Could not load image — try a different file.");
+      URL.revokeObjectURL(objectUrl);
+    };
+    img.src = objectUrl;
   }
 
   return (
