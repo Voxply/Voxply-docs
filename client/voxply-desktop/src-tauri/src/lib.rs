@@ -239,6 +239,17 @@ struct UserInfo {
     online: bool,
     #[serde(default)]
     group_role: Option<String>,
+    #[serde(default)]
+    is_bot: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct BotInfo {
+    pub public_key: String,
+    pub display_name: String,
+    pub created_by: String,
+    pub created_at: i64,
+    pub token: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -3897,6 +3908,64 @@ async fn decrypt_dm(
     decrypt_dm_inner(&conv_id, &envelope, &identity)
 }
 
+// ---------------------------------------------------------------------------
+// Bot management commands
+// ---------------------------------------------------------------------------
+
+#[tauri::command]
+async fn list_bots(state: State<'_, AppState>) -> Result<Vec<BotInfo>, String> {
+    let (hub_url, token) = active_session(&state)?;
+    let client = state.http_client.clone();
+    client.get(format!("{hub_url}/bots"))
+        .bearer_auth(&token)
+        .send().await.map_err(|e| format!("Request failed: {e}"))?
+        .json().await.map_err(|e| format!("Invalid response: {e}"))
+}
+
+#[tauri::command]
+async fn create_bot(name: String, state: State<'_, AppState>) -> Result<BotInfo, String> {
+    let (hub_url, token) = active_session(&state)?;
+    let client = state.http_client.clone();
+    let resp = client.post(format!("{hub_url}/bots"))
+        .bearer_auth(&token)
+        .json(&serde_json::json!({ "name": name }))
+        .send().await.map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        let msg = resp.text().await.unwrap_or_default();
+        return Err(msg);
+    }
+    resp.json().await.map_err(|e| format!("Invalid response: {e}"))
+}
+
+#[tauri::command]
+async fn delete_bot(public_key: String, state: State<'_, AppState>) -> Result<(), String> {
+    let (hub_url, token) = active_session(&state)?;
+    let client = state.http_client.clone();
+    let resp = client.delete(format!("{hub_url}/bots/{public_key}"))
+        .bearer_auth(&token)
+        .send().await.map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        let msg = resp.text().await.unwrap_or_default();
+        return Err(msg);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn rotate_bot_token(public_key: String, state: State<'_, AppState>) -> Result<String, String> {
+    let (hub_url, token) = active_session(&state)?;
+    let client = state.http_client.clone();
+    let resp = client.post(format!("{hub_url}/bots/{public_key}/rotate-token"))
+        .bearer_auth(&token)
+        .send().await.map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        let msg = resp.text().await.unwrap_or_default();
+        return Err(msg);
+    }
+    let v: serde_json::Value = resp.json().await.map_err(|e| format!("Invalid response: {e}"))?;
+    v["token"].as_str().map(|s| s.to_string()).ok_or("Missing token in response".to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     use tauri::menu::{Menu, MenuItem};
@@ -4130,6 +4199,10 @@ pub fn run() {
             fetch_dh_key,
             encrypt_dm,
             decrypt_dm,
+            list_bots,
+            create_bot,
+            delete_bot,
+            rotate_bot_token,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

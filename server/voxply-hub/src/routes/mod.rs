@@ -1,3 +1,4 @@
+pub mod bots;
 pub mod alliance_models;
 pub mod directory;
 pub mod alliances;

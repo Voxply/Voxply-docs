@@ -609,6 +609,22 @@ pub async fn run(pool: &SqlitePool) -> Result<()> {
     .execute(pool)
     .await?;
 
+    // Bot support
+    let _ = sqlx::query("ALTER TABLE users ADD COLUMN is_bot INTEGER NOT NULL DEFAULT 0")
+        .execute(pool)
+        .await;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS bot_tokens (
+            token      TEXT PRIMARY KEY,
+            public_key TEXT NOT NULL,
+            created_by TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        )",
+    )
+    .execute(pool)
+    .await?;
+
     tracing::info!("Database migrations complete");
     Ok(())
 }

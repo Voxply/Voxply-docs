@@ -24,6 +24,8 @@ pub struct UserInfo {
     /// to this user. Used by the client to group members in the sidebar.
     #[serde(default)]
     pub group_role: Option<String>,
+    #[serde(default)]
+    pub is_bot: bool,
 }
 
 pub async fn list_users(
@@ -36,7 +38,7 @@ pub async fn list_users(
     let rows = if let Some(q) = &params.q {
         let search = format!("%{q}%");
         sqlx::query_as::<_, UserRow>(
-            "SELECT public_key, display_name, avatar FROM users
+            "SELECT public_key, display_name, avatar, is_bot FROM users
              WHERE display_name LIKE ? OR public_key LIKE ?
              ORDER BY display_name, public_key LIMIT 50",
         )
@@ -46,7 +48,7 @@ pub async fn list_users(
         .await
     } else {
         sqlx::query_as::<_, UserRow>(
-            "SELECT public_key, display_name, avatar FROM users ORDER BY display_name, public_key LIMIT 50",
+            "SELECT public_key, display_name, avatar, is_bot FROM users ORDER BY display_name, public_key LIMIT 50",
         )
         .fetch_all(&state.db)
         .await
@@ -72,6 +74,7 @@ pub async fn list_users(
             display_name: r.display_name,
             avatar: r.avatar,
             group_role,
+            is_bot: r.is_bot != 0,
         });
     }
     Ok(Json(result))
@@ -88,7 +91,7 @@ pub async fn channel_members(
     let online = state.online_users.read().await;
 
     let rows = sqlx::query_as::<_, UserRow>(
-        "SELECT u.public_key, u.display_name, u.avatar FROM users u
+        "SELECT u.public_key, u.display_name, u.avatar, u.is_bot FROM users u
          WHERE u.public_key NOT IN (
              SELECT target_public_key FROM channel_bans WHERE channel_id = ?
          )
@@ -107,6 +110,7 @@ pub async fn channel_members(
                 display_name: r.display_name,
                 avatar: r.avatar,
                 group_role: None,
+                is_bot: r.is_bot != 0,
             })
             .collect(),
     ))
@@ -117,4 +121,5 @@ struct UserRow {
     public_key: String,
     display_name: Option<String>,
     avatar: Option<String>,
+    is_bot: i64,
 }

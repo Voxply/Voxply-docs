@@ -80,6 +80,9 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/channels/{channel_id}/messages/{message_id}/reactions/{emoji}",
             axum::routing::delete(routes::messages::remove_reaction),
         )
+        .route("/bots", get(routes::bots::list_bots).post(routes::bots::create_bot))
+        .route("/bots/{public_key}", axum::routing::delete(routes::bots::delete_bot))
+        .route("/bots/{public_key}/rotate-token", post(routes::bots::rotate_token))
         .route("/users", get(routes::users::list_users))
         .route("/channels/{channel_id}/members", get(routes::users::channel_members))
         .route("/voice/populations", get(routes::channels::voice_populations))

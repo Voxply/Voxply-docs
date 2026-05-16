@@ -31,6 +31,7 @@ impl FromRequestParts<Arc<AppState>> for AuthUser {
             .strip_prefix("Bearer ")
             .ok_or((StatusCode::UNAUTHORIZED, "Invalid Authorization format".to_string()))?;
 
+        // Try sessions first
         let row: Option<(String, String)> = sqlx::query_as(
             "SELECT s.public_key, u.approval_status
              FROM sessions s
@@ -42,8 +43,23 @@ impl FromRequestParts<Arc<AppState>> for AuthUser {
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {e}")))?;
 
-        let (public_key, approval_status) = row
-            .ok_or((StatusCode::UNAUTHORIZED, "Invalid or expired token".to_string()))?;
+        let (public_key, approval_status) = if let Some(r) = row {
+            r
+        } else {
+            // Try bot tokens
+            let bot_key: Option<String> = sqlx::query_scalar(
+                "SELECT public_key FROM bot_tokens WHERE token = ?",
+            )
+            .bind(token)
+            .fetch_optional(&state.db)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {e}")))?;
+
+            match bot_key {
+                Some(pk) => (pk, "approved".to_string()),
+                None => return Err((StatusCode::UNAUTHORIZED, "Invalid or expired token".to_string())),
+            }
+        };
 
         // Reject revoked keys. In the current single-key model public_key == subkey_pubkey;
         // this check is forward-compatible with the master+subkey design.
