@@ -62,7 +62,7 @@ pub async fn create_icon(
     Json(req): Json<CreateIconRequest>,
 ) -> Result<(StatusCode, Json<HubIconResponse>), (StatusCode, String)> {
     let perms = permissions::user_permissions(&state.db, &user.public_key).await?;
-    perms.require(permissions::MANAGE_CHANNELS)?;
+    perms.require(permissions::MANAGE_HUB_ICONS)?;
 
     let name = req.name.trim().to_string();
     if name.is_empty() {
@@ -100,7 +100,7 @@ pub async fn rename_icon(
     Json(req): Json<RenameIconRequest>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let perms = permissions::user_permissions(&state.db, &user.public_key).await?;
-    perms.require(permissions::MANAGE_CHANNELS)?;
+    perms.require(permissions::MANAGE_HUB_ICONS)?;
 
     let name = req.name.trim().to_string();
     if name.is_empty() {
@@ -126,7 +126,7 @@ pub async fn delete_icon(
     Path(icon_id): Path<String>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let perms = permissions::user_permissions(&state.db, &user.public_key).await?;
-    perms.require(permissions::MANAGE_CHANNELS)?;
+    perms.require(permissions::MANAGE_HUB_ICONS)?;
 
     let rows = sqlx::query("DELETE FROM hub_icons WHERE id = ?")
         .bind(&icon_id)

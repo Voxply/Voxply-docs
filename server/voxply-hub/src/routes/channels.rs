@@ -191,7 +191,6 @@ pub async fn update_channel(
     Json(req): Json<UpdateChannelRequest>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let perms = permissions::user_permissions(&state.db, &user.public_key).await?;
-    perms.require(permissions::MANAGE_CHANNELS)?;
 
     let exists: Option<String> = sqlx::query_scalar("SELECT id FROM channels WHERE id = ?")
         .bind(&channel_id)
@@ -200,6 +199,16 @@ pub async fn update_channel(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {e}")))?;
     if exists.is_none() {
         return Err((StatusCode::NOT_FOUND, "Channel not found".to_string()));
+    }
+
+    let changing_structure = req.name.is_some() || req.description.is_some() || req.parent_id.is_some();
+    let changing_appearance = req.icon.is_some() || req.color.is_some() || req.custom_icon_svg.is_some();
+
+    if changing_structure {
+        perms.require(permissions::MANAGE_CHANNELS)?;
+    }
+    if changing_appearance {
+        perms.require(permissions::MANAGE_CHANNEL_ICONS)?;
     }
 
     if let Some(parent_option) = &req.parent_id {

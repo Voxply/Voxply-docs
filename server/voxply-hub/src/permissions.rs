@@ -13,6 +13,8 @@ pub const BAN_MEMBERS: &str = "ban_members";
 pub const MUTE_MEMBERS: &str = "mute_members";
 pub const TIMEOUT_MEMBERS: &str = "timeout_members";
 pub const MANAGE_GAMES: &str = "manage_games";
+pub const MANAGE_HUB_ICONS: &str = "manage_hub_icons";
+pub const MANAGE_CHANNEL_ICONS: &str = "manage_channel_icons";
 pub const ADMIN: &str = "admin";
 
 #[derive(sqlx::FromRow)]
