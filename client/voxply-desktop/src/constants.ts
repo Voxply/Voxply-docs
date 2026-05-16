@@ -156,6 +156,8 @@ export const ALL_PERMISSIONS: { id: string; label: string }[] = [
   { id: "mute_members", label: "Mute members" },
   { id: "timeout_members", label: "Timeout members" },
   { id: "manage_games", label: "Install / uninstall games" },
+  { id: "manage_hub_icons", label: "Manage hub icon library (upload / rename / delete)" },
+  { id: "manage_channel_icons", label: "Set icons and colors on channels" },
   { id: "read_messages", label: "Read messages" },
   { id: "send_messages", label: "Send messages" },
 ];
