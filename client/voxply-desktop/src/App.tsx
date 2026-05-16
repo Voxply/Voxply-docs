@@ -35,13 +35,12 @@ import type {
   AllianceInfo,
   AllianceSharedChannel,
   ActiveStream,
-  ScreenShareOpts,
 } from "./types";
 import { ScreenSharePicker } from "./components/ScreenSharePicker";
 import { useVoice } from "./hooks/useVoice";
 import { MAX_ATTACHMENT_BYTES, DEMO_HUB_URL } from "./constants";
 import { formatPubkey, mentionsName, newProfileId } from "./utils/format";
-import { playMentionPing, playVoiceTone } from "./utils/audio";
+import { playMentionPing } from "./utils/audio";
 import { readFileAsB64 } from "./utils/files";
 import { buildChannelTree, flattenTree, descendantIds } from "./utils/channels";
 import { useReconnectBackoff } from "./hooks/useReconnectBackoff";

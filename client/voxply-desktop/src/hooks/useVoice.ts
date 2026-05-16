@@ -1,7 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useState, useEffect, useMemo } from "react";
 import type { Channel, VoiceParticipant, VoiceMuteInfo, ScreenShareOpts } from "../types";
-import type { ScreenShareViewerRef } from "../components/ScreenShareViewer";
 import { useScreenShare } from "./useScreenShare";
 import { useScreenShareViewer } from "./useScreenShareViewer";
 import { playVoiceTone } from "../utils/audio";
