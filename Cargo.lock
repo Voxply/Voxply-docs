@@ -7318,6 +7318,7 @@ dependencies = [
  "aes-gcm",
  "anyhow",
  "bip39",
+ "curve25519-dalek",
  "dirs",
  "ed25519-dalek",
  "hex",
