@@ -8,6 +8,7 @@ import { ThemePicker } from "./ThemePicker";
 import { ProfileTab } from "./ProfileTab";
 import { RestoreIdentitySection } from "./RestoreIdentitySection";
 import { PairingSection } from "./PairingSection";
+import { HomeHubSection } from "./HomeHubSection";
 
 export type SettingsTab =
   | "profile"
@@ -360,6 +361,13 @@ export function SettingsPage(props: SettingsPageProps) {
         {props.tab === "devices" && (
           <section>
             <h1>Devices</h1>
+            <h2>Home Hubs</h2>
+            <p className="muted">
+              These hubs store your device list, DMs, and preferences. DMs are
+              delivered to each hub in order.
+            </p>
+            <HomeHubSection hubs={props.hubs} />
+            <h2>Device Pairing</h2>
             <p className="muted">
               Link this device to your identity on another machine, or allow a
               new device to join using your existing identity.
