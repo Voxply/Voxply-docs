@@ -279,6 +279,7 @@ export function ChannelSidebar({
                         }}
                         onContextMenu={(e) => onChannelContextMenu(e, n.node)}
                         onAddChannel={() => onOpenCreateChannel(n.node.id, false)}
+                        onAddSubcategory={() => onOpenCreateChannel(n.node.id, true)}
                       />
                     ) : (
                       <SortableChannelItem

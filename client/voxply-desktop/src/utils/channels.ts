@@ -53,6 +53,17 @@ export function flattenTree(tree: TreeNode[]): FlatNode[] {
 }
 
 /**
+ * Returns the depth a new item would sit at if placed under parentId.
+ * Depth 0 = root-level (no parent). Uses the flat channels array.
+ */
+export function computeDepth(channels: Channel[], parentId: string | null): number {
+  if (parentId === null) return 0;
+  const parent = channels.find((c) => c.id === parentId);
+  if (!parent) return 0;
+  return 1 + computeDepth(channels, parent.parent_id ?? null);
+}
+
+/**
  * Returns the set of all descendant IDs for a given node id.
  * Used for client-side cycle detection — drops onto these IDs are forbidden.
  */

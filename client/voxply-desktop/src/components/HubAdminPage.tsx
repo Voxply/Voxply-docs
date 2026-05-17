@@ -42,6 +42,8 @@ export interface HubAdminPageProps {
   onRequireApprovalChange: (v: boolean) => void;
   minSecurityLevel: number;
   onMinSecurityLevelChange: (v: number) => void;
+  maxChannelDepth: number;
+  onMaxChannelDepthChange: (v: number) => void;
   onSave: () => void;
   pendingMembers: PendingUser[];
   onApproveMember: (publicKey: string) => void;
@@ -237,6 +239,20 @@ export function HubAdminPage(props: HubAdminPageProps) {
                 <option value={15}>15 — Medium (~1 minute)</option>
                 <option value={20}>20 — High (~15 minutes)</option>
               </select>
+            </div>
+            <div className="settings-section">
+              <label className="settings-label">Max channel nesting depth</label>
+              <p className="muted">
+                Limits how deep categories and channels can nest. 0 = unlimited.
+                If set to 4, categories can nest up to depth 3 and channels up to depth 4.
+              </p>
+              <input
+                type="number"
+                min={0}
+                max={20}
+                value={props.maxChannelDepth}
+                onChange={(e) => props.onMaxChannelDepthChange(Number(e.target.value))}
+              />
             </div>
             <div className="settings-section">
               <button onClick={props.onSave}>Save changes</button>

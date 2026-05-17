@@ -122,6 +122,7 @@ export function SortableCategoryItem({
   onToggleCollapsed,
   onContextMenu,
   onAddChannel,
+  onAddSubcategory,
 }: {
   channel: Channel;
   children?: React.ReactNode;
@@ -131,6 +132,7 @@ export function SortableCategoryItem({
   onToggleCollapsed: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
   onAddChannel: () => void;
+  onAddSubcategory: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: channel.id });
@@ -169,6 +171,13 @@ export function SortableCategoryItem({
         {collapsed && childCount > 0 && (
           <span className="category-count">{childCount}</span>
         )}
+        <button
+          className="btn-icon-small"
+          onClick={(e) => { e.stopPropagation(); onAddSubcategory(); }}
+          title="Add subcategory"
+        >
+          ≡+
+        </button>
         <button
           className="btn-icon-small"
           onClick={(e) => { e.stopPropagation(); onAddChannel(); }}

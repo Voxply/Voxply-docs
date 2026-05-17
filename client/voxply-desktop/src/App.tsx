@@ -42,7 +42,7 @@ import { MAX_ATTACHMENT_BYTES, DEMO_HUB_URL } from "./constants";
 import { formatPubkey, mentionsName, newProfileId } from "./utils/format";
 import { playMentionPing } from "./utils/audio";
 import { readFileAsB64 } from "./utils/files";
-import { buildChannelTree, flattenTree, descendantIds } from "./utils/channels";
+import { buildChannelTree, flattenTree, descendantIds, computeDepth } from "./utils/channels";
 import { useReconnectBackoff } from "./hooks/useReconnectBackoff";
 import { Lightbox } from "./components/Lightbox";
 import { WelcomeRecoveryBlock } from "./components/WelcomeRecoveryBlock";
@@ -688,6 +688,7 @@ function App() {
   // Approval queue + hub-wide flags
   const [requireApproval, setRequireApproval] = useState(false);
   const [minSecurityLevel, setMinSecurityLevel] = useState(0);
+  const [maxChannelDepth, setMaxChannelDepth] = useState(0);
   const [pendingMembers, setPendingMembers] = useState<PendingUser[]>([]);
 
   // Games
@@ -1503,9 +1504,11 @@ function App() {
         require_approval: boolean;
         invite_only: boolean;
         min_security_level: number;
+        max_channel_depth: number;
       }>("get_hub_settings");
       setRequireApproval(settings.require_approval);
       setMinSecurityLevel(settings.min_security_level ?? 0);
+      setMaxChannelDepth(settings.max_channel_depth ?? 0);
     } catch (e) {
       setError(String(e));
     }
@@ -1519,6 +1522,7 @@ function App() {
         icon: adminHubIcon,
         requireApproval: requireApproval,
         minSecurityLevel: minSecurityLevel,
+        maxChannelDepth: maxChannelDepth,
       });
       // Refresh hub list so the new name flows into the hub-icon title
       const refreshed = await invoke<Hub[]>("list_hubs");
@@ -2791,6 +2795,16 @@ function App() {
     const overFlat = allFlat.find((n) => n.node.id === overId);
     if (!activeFlat || !overFlat) return;
 
+    if (maxChannelDepth > 0) {
+      const maxCodeDepth = maxChannelDepth - 1;
+      const parentForDepth = overFlat.node.is_category ? overFlat.node.id : overFlat.parentId;
+      const newDepth = parentForDepth !== null
+        ? computeDepth(channels, parentForDepth) + 1
+        : 0;
+      if (newDepth > maxCodeDepth) return;
+      if (activeFlat.node.is_category && newDepth >= maxCodeDepth) return;
+    }
+
     const newParentId = overFlat.node.is_category ? overFlat.node.id : overFlat.parentId;
     const parentChanged = newParentId !== activeFlat.node.parent_id;
 
@@ -2953,6 +2967,8 @@ function App() {
             onRequireApprovalChange={setRequireApproval}
             minSecurityLevel={minSecurityLevel}
             onMinSecurityLevelChange={setMinSecurityLevel}
+            maxChannelDepth={maxChannelDepth}
+            onMaxChannelDepthChange={setMaxChannelDepth}
             onSave={handleSaveHubBranding}
             pendingMembers={pendingMembers}
             onApproveMember={handleApproveMember}
