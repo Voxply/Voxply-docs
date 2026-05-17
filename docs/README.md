@@ -92,6 +92,8 @@ Reading order is for learning the system end-to-end. This section is for
 - **Channel ban, voice mute, talk power** — [future-features.md](future-features.md)
 - **Identity recovery (device linking, recovery contacts)** — [future-features.md](future-features.md)
 - **Bots & integrations** — [future-features.md](future-features.md)
+- **Nested channels + max depth hub setting** — [future-features.md](future-features.md)
+- **Forum channel type (post-list variant)** — [future-features.md](future-features.md)
 - **Server tags (federated portable badges)** — [future-features.md](future-features.md)
 - **Home hub list (personal-axis state, DM canonicalization)** — [home-hub.md](home-hub.md)
 - **Multi-device pairing (QR, master+subkey)** — [multi-device.md](multi-device.md)

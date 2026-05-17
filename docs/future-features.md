@@ -228,15 +228,15 @@ Remember Voxply channels are **unified text + voice** ([decisions.md](decisions.
 a "channel" in the tree is one room where both chat and voice live.
 
 ```
-GamesCategory
-├── LeagueOfLegendsCategory
-│   ├── AllianceSection
-│   │   ├── raid-planning
-│   │   └── lounge
-│   └── TeamSection
-│       └── strats
-└── DotaCategory
-    └── general
+GamesCategory                      ← depth 1 (category)
+├── LeagueOfLegendsCategory        ← depth 2 (category)
+│   ├── AllianceSection            ← depth 3 (category)
+│   │   ├── raid-planning          ← depth 4 (channel — leaf)
+│   │   └── lounge                 ← depth 4 (channel — leaf)
+│   └── TeamSection                ← depth 3 (category)
+│       └── strats                 ← depth 4 (channel — leaf)
+└── DotaCategory                   ← depth 2 (category)
+    └── general                    ← depth 3 (channel — leaf)
 ```
 
 Each leaf is a channel — chat history and voice in the same place. The
@@ -249,35 +249,56 @@ how deep any community will want to go.
 
 ### Rules
 
-- **No depth cap.** Hubs are sovereign — admins decide their own
-  structure. If they build a 12-level tree, it's their hub.
+- **Configurable depth cap** — hubs are sovereign, but admins can
+  optionally set a `max_channel_depth` hub setting (integer ≥ 1).
+  `0` means unlimited. Default is `0`. The cap is enforced server-side
+  on create and move operations.
 - **Categories are containers.** They hold other categories and/or
   channels. They can't hold messages or voice (`is_category=1` rows).
+- **Categories can't live at max depth.** A category at the deepest
+  allowed level would be an empty container — nowhere to put children.
+  Invariant: a category may only be created/moved to depth ≤
+  `(max_channel_depth − 1)`. Channels (leaves) may go to any depth up
+  to `max_channel_depth`. When `max_channel_depth = 0` (unlimited) this
+  restriction doesn't apply.
 - **Channels are leaves.** Each channel is unified text + voice and can
-  sit at any depth (a top-level channel is fine; nothing requires
-  filling levels).
+  sit at any depth.
 - **Permissions cascade** — a deny on a parent applies to children
   unless the child explicitly overrides. Same model as a file system.
+
+### Hub setting — `max_channel_depth`
+
+Stored in the hub settings table (new row, key `max_channel_depth`,
+default `"0"`). Surfaced in the hub admin panel under a "Structure"
+section. The UI should show a helper like:
+
+> "0 = unlimited. If set to 4, categories can nest up to depth 3 and
+> channels up to depth 4."
+
+Enforcement is server-side so API clients can't bypass it.
 
 ### Data model
 
 Today's `channels` table is already self-referential — it has
 `parent_id TEXT REFERENCES channels(id)` and `is_category INTEGER` —
-the schema **already supports nesting**. What's missing is just the UI
-and any guardrails:
+the schema **already supports nesting**. What's missing is the UI,
+route validation, and the hub setting:
 
 - The drag-drop UI in the desktop client treats categories as one level
   and channels as their children, with no recursion.
 - There's no UI to make a category a child of another category, even
   though the data model accepts it.
+- `max_channel_depth` needs a row in the hub settings table and a field
+  in the admin panel.
 
-So the work is mostly client-side and route validation:
-- Allow drops that nest a category under another category.
+Work breakdown:
+- Allow drag-drop that nests a category under another category.
 - Allow drops that nest a channel under any category at any depth.
-- Reject drops that would create a cycle (a node into its own
-  descendant).
+- Reject drops that would create a cycle (a node into its own descendant).
+- Reject drops / creates that violate `max_channel_depth` or the
+  category-at-max-depth invariant.
 
-No schema migration needed.
+No schema migration needed for channels. One new settings row.
 
 ### Open implementation questions
 
@@ -301,6 +322,69 @@ No schema migration needed.
 - **Channel-as-container** (a channel that holds messages AND has
   sub-channels). This would confuse users. Keep the `is_category`
   distinction sharp: containers vs. leaves.
+
+---
+
+## Forum channel type
+
+**Status**: future design. No design committed yet.
+
+**Goal**: a channel variant where the content is an indexed list of
+*posts* (each with a title) rather than a continuous message stream.
+Users browse posts, open one, and reply inside it. Useful for
+announcements, Q&A boards, patch notes, bug reports — anywhere a
+timeline feed is the wrong shape.
+
+### How it differs from a regular channel
+
+| | Regular channel | Forum channel |
+|---|---|---|
+| Primary content | Continuous message stream | Ordered list of posts |
+| Each entry | Message (no title) | Post with title + body |
+| Replies | Thread hanging off a message | Reply thread inside the post |
+| Voice | Yes (unified text + voice) | No — posts-only, no voice |
+| Search | Full-text on messages | Full-text on post titles + bodies |
+
+Forum channels are leaves in the channel tree (same as regular
+channels) and live at the same depth positions. They carry a new
+`channel_type` discriminant: `"text"` (default today) vs `"forum"`.
+
+### Data model sketch
+
+New `posts` table:
+```
+posts(id, channel_id, author_pubkey, title TEXT, body TEXT,
+      created_at, edited_at, is_pinned)
+```
+
+New `post_replies` table (or reuse `messages` with a `post_id` FK):
+```
+post_replies(id, post_id, author_pubkey, body TEXT,
+             created_at, edited_at, reply_to_id)
+```
+
+The `channels` table gains a `channel_type TEXT DEFAULT 'text'`
+column. No other existing tables change.
+
+### Moderation
+
+Forum posts follow the same moderation model as messages — hub
+moderators can delete posts and replies, channel bans apply to posts
+too. The existing moderation routes extend naturally.
+
+### Federation
+
+Posts and replies federate the same way messages do (alliance shared
+channels). The federation envelope gets a `post` event type alongside
+`message`. Out-of-scope for the first iteration — federated forums
+can be added once the local model is stable.
+
+### Why deferred
+
+Regular channels cover the "live conversation" shape well. Forums
+need a distinct UI (post list view, post detail view, reply thread)
+and new DB tables. Worth doing when communities ask for it, but not
+blocking anything today.
 
 ---
 
