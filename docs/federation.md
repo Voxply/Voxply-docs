@@ -72,6 +72,17 @@ notification when Alice adds him; he has to add her back manually if
 he wants the friendship to be mutual on his side. A federated
 friend-request notification flow is a future addition.
 
+## Alliance push invites
+
+`POST /federation/alliance-invite` is an **unauthenticated** federation
+endpoint — by design. Trust comes from the invite token inside the
+payload, which is a hub-identity signature over the alliance id, the
+same primitive the pull-flow join verifies. A fake push invite at
+worst clutters a target hub's pending list; accepting it triggers the
+normal `POST /alliances/:id/join`, which fails for unsigned/forged
+tokens. Full design in [alliances.md](alliances.md) and rationale in
+[decisions.md](decisions.md).
+
 ## What federation does **not** do
 
 - **No global directory**. There's no DHT or seed-list mechanism in active

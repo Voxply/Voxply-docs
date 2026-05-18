@@ -4,6 +4,94 @@ Why Voxply is shaped the way it is. Each entry: the decision, the
 alternative we considered, and why we chose this. New decisions go at
 the top.
 
+## Alliance push invites: additive to pull, unauthenticated endpoint, hub-local labels
+
+**Decision**: alliance invites now have two coexisting shapes — the
+original **pull** flow (Hub A generates a signed invite token; admin
+pastes it on Hub B and Hub B calls `/alliances/:id/join`) and a new
+**push** flow (Hub A's admin enters Hub B's URL plus an optional
+message and Hub A POSTs the invite directly to Hub B's
+`/federation/alliance-invite` endpoint). Hub B persists the card in
+`pending_alliance_invites` and surfaces it in Settings → Alliance
+invites with Accept / Decline. Accept reuses the existing join path
+with the stored invite token. Full design in
+[`docs/alliances.md`](alliances.md).
+
+**Alternatives considered**:
+
+- **Replace pull with push entirely.** Push requires knowing the
+  target hub's URL up front. Pull still wins when you have a
+  paste-a-link distribution channel (DM, chat outside Voxply, QR) and
+  don't know which hub the receiver runs. Keeping both is additive
+  and the implementation cost is one extra endpoint plus one table.
+- **Authenticated federation endpoint** (hub-to-hub signed POST, same
+  as the DM outbox path). Rejected: the invite token *already* carries
+  the only authority that matters — it is a Hub-A-identity signature
+  of the alliance id, the same primitive the pull flow verifies on
+  join. Wrapping the transport in a second auth layer would not
+  prevent fake pending cards (they cannot be forged into membership
+  either way) and would force every hub considering inviting another
+  to first establish a federation handshake. Open endpoint + signed
+  payload is the correct trust placement.
+- **Single canonical alliance name across hubs.** Rejected on
+  sovereignty grounds: no hub can force a label on another. The push
+  payload carries Hub A's *local* label as a default suggestion, and
+  Hub B may keep or change it on accept. This matches the existing
+  schema (`alliances.name` is per-hub) and the pull flow's symmetry.
+- **WebSocket push of the new pending card** to logged-in admins on
+  Hub B. Rejected for v1: invite cadence is admin-to-admin and rare;
+  a poll on tab mount is plenty. The realtime channel can be layered
+  on later without changing the storage shape.
+- **Omit the optional message.** Rejected: a one-line human note
+  ("hey, this is the WoW raid alliance we talked about") is the
+  cheapest possible improvement to discoverability, and it costs one
+  nullable column.
+
+**Tradeoff**: the unauthenticated federation endpoint accepts spam —
+anyone on the internet can drop a pending card into a hub's queue.
+We accept that because (a) accept is gated by signature verification
+on the actual join, so spam cards cannot create membership, (b) the
+cards are cheap to decline, and (c) hubs that get abused can rate-
+limit or temporarily disable the endpoint without breaking the pull
+flow. The alternative — pre-establishing hub-to-hub auth before any
+invite can be sent — would be strictly worse for first-contact
+between hubs that have never met, which is the exact case push
+invites are built for.
+
+**What changes on the implementation side**:
+
+- *DB*: new `pending_alliance_invites` table (alliance_id,
+  from_hub_pubkey, from_hub_url, alliance_name, message?,
+  invite_token, created_at).
+- *Hub routes* (`server/voxply-hub/src/routes/alliances.rs`):
+  `POST /alliances/:id/push-invite` (admin-only, calls Hub B);
+  `GET /alliances/pending-invites`,
+  `POST /alliances/pending-invites/:id/accept`,
+  `POST /alliances/pending-invites/:id/decline` (admin-only).
+- *Federation* (`server/voxply-hub/src/federation/handlers.rs`):
+  `POST /federation/alliance-invite` — unauthenticated, validates
+  payload shape, inserts the pending row.
+- *Client*: Hub Settings gains an Alliance invites tab (list of
+  cards, accept/decline) and the existing Alliances → Invite tab
+  gains a "Send invite directly" form (URL + optional message).
+  The receiving tab polls `/alliances/pending-invites` on mount;
+  no new WS envelope.
+- *Wire models*: a new federation request type for the invite
+  payload, sharing the `invite_token` shape with the pull flow.
+
+**What's deferred**:
+
+- Realtime notification of new pending invites (WS push) — wait
+  until admin tooling has enough volume to justify it.
+- Rate-limiting / abuse handling on `/federation/alliance-invite`
+  beyond standard request limits — revisit if any hub reports spam.
+- Inviting many hubs at once from a single form — current shape is
+  one URL per send; bulk invites can be a UI affordance later
+  without protocol changes.
+- Surfacing the sender's *hub identity fingerprint* on the card.
+  Today the card shows hub URL + name; a verified-identity badge
+  is a separate piece of work and not load-bearing for v1.
+
 ## Packaging: Tauri bundler + GitHub Actions, not custom scripts
 
 **Decision**: cross-platform packaging is delegated to Tauri 2's
