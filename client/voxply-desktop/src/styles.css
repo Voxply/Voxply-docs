@@ -2368,13 +2368,17 @@ select:focus {
    SETTINGS SECTIONS (in settings page)
    ============================================================ */
 .settings-section {
-  margin-bottom: var(--space-5);
-  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-5);
   border-bottom: 1px solid var(--border);
 }
 
 .settings-section:last-of-type {
   border-bottom: none;
+}
+
+.settings-section p {
+  margin-bottom: var(--space-3);
 }
 
 .settings-label {
@@ -2385,6 +2389,22 @@ select:focus {
   margin-bottom: var(--space-2);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+.voice-devices-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.voice-devices-row select {
+  width: 100%;
+}
+
+.voice-mic-test {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
 }
 
 .settings-row {

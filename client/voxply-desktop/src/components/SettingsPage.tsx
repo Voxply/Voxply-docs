@@ -261,32 +261,32 @@ export function SettingsPage(props: SettingsPageProps) {
           <section>
             <h1>Voice & Video</h1>
             <div className="settings-section">
-              <label className="settings-label">Microphone</label>
-              <select
-                value={props.voiceInputDevice}
-                onChange={(e) => props.onInputDeviceChange(e.target.value)}
-              >
-                <option value="">System default</option>
-                {props.audioInputs.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="settings-section">
-              <label className="settings-label">Speaker</label>
-              <select
-                value={props.voiceOutputDevice}
-                onChange={(e) => props.onOutputDeviceChange(e.target.value)}
-              >
-                <option value="">System default</option>
-                {props.audioOutputs.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
+              <div className="voice-devices-row">
+                <div>
+                  <label className="settings-label">Microphone</label>
+                  <select
+                    value={props.voiceInputDevice}
+                    onChange={(e) => props.onInputDeviceChange(e.target.value)}
+                  >
+                    <option value="">System default</option>
+                    {props.audioInputs.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="settings-label">Speaker</label>
+                  <select
+                    value={props.voiceOutputDevice}
+                    onChange={(e) => props.onOutputDeviceChange(e.target.value)}
+                  >
+                    <option value="">System default</option>
+                    {props.audioOutputs.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
             <div className="settings-section">
               <label className="settings-label">
@@ -302,6 +302,15 @@ export function SettingsPage(props: SettingsPageProps) {
                 threshold={props.vadThreshold}
                 onChange={props.onVadChange}
               />
+              <div className="voice-mic-test">
+                <p className="muted">
+                  Plays your mic back through your speaker. Use headphones to
+                  avoid feedback.
+                </p>
+                <button onClick={props.onToggleMicTest} className="btn-secondary">
+                  {props.micTesting ? "Stop test" : "Start mic test"}
+                </button>
+              </div>
             </div>
             <div className="settings-section">
               <label className="settings-label">Activation mode</label>
@@ -337,20 +346,10 @@ export function SettingsPage(props: SettingsPageProps) {
               )}
             </div>
             <div className="settings-section">
-              <label className="settings-label">Microphone test</label>
+              <label className="settings-label">Notification sound</label>
               <p className="muted">
-                Plays your mic back through your speaker. Use headphones to
-                avoid feedback.
-              </p>
-              <button onClick={props.onToggleMicTest} className="btn-secondary">
-                {props.micTesting ? "Stop test" : "Start mic test"}
-              </button>
-            </div>
-            <div className="settings-section">
-              <label className="settings-label">Mention ping</label>
-              <p className="muted">
-                Plays a short two-tone sound when someone @-mentions you in
-                a non-focused channel. OS notifications are independent.
+                Plays a short sound when you receive a notification — mentions,
+                replies, or activity in channels you follow.
               </p>
               <label className="checkbox-label">
                 <input
@@ -358,7 +357,7 @@ export function SettingsPage(props: SettingsPageProps) {
                   checked={props.mentionPingEnabled}
                   onChange={(e) => props.onMentionPingChange(e.target.checked)}
                 />
-                Play mention ping
+                Play notification sound
               </label>
             </div>
           </section>
