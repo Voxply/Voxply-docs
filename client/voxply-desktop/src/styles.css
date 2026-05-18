@@ -2447,6 +2447,37 @@ select:focus {
   color: var(--text);
 }
 
+.btn-voice-header {
+  border: none;
+  border-radius: var(--r-sm);
+  font-size: var(--text-sm);
+  font-family: var(--font-stack);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-3);
+  white-space: nowrap;
+}
+
+.btn-voice-join {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-voice-join:hover {
+  opacity: 0.85;
+}
+
+.btn-voice-leave {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.btn-voice-leave:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
 .message-attachments {
   display: flex;
   flex-wrap: wrap;

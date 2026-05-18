@@ -3036,6 +3036,9 @@ function App() {
                   reconnectingHubs={reconnectingHubs}
                   memberSidebarHidden={memberSidebarHidden}
                   voiceActiveUsers={voice.voiceActiveUsers}
+                  voiceChannelId={voice.voiceChannelId}
+                  onVoiceJoin={() => voice.handleVoiceJoin()}
+                  onVoiceLeave={voice.handleVoiceLeave}
                   inputText={inputText}
                   typingByKey={typingByKey}
                   dmTypingByKey={dmTypingByKey}

@@ -71,6 +71,9 @@ interface Props {
   reconnectingHubs: Record<string, boolean>;
   memberSidebarHidden: boolean;
   voiceActiveUsers: Set<string>;
+  voiceChannelId: string | null;
+  onVoiceJoin: () => void;
+  onVoiceLeave: () => void;
   inputText: string;
   typingByKey: Record<string, TypingEntry>;
   dmTypingByKey: Record<string, TypingEntry>;
@@ -123,7 +126,7 @@ export function ContentArea({
   users, publicKey, blockedUsers, knownDisplayNames, myDisplayName,
   isAdmin, myRoles, editingMessageId, editingDraft, replyTarget,
   pendingAttachments, stickToBottom, newWhileScrolledUp,
-  hubConnected, reconnectingHubs, memberSidebarHidden, voiceActiveUsers,
+  hubConnected, reconnectingHubs, memberSidebarHidden, voiceActiveUsers, voiceChannelId, onVoiceJoin, onVoiceLeave,
   inputText, typingByKey, dmTypingByKey,
   messagesEndRef, messagesContainerRef, messageInputRef,
   onReconnect, onToggleReaction, onSetReplyTarget,
@@ -294,6 +297,25 @@ export function ContentArea({
                   </p>
                 ) : null}
               </div>
+              {!selectedChannel.is_category && (
+                voiceChannelId === selectedChannel.id ? (
+                  <button
+                    onClick={onVoiceLeave}
+                    className="btn-voice-header btn-voice-leave"
+                    title="Leave voice"
+                  >
+                    🔴 Leave Voice
+                  </button>
+                ) : (
+                  <button
+                    onClick={onVoiceJoin}
+                    className="btn-voice-header btn-voice-join"
+                    title="Join voice in this channel"
+                  >
+                    🎙 Join Voice
+                  </button>
+                )
+              )}
               <button
                 onClick={() => searchOpen ? onCloseSearch() : onSetSearchOpen(true)}
                 className="btn-icon-header"
@@ -359,7 +381,7 @@ export function ContentArea({
                           : "This is the start of the channel — say hello!"}
                       </p>
                       <ul className="channel-empty-tips">
-                        <li><strong>Double-click</strong> any channel in the sidebar to jump into voice.</li>
+                        <li>Click <strong>Join Voice</strong> in the header to start a voice session here — or double-click any channel in the sidebar.</li>
                         <li><strong>Drag a file</strong> into the message area to share it (up to 3 MB).</li>
                         <li>
                           Type <code>@name</code> to mention someone,{" "}
