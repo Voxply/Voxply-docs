@@ -108,6 +108,7 @@ function roleColor(role: RoleInfo): string {
 export function HubAdminPage(props: HubAdminPageProps) {
   const [copiedShare, setCopiedShare] = useState(false);
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
+  const [isCreatingRole, setIsCreatingRole] = useState(false);
 
   const [dirTags, setDirTags] = useState("");
   const [dirLanguage, setDirLanguage] = useState("en");
@@ -379,8 +380,8 @@ export function HubAdminPage(props: HubAdminPageProps) {
                   {sortedRoles.map((role) => (
                     <button
                       key={role.id}
-                      className={`role-list-item${effectiveSelected === role.id ? " active" : ""}`}
-                      onClick={() => setSelectedRoleId(role.id)}
+                      className={`role-list-item${!isCreatingRole && effectiveSelected === role.id ? " active" : ""}`}
+                      onClick={() => { setSelectedRoleId(role.id); setIsCreatingRole(false); }}
                     >
                       <span
                         className="role-list-dot"
@@ -389,9 +390,24 @@ export function HubAdminPage(props: HubAdminPageProps) {
                       <span className="role-list-name">{role.name}</span>
                     </button>
                   ))}
+                  <button
+                    className={`role-list-item role-list-add${isCreatingRole ? " active" : ""}`}
+                    onClick={() => setIsCreatingRole(true)}
+                    title="Create role"
+                  >
+                    <span className="role-list-dot" style={{ background: "var(--border)", fontSize: 14, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>+</span>
+                    <span className="role-list-name">New role</span>
+                  </button>
                 </div>
                 <div className="roles-panel">
-                  {selectedRole && (
+                  {isCreatingRole ? (
+                    <RoleCreator
+                      onCreate={(name, perms, priority, ds) => {
+                        props.onCreateRole(name, perms, priority, ds);
+                        setIsCreatingRole(false);
+                      }}
+                    />
+                  ) : selectedRole ? (
                     <RoleEditor
                       key={selectedRole.id}
                       role={selectedRole}
@@ -401,12 +417,7 @@ export function HubAdminPage(props: HubAdminPageProps) {
                         setSelectedRoleId(null);
                       }}
                     />
-                  )}
-                  <RoleCreator
-                    onCreate={(name, perms, priority, ds) => {
-                      props.onCreateRole(name, perms, priority, ds);
-                    }}
-                  />
+                  ) : null}
                 </div>
               </div>
             </section>

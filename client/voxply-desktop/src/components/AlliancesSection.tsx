@@ -8,6 +8,8 @@ import type {
   Channel,
 } from "../types";
 
+type AllianceTab = "members" | "channels" | "invite";
+
 export function AlliancesSection({
   channels,
   ownHubUrl,
@@ -22,6 +24,7 @@ export function AlliancesSection({
   const [invite, setInvite] = useState<AllianceInvite | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
+  const [tab, setTab] = useState<AllianceTab>("members");
 
   const [newName, setNewName] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -195,184 +198,231 @@ export function AlliancesSection({
         be in multiple alliances.
       </p>
 
-      {error && <div className="error-banner">{error}</div>}
-
-      {alliances.length > 0 && (
-        <div className="settings-section">
-          <label className="settings-label">Active alliance</label>
-          <select
-            value={selectedId ?? ""}
-            onChange={(e) => setSelectedId(e.target.value || null)}
-          >
-            <option value="">— select an alliance —</option>
-            {alliances.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {selectedId && detail && (
-        <div className="alliance-detail">
-          <div className="alliance-detail-header">
-            <h2>{detail.name}</h2>
-            <button className="btn-secondary-small" onClick={handleLeave}>
-              Leave alliance
-            </button>
-          </div>
-
-          <div className="settings-section">
-            <label className="settings-label">Member hubs</label>
-            <ul className="alliance-members">
-              {detail.members.map((m) => (
-                <li key={m.hub_public_key}>
-                  <strong>{m.hub_name}</strong>
-                  <span className="muted"> — {m.hub_url}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="settings-section">
-            <label className="settings-label">Channels you share</label>
-            <p className="muted">
-              Toggle which of your local channels are visible to other members
-              of this alliance.
-            </p>
-            {rootItems.length === 0 ? (
-              <p className="muted">No channels to share yet.</p>
+      <div className="alliances-layout">
+        {/* ── Left: list + create + join ── */}
+        <div className="alliances-list-panel">
+          <div className="alliances-list">
+            {alliances.length === 0 ? (
+              <p className="alliances-empty-hint muted">No alliances yet</p>
             ) : (
-              <div className="alliance-channel-tree">
-                {rootItems.map((item) => {
-                  if (item.is_category) {
-                    const catState = categorySharedState(item.id);
-                    const collapsed = collapsedCats.has(item.id);
-                    const children = getChildren(item.id).filter((c) => !c.is_category);
-                    return (
-                      <div key={item.id} className="act-category">
-                        <div className="act-category-header">
-                          <button
-                            className="act-collapse-btn"
-                            onClick={() => setCollapsedCats((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
-                              return next;
-                            })}
-                          >
-                            {collapsed ? "▸" : "▾"}
-                          </button>
-                          <label className="checkbox-label act-category-label">
-                            <input
-                              type="checkbox"
-                              checked={catState === "all"}
-                              ref={(el) => { if (el) el.indeterminate = catState === "some"; }}
-                              onChange={() => handleToggleCategoryShare(item.id)}
-                            />
-                            <strong>{item.name.toUpperCase()}</strong>
-                          </label>
-                        </div>
-                        {!collapsed && children.length > 0 && (
-                          <div className="act-children">
-                            {children.map((ch) => {
-                              const isShared = sharedChannelIds.has(ch.id);
-                              return (
-                                <label key={ch.id} className="checkbox-label act-channel">
-                                  <input
-                                    type="checkbox"
-                                    checked={isShared}
-                                    onChange={() => handleToggleShare(ch.id, isShared)}
-                                  />
-                                  # {ch.name}
-                                </label>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  } else {
-                    const isShared = sharedChannelIds.has(item.id);
-                    return (
-                      <label key={item.id} className="checkbox-label act-channel act-toplevel">
-                        <input
-                          type="checkbox"
-                          checked={isShared}
-                          onChange={() => handleToggleShare(item.id, isShared)}
-                        />
-                        # {item.name}
-                      </label>
-                    );
-                  }
-                })}
-              </div>
+              alliances.map((a) => (
+                <button
+                  key={a.id}
+                  className={`alliance-list-item${selectedId === a.id ? " active" : ""}`}
+                  onClick={() => setSelectedId(a.id)}
+                >
+                  {a.name}
+                </button>
+              ))
             )}
           </div>
 
-          <div className="settings-section">
-            <label className="settings-label">Invite another hub</label>
-            <p className="muted">
-              Generate a share code and send it to the other hub's admin.
-            </p>
-            <button className="btn-secondary" onClick={handleGenerateInvite}>
-              {invite ? "Regenerate share code" : "Generate share code"}
-            </button>
-            {invite && invite.alliance_id === selectedId && (() => {
-              const shareCode = btoa(JSON.stringify({
-                u: ownHubUrl,
-                a: invite.alliance_id,
-                t: invite.token,
-              }));
-              return (
-                <div className="alliance-share-code-block">
-                  <p className="muted">Share this code with the other hub's admin:</p>
-                  <div className="alliance-share-code-row">
-                    <code className="alliance-share-code">{shareCode}</code>
-                    <button
-                      className="btn-secondary"
-                      onClick={() => navigator.clipboard.writeText(shareCode).catch(() => {})}
-                      title="Copy to clipboard"
-                    >
-                      Copy
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
+          <div className="alliances-mini-form">
+            <label className="settings-label">New alliance</label>
+            <div className="alliances-mini-row">
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); }}
+                placeholder="Alliance name"
+              />
+              <button
+                onClick={handleCreate}
+                disabled={!newName.trim()}
+                title="Create"
+                className="btn-icon-small"
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <div className="alliances-mini-form">
+            <label className="settings-label">Join alliance</label>
+            <div className="alliances-mini-row">
+              <input
+                type="text"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleJoin(); }}
+                placeholder="Paste share code…"
+              />
+              <button
+                onClick={handleJoin}
+                disabled={!joinCode.trim()}
+                title="Join"
+                className="btn-icon-small"
+              >
+                →
+              </button>
+            </div>
           </div>
         </div>
-      )}
 
-      <div className="settings-section">
-        <label className="settings-label">Create a new alliance</label>
-        <div className="settings-row">
-          <input
-            type="text"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Alliance name"
-          />
-          <button onClick={handleCreate} disabled={!newName.trim()}>
-            Create
-          </button>
-        </div>
-      </div>
+        {/* ── Right: detail panel ── */}
+        <div className="alliances-detail-panel">
+          {error && (
+            <div className="error-banner alliances-error">
+              {error}
+              <button className="btn-icon-small" onClick={() => setError(null)}>×</button>
+            </div>
+          )}
 
-      <div className="settings-section">
-        <label className="settings-label">Join an alliance</label>
-        <p className="muted">Paste the share code you received from the other hub's admin.</p>
-        <div className="alliance-join-form">
-          <input
-            type="text"
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value)}
-            placeholder="Paste share code here…"
-          />
-          <button
-            onClick={handleJoin}
-            disabled={!joinCode.trim()}
-          >
-            Join
-          </button>
+          {selectedId && detail ? (
+            <>
+              <div className="alliances-detail-header">
+                <h2 className="alliances-detail-name">{detail.name}</h2>
+                <button className="btn-secondary-small" onClick={handleLeave}>
+                  Leave
+                </button>
+              </div>
+
+              <div className="alliances-tab-bar">
+                {(["members", "channels", "invite"] as AllianceTab[]).map((t) => (
+                  <button
+                    key={t}
+                    className={`alliances-tab${tab === t ? " active" : ""}`}
+                    onClick={() => setTab(t)}
+                  >
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </button>
+                ))}
+              </div>
+
+              <div className="alliances-tab-content">
+                {tab === "members" && (
+                  <ul className="alliance-members">
+                    {detail.members.map((m) => (
+                      <li key={m.hub_public_key}>
+                        <strong>{m.hub_name}</strong>
+                        <span className="muted"> — {m.hub_url}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {tab === "channels" && (
+                  <>
+                    <p className="muted" style={{ marginBottom: "var(--space-3)" }}>
+                      Toggle which of your local channels are visible to other
+                      members of this alliance.
+                    </p>
+                    {rootItems.length === 0 ? (
+                      <p className="muted">No channels to share yet.</p>
+                    ) : (
+                      <div className="alliance-channel-tree">
+                        {rootItems.map((item) => {
+                          if (item.is_category) {
+                            const catState = categorySharedState(item.id);
+                            const collapsed = collapsedCats.has(item.id);
+                            const children = getChildren(item.id).filter((c) => !c.is_category);
+                            return (
+                              <div key={item.id} className="act-category">
+                                <div className="act-category-header">
+                                  <button
+                                    className="act-collapse-btn"
+                                    onClick={() => setCollapsedCats((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+                                      return next;
+                                    })}
+                                  >
+                                    {collapsed ? "▸" : "▾"}
+                                  </button>
+                                  <label className="checkbox-label act-category-label">
+                                    <input
+                                      type="checkbox"
+                                      checked={catState === "all"}
+                                      ref={(el) => { if (el) el.indeterminate = catState === "some"; }}
+                                      onChange={() => handleToggleCategoryShare(item.id)}
+                                    />
+                                    <strong>{item.name.toUpperCase()}</strong>
+                                  </label>
+                                </div>
+                                {!collapsed && children.length > 0 && (
+                                  <div className="act-children">
+                                    {children.map((ch) => {
+                                      const isShared = sharedChannelIds.has(ch.id);
+                                      return (
+                                        <label key={ch.id} className="checkbox-label act-channel">
+                                          <input
+                                            type="checkbox"
+                                            checked={isShared}
+                                            onChange={() => handleToggleShare(ch.id, isShared)}
+                                          />
+                                          # {ch.name}
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          } else {
+                            const isShared = sharedChannelIds.has(item.id);
+                            return (
+                              <label key={item.id} className="checkbox-label act-channel act-toplevel">
+                                <input
+                                  type="checkbox"
+                                  checked={isShared}
+                                  onChange={() => handleToggleShare(item.id, isShared)}
+                                />
+                                # {item.name}
+                              </label>
+                            );
+                          }
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {tab === "invite" && (
+                  <>
+                    <p className="muted" style={{ marginBottom: "var(--space-3)" }}>
+                      Generate a share code and send it to the other hub's admin.
+                      They paste it in the Join box on the left.
+                    </p>
+                    <button className="btn-secondary" onClick={handleGenerateInvite}>
+                      {invite && invite.alliance_id === selectedId
+                        ? "Regenerate share code"
+                        : "Generate share code"}
+                    </button>
+                    {invite && invite.alliance_id === selectedId && (() => {
+                      const shareCode = btoa(JSON.stringify({
+                        u: ownHubUrl,
+                        a: invite.alliance_id,
+                        t: invite.token,
+                      }));
+                      return (
+                        <div className="alliance-share-code-block">
+                          <p className="muted">Share this code with the other hub's admin:</p>
+                          <div className="alliance-share-code-row">
+                            <code className="alliance-share-code">{shareCode}</code>
+                            <button
+                              className="btn-secondary"
+                              onClick={() => navigator.clipboard.writeText(shareCode).catch(() => {})}
+                              title="Copy to clipboard"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="alliances-no-selection">
+              <p className="muted">
+                Select an alliance from the list to see its members, manage
+                shared channels, and invite other hubs.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </section>
