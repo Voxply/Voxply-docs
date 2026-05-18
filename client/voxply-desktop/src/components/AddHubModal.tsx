@@ -10,22 +10,19 @@ interface Props {
   hubUrl: string;
   onHubUrlChange: (v: string) => void;
   hubPreview: HubPreview;
-  inviteCode: string;
-  onInviteCodeChange: (v: string) => void;
   loading: boolean;
   error: string | null;
   onAdd: () => void;
   onClose: () => void;
 }
 
-export function AddHubModal({ hubUrl, onHubUrlChange, hubPreview, inviteCode, onInviteCodeChange, loading, error, onAdd, onClose }: Props) {
+export function AddHubModal({ hubUrl, onHubUrlChange, hubPreview, loading, error, onAdd, onClose }: Props) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h3>Add Hub</h3>
         <p className="muted" style={{ marginBottom: "var(--space-3)" }}>
-          Paste a hub address, a <code>voxply://</code> link, or just type
-          a hostname like <code>hub.example.com</code>.
+          Paste a hub address or a <code>voxply://</code> invite link.
         </p>
         <input
           type="text"
@@ -60,7 +57,7 @@ export function AddHubModal({ hubUrl, onHubUrlChange, hubPreview, inviteCode, on
               )}
               {hubPreview.invite_only && (
                 <p className="muted hub-preview-warn">
-                  🔒 Invite-only — you'll need an invite code to join
+                  🔒 Invite-only — paste the full invite link to join
                 </p>
               )}
               {(hubPreview.min_security_level ?? 0) > 0 && (
@@ -76,24 +73,6 @@ export function AddHubModal({ hubUrl, onHubUrlChange, hubPreview, inviteCode, on
             </div>
           </div>
         )}
-        <div className="settings-section" style={{ marginTop: "var(--space-3)" }}>
-          <label className="settings-label">Invite code (optional)</label>
-          <input
-            type="text"
-            value={inviteCode}
-            onChange={(e) => onInviteCodeChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onAdd();
-              if (e.key === "Escape") onClose();
-            }}
-            placeholder="Leave blank for open hubs"
-          />
-          {inviteCode && (
-            <p className="muted" style={{ marginTop: "var(--space-1)" }}>
-              Pre-filled from link
-            </p>
-          )}
-        </div>
         <div className="modal-actions">
           <button onClick={onClose} className="btn-secondary">Cancel</button>
           <button onClick={onAdd} disabled={loading}>

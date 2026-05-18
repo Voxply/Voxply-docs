@@ -3079,8 +3079,6 @@ function App() {
             hubUrl={hubUrl}
             onHubUrlChange={handleHubUrlChange}
             hubPreview={hubPreview}
-            inviteCode={inviteCode}
-            onInviteCodeChange={setInviteCode}
             loading={loading}
             error={error}
             onAdd={handleAddHub}
