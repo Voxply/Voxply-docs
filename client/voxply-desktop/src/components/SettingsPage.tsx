@@ -181,48 +181,66 @@ export function SettingsPage(props: SettingsPageProps) {
               <p className="muted">
                 Let people see which hubs you're on. Visible to anyone who views your profile.
               </p>
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={publicProfileEnabled}
-                  onChange={(e) => setPublicProfileEnabled(e.target.checked)}
-                />
-                Make my hub list public
-              </label>
-              {publicProfileEnabled && (
-                <div style={{ marginTop: "8px" }}>
-                  {props.hubs.map((h) => (
-                    <div key={h.hub_id} className="settings-row">
-                      <label className="checkbox-label">
-                        <input
-                          type="checkbox"
-                          checked={publicHubIds.has(h.hub_id)}
-                          onChange={(e) => {
-                            setPublicHubIds((prev) => {
-                              const next = new Set(prev);
-                              if (e.target.checked) next.add(h.hub_id);
-                              else next.delete(h.hub_id);
-                              return next;
-                            });
-                          }}
-                        />
-                        {h.hub_name}
-                      </label>
+              {props.hubs.length === 0 ? (
+                <p className="muted" style={{ fontSize: "var(--text-sm)" }}>
+                  Join a hub first to configure your public profile.
+                </p>
+              ) : (
+                <>
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={publicProfileEnabled}
+                      onChange={(e) => setPublicProfileEnabled(e.target.checked)}
+                    />
+                    Make my hub list public
+                  </label>
+                  {publicProfileEnabled && (
+                    <div style={{ marginTop: "8px" }}>
+                      {props.hubs.map((h) => (
+                        <div key={h.hub_id} className="settings-row">
+                          <label className="checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={publicHubIds.has(h.hub_id)}
+                              onChange={(e) => {
+                                setPublicHubIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (e.target.checked) next.add(h.hub_id);
+                                  else next.delete(h.hub_id);
+                                  return next;
+                                });
+                              }}
+                            />
+                            {h.hub_name}
+                          </label>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  )}
+                  <div className="settings-row" style={{ marginTop: "8px" }}>
+                    <button
+                      className="btn-secondary"
+                      onClick={handleSavePublicProfile}
+                      disabled={!props.hasActiveHub}
+                      title={!props.hasActiveHub ? "Switch to a hub to publish your profile" : undefined}
+                    >
+                      Save
+                    </button>
+                    {!props.hasActiveHub && (
+                      <span className="muted" style={{ fontSize: "var(--text-xs)" }}>
+                        Select an active hub to publish
+                      </span>
+                    )}
+                    {props.hasActiveHub && saveStatus === "saved" && (
+                      <span className="muted">Saved</span>
+                    )}
+                    {props.hasActiveHub && saveStatus !== "idle" && saveStatus !== "saved" && (
+                      <span style={{ color: "var(--color-error, red)" }}>{saveStatus}</span>
+                    )}
+                  </div>
+                </>
               )}
-              <div className="settings-row" style={{ marginTop: "8px" }}>
-                <button className="btn-secondary" onClick={handleSavePublicProfile}>
-                  Save
-                </button>
-                {saveStatus === "saved" && (
-                  <span className="muted">Saved</span>
-                )}
-                {saveStatus !== "idle" && saveStatus !== "saved" && (
-                  <span style={{ color: "var(--color-error, red)" }}>{saveStatus}</span>
-                )}
-              </div>
             </div>
           </section>
         )}
