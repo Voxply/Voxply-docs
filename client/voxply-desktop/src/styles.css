@@ -1435,19 +1435,78 @@ select,
    USER FOOTER
    ============================================================ */
 .user-info {
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
+  margin-top: auto;
   border-top: 1px solid var(--border);
-}
-
-.user-footer {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: var(--space-1);
-  padding: var(--space-1) 0;
 }
 
+/* ── Identity block ── */
+.user-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+}
+
+.user-identity-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.user-identity-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-identity-name {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Actions bar ── */
+.user-actions {
+  display: flex;
+  align-items: center;
+  padding: var(--space-2);
+  border-top: 1px solid var(--border);
+  gap: var(--space-1);
+}
+
+.voice-status-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+}
+
+.voice-status-inline .voice-status-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-actions-icons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+/* legacy — kept so nothing breaks if referenced elsewhere */
 .user-footer-name {
   flex: none;
   width: 100%;

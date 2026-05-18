@@ -410,32 +410,40 @@ export function ChannelSidebar({
 
       {/* User footer */}
       <div className="user-info">
-        {voiceChannelId && (
-          <div className="voice-status">
-            <span className="status-dot online" />
-            <span className="voice-status-label">In voice: #{voiceChannelName}</span>
-            {activePing !== undefined && (
-              <span
-                className={`voice-ping ${
-                  activePing === null
-                    ? "offline"
-                    : activePing < 150
-                    ? "good"
-                    : activePing < 400
-                    ? "okay"
-                    : "bad"
-                }`}
-              >
-                {activePing === null ? "offline" : `${activePing}ms`}
-              </span>
-            )}
+        {/* Identity block — avatar placeholder + nickname */}
+        <div className="user-identity">
+          <div className="user-identity-avatar" />
+          <div className="user-identity-details">
+            <span className="user-identity-name" title={publicKey ?? undefined}>
+              {myDisplayName || publicKey?.slice(0, 12) || "You"}
+            </span>
           </div>
-        )}
-        <div className="user-footer">
-          <span className="user-footer-name" title={publicKey ?? undefined}>
-            {myDisplayName || publicKey?.slice(0, 12) || "You"}
-          </span>
-          <div className="user-footer-actions">
+        </div>
+
+        {/* Actions bar — right-aligned, visually separated */}
+        <div className="user-actions">
+          {voiceChannelId && (
+            <div className="voice-status-inline">
+              <span className="status-dot online" />
+              <span className="voice-status-label">#{voiceChannelName}</span>
+              {activePing !== undefined && (
+                <span
+                  className={`voice-ping ${
+                    activePing === null
+                      ? "offline"
+                      : activePing < 150
+                      ? "good"
+                      : activePing < 400
+                      ? "okay"
+                      : "bad"
+                  }`}
+                >
+                  {activePing === null ? "offline" : `${activePing}ms`}
+                </span>
+              )}
+            </div>
+          )}
+          <div className="user-actions-icons">
             {voiceChannelId && (
               <>
                 <button
