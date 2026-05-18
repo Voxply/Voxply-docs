@@ -638,27 +638,54 @@ async fn do_join_alliance(
         .federation_client
         .authenticate(inviter_url, &state.hub_identity)
         .await
-        .map_err(|e| (StatusCode::BAD_GATEWAY, format!("Auth to inviter failed: {e}")))?;
+        .map_err(|e| {
+            tracing::warn!("Alliance join: could not authenticate with inviter {inviter_url}: {e}");
+            (
+                StatusCode::BAD_GATEWAY,
+                "Could not reach the inviting hub. It may be offline or its URL has changed."
+                    .to_string(),
+            )
+        })?;
 
     let join_resp = state
         .federation_client
         .post_alliance_join(inviter_url, &token, alliance_id, invite_token, own_hub_url)
         .await
-        .map_err(|e| (StatusCode::BAD_GATEWAY, format!("Join request failed: {e}")))?;
+        .map_err(|e| {
+            tracing::warn!("Alliance join: join request to {inviter_url} failed: {e}");
+            (
+                StatusCode::BAD_GATEWAY,
+                "Could not reach the inviting hub. It may be offline or its URL has changed."
+                    .to_string(),
+            )
+        })?;
     if !join_resp.status().is_success() {
         let status = join_resp.status();
         let body = join_resp.text().await.unwrap_or_default();
-        return Err((
-            StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY),
-            format!("Inviter rejected join: {body}"),
-        ));
+        tracing::warn!("Alliance join: inviter {inviter_url} rejected join (HTTP {status}): {body}");
+        let msg = if status == StatusCode::FORBIDDEN || status == StatusCode::UNAUTHORIZED {
+            "The invite has expired or has already been used.".to_string()
+        } else if status == StatusCode::CONFLICT {
+            "This hub is already a member of the alliance.".to_string()
+        } else {
+            "The inviting hub declined the join request. The invite may be invalid or expired."
+                .to_string()
+        };
+        return Err((StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY), msg));
     }
 
     let detail = state
         .federation_client
         .get_alliance_detail(inviter_url, &token, alliance_id)
         .await
-        .map_err(|e| (StatusCode::BAD_GATEWAY, format!("Detail fetch failed: {e}")))?;
+        .map_err(|e| {
+            tracing::warn!("Alliance join: could not fetch detail from {inviter_url}: {e}");
+            (
+                StatusCode::BAD_GATEWAY,
+                "Joined the alliance but could not load its details. Try refreshing the page."
+                    .to_string(),
+            )
+        })?;
 
     // Mirror locally
     let now = crate::auth::handlers::unix_timestamp();
