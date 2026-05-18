@@ -303,13 +303,12 @@ export function SettingsPage(props: SettingsPageProps) {
                 onChange={props.onVadChange}
               />
               <div className="voice-mic-test">
-                <p className="muted">
-                  Plays your mic back through your speaker. Use headphones to
-                  avoid feedback.
-                </p>
                 <button onClick={props.onToggleMicTest} className="btn-secondary">
                   {props.micTesting ? "Stop test" : "Start mic test"}
                 </button>
+                <span className="muted voice-mic-test-hint">
+                  Plays your mic back through your speaker. Use headphones to avoid feedback.
+                </span>
               </div>
             </div>
             <div className="settings-section">

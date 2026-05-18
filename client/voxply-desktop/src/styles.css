@@ -2402,9 +2402,15 @@ select:focus {
 }
 
 .voice-mic-test {
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.voice-mic-test-hint {
+  font-size: var(--text-xs);
+  line-height: var(--leading-relaxed);
 }
 
 .settings-row {
