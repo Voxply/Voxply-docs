@@ -97,8 +97,17 @@ function hubToVoxplyUrl(hubUrl: string): string {
   }
 }
 
+function roleColor(role: RoleInfo): string {
+  if (role.id === "builtin-owner") return "#f5a623";
+  if (role.id === "builtin-everyone") return "var(--text-faint)";
+  let h = 0;
+  for (let i = 0; i < role.id.length; i++) h = (h * 31 + role.id.charCodeAt(i)) & 0x7fffffff;
+  return `hsl(${h % 360}, 60%, 55%)`;
+}
+
 export function HubAdminPage(props: HubAdminPageProps) {
   const [copiedShare, setCopiedShare] = useState(false);
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
 
   const [dirTags, setDirTags] = useState("");
   const [dirLanguage, setDirLanguage] = useState("en");
@@ -352,27 +361,57 @@ export function HubAdminPage(props: HubAdminPageProps) {
             </div>
           </section>
         )}
-        {props.tab === "roles" && (
-          <section>
-            <h1>Roles</h1>
-            <p className="muted">
-              Built-in roles (@everyone, Owner) can't be renamed or deleted but
-              @everyone permissions can be tuned.
-            </p>
-            {props.roles
-              .slice()
-              .sort((a, b) => b.priority - a.priority)
-              .map((role) => (
-                <RoleEditor
-                  key={role.id}
-                  role={role}
-                  onUpdate={(updates) => props.onUpdateRole(role.id, updates)}
-                  onDelete={() => props.onDeleteRole(role.id)}
-                />
-              ))}
-            <RoleCreator onCreate={props.onCreateRole} />
-          </section>
-        )}
+        {props.tab === "roles" && (() => {
+          const sortedRoles = props.roles.slice().sort((a, b) => b.priority - a.priority);
+          const effectiveSelected = selectedRoleId && sortedRoles.find((r) => r.id === selectedRoleId)
+            ? selectedRoleId
+            : sortedRoles[0]?.id ?? null;
+          const selectedRole = sortedRoles.find((r) => r.id === effectiveSelected) ?? null;
+          return (
+            <section>
+              <h1>Roles</h1>
+              <p className="muted">
+                Built-in roles (@everyone, Owner) can't be renamed or deleted
+                but @everyone permissions can be tuned.
+              </p>
+              <div className="roles-layout">
+                <div className="roles-list">
+                  {sortedRoles.map((role) => (
+                    <button
+                      key={role.id}
+                      className={`role-list-item${effectiveSelected === role.id ? " active" : ""}`}
+                      onClick={() => setSelectedRoleId(role.id)}
+                    >
+                      <span
+                        className="role-list-dot"
+                        style={{ background: roleColor(role) }}
+                      />
+                      <span className="role-list-name">{role.name}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="roles-panel">
+                  {selectedRole && (
+                    <RoleEditor
+                      key={selectedRole.id}
+                      role={selectedRole}
+                      onUpdate={(updates) => props.onUpdateRole(selectedRole.id, updates)}
+                      onDelete={() => {
+                        props.onDeleteRole(selectedRole.id);
+                        setSelectedRoleId(null);
+                      }}
+                    />
+                  )}
+                  <RoleCreator
+                    onCreate={(name, perms, priority, ds) => {
+                      props.onCreateRole(name, perms, priority, ds);
+                    }}
+                  />
+                </div>
+              </div>
+            </section>
+          );
+        })()}
         {props.tab === "members" && (
           <section>
             {props.pendingMembers.length > 0 && (

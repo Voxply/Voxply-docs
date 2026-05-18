@@ -1059,8 +1059,208 @@ select,
 }
 
 /* ============================================================
+   PROFILE TAB
+   ============================================================ */
+.profile-select-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.profile-select-row select {
+  flex: 1;
+}
+
+.profile-card-editor {
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--bg-elevated);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  margin-bottom: var(--space-4);
+}
+
+.profile-card-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated));
+}
+
+.profile-card-preview-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-card-preview-name {
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-md);
+  color: var(--text);
+}
+
+.profile-card-preview-label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.profile-default-badge {
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  color: var(--accent-text);
+  background: var(--accent);
+  border-radius: 999px;
+  padding: 1px 7px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.profile-editor {
+  padding: var(--space-4);
+  border: none;
+  background: transparent;
+  margin: 0;
+}
+
+.profile-editor-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.profile-editor-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-editor-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
+.profile-hub-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.profile-hub-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-elevated);
+}
+
+.profile-hub-row.active-hub {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-elevated));
+}
+
+.profile-hub-name {
+  font-size: var(--text-sm);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.profile-hub-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.profile-hub-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.profile-hub-right select {
+  font-size: var(--text-sm);
+}
+
+/* ============================================================
    ROLES (admin)
    ============================================================ */
+.roles-layout {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.roles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--space-2);
+}
+
+.role-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-3);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  border: none;
+  box-shadow: none;
+}
+
+.role-list-item:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--text);
+}
+
+.role-list-item.active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+}
+
+.role-list-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.role-list-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roles-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
 .role-editor {
   background: var(--bg-elevated);
   padding: var(--space-4);

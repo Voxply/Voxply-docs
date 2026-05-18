@@ -128,6 +128,7 @@ export function SettingsPage(props: SettingsPageProps) {
             hasActiveHub={props.hasActiveHub}
             profiles={props.profiles}
             defaultProfileId={props.defaultProfileId}
+            hubs={props.hubs}
             onCreateProfile={props.onCreateProfile}
             onUpdateProfile={props.onUpdateProfile}
             onDeleteProfile={props.onDeleteProfile}
