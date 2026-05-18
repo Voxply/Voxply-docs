@@ -41,6 +41,37 @@ export function PhoneOffIcon() {
   );
 }
 
+// --- Ping / signal-strength icon ---
+// Three vertical bars of increasing height. Color driven by the `ping-*` CSS class.
+// null ping = disconnected (all bars gray).
+export function PingIcon({ ping }: { ping: number | null }) {
+  const quality =
+    ping === null ? "offline" : ping < 150 ? "good" : ping < 400 ? "okay" : "bad";
+  const label =
+    ping === null ? "offline" : `${ping}ms`;
+  return (
+    <svg
+      viewBox="0 0 12 10"
+      width="14"
+      height="12"
+      aria-label={`Ping: ${label}`}
+      className={`ping-icon ping-${quality}`}
+      style={{ display: "inline-block", verticalAlign: "middle", flexShrink: 0 }}
+    >
+      <title>{label}</title>
+      {/* bar 1 — shortest */}
+      <rect x="0" y="7" width="3" height="3" rx="0.5"
+        opacity={quality !== "offline" ? 1 : 0.25} />
+      {/* bar 2 — medium */}
+      <rect x="4.5" y="4" width="3" height="6" rx="0.5"
+        opacity={quality === "good" || quality === "okay" ? 1 : 0.25} />
+      {/* bar 3 — tallest */}
+      <rect x="9" y="0" width="3" height="10" rx="0.5"
+        opacity={quality === "good" ? 1 : 0.25} />
+    </svg>
+  );
+}
+
 // --- Channel icon set (predefined named icons) ---
 
 interface ChannelIconDef {

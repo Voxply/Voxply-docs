@@ -1792,6 +1792,13 @@ select,
 .voice-ping.bad     { color: var(--danger); }
 .voice-ping.offline { color: var(--text-faint); }
 
+/* Signal-strength ping icon */
+.ping-icon { fill: currentColor; }
+.ping-good    { color: var(--success); }
+.ping-okay    { color: var(--warning); }
+.ping-bad     { color: var(--danger); }
+.ping-offline { color: var(--text-faint); }
+
 /* ============================================================
    MODALS
    ============================================================ */

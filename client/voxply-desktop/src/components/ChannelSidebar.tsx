@@ -21,7 +21,7 @@ import type {
 } from "../types";
 import type { TreeNode, FlatNode } from "../utils/channels";
 import { colorForKey } from "../utils/format";
-import { PhoneIcon, PhoneOffIcon, ChannelIcon } from "./Icons";
+import { PhoneIcon, PhoneOffIcon, ChannelIcon, PingIcon } from "./Icons";
 import { SortableCategoryItem, SortableChannelItem } from "./SortableItems";
 
 const CHANNEL_INDENT_PX = 16;
@@ -410,36 +410,14 @@ export function ChannelSidebar({
 
       {/* User footer */}
       <div className="user-info">
-        {/* Identity block — avatar placeholder + nickname */}
-        <div className="user-identity">
-          <div className="user-identity-avatar" />
-          <div className="user-identity-details">
-            <span className="user-identity-name" title={publicKey ?? undefined}>
-              {myDisplayName || publicKey?.slice(0, 12) || "You"}
-            </span>
-          </div>
-        </div>
-
-        {/* Actions bar — right-aligned, visually separated */}
+        {/* Actions bar — top, right-aligned */}
         <div className="user-actions">
           {voiceChannelId && (
             <div className="voice-status-inline">
               <span className="status-dot online" />
               <span className="voice-status-label">#{voiceChannelName}</span>
               {activePing !== undefined && (
-                <span
-                  className={`voice-ping ${
-                    activePing === null
-                      ? "offline"
-                      : activePing < 150
-                      ? "good"
-                      : activePing < 400
-                      ? "okay"
-                      : "bad"
-                  }`}
-                >
-                  {activePing === null ? "offline" : `${activePing}ms`}
-                </span>
+                <PingIcon ping={activePing} />
               )}
             </div>
           )}
@@ -496,6 +474,16 @@ export function ChannelSidebar({
             <button onClick={onOpenSettings} className="btn-icon-gear" title="Settings">
               ⚙
             </button>
+          </div>
+        </div>
+
+        {/* Identity block — bottom, avatar + nickname */}
+        <div className="user-identity">
+          <div className="user-identity-avatar" />
+          <div className="user-identity-details">
+            <span className="user-identity-name" title={publicKey ?? undefined}>
+              {myDisplayName || publicKey?.slice(0, 12) || "You"}
+            </span>
           </div>
         </div>
       </div>
