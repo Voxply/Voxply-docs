@@ -44,7 +44,6 @@ import { readFileAsB64 } from "./utils/files";
 import { buildChannelTree, flattenTree, descendantIds, computeDepth } from "./utils/channels";
 import { useReconnectBackoff } from "./hooks/useReconnectBackoff";
 import { Lightbox } from "./components/Lightbox";
-import { WelcomeRecoveryBlock } from "./components/WelcomeRecoveryBlock";
 import { ChannelPalette } from "./components/ChannelPalette";
 import { ChannelBansModal } from "./components/ChannelBansModal";
 import {
@@ -2867,8 +2866,6 @@ function App() {
                   Decentralized voice chat where you bring your identity
                   with you. No accounts, no central server.
                 </p>
-
-                <WelcomeRecoveryBlock />
 
                 <p className="welcome-section-heading">What Voxply is</p>
                 <ul className="welcome-points">
