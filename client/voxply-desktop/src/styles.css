@@ -1413,25 +1413,47 @@ select,
   font-weight: var(--weight-semibold);
 }
 
-.alliances-mini-form {
-  padding-top: var(--space-3);
+.alliance-list-add {
+  width: 100%;
+  padding: 6px var(--space-3);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-faint);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+  border: none;
+  box-shadow: none;
   border-top: 1px solid var(--border);
+  margin-top: var(--space-1);
+  padding-top: var(--space-2);
+}
+
+.alliance-list-add:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+}
+
+.alliance-create-inline {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
+  border-top: 1px solid var(--border);
+  margin-top: var(--space-1);
 }
 
-.alliances-mini-form .settings-label {
-  margin-bottom: 0;
+.alliance-create-inline input {
+  font-size: var(--text-sm);
+  padding: 4px var(--space-2);
 }
 
-.alliances-mini-row {
+.alliance-create-inline-actions {
   display: flex;
   gap: var(--space-2);
-  align-items: center;
 }
 
-.alliances-mini-row input {
+.alliance-create-inline-actions button {
   flex: 1;
   font-size: var(--text-sm);
   padding: 4px var(--space-2);
@@ -1529,6 +1551,33 @@ select,
 .alliance-members li {
   padding: var(--space-1) 0;
   font-size: var(--text-sm);
+}
+
+.alliance-invite-tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.alliance-invite-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.alliance-invite-section + .alliance-invite-section {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.alliance-join-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.alliance-join-row input {
+  flex: 1;
 }
 
 .alliance-share-code-block {

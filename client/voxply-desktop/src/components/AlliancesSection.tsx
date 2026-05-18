@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type {
   AllianceDetail,
@@ -26,8 +26,15 @@ export function AlliancesSection({
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
   const [tab, setTab] = useState<AllianceTab>("members");
 
+  const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [joinCode, setJoinCode] = useState("");
+
+  const createInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isCreating) createInputRef.current?.focus();
+  }, [isCreating]);
 
   async function refresh() {
     try {
@@ -72,8 +79,10 @@ export function AlliancesSection({
     try {
       const created = await invoke<AllianceInfo>("create_alliance", { name });
       setNewName("");
+      setIsCreating(false);
       await refresh();
       setSelectedId(created.id);
+      setTab("members");
     } catch (e) {
       setError(String(e));
     }
@@ -113,6 +122,7 @@ export function AlliancesSection({
       setJoinCode("");
       await refresh();
       setSelectedId(a);
+      setTab("members");
     } catch (e) {
       setError(String(e));
     }
@@ -137,15 +147,9 @@ export function AlliancesSection({
     if (!selectedId) return;
     try {
       if (currentlyShared) {
-        await invoke("unshare_channel_from_alliance", {
-          allianceId: selectedId,
-          channelId,
-        });
+        await invoke("unshare_channel_from_alliance", { allianceId: selectedId, channelId });
       } else {
-        await invoke("share_channel_with_alliance", {
-          allianceId: selectedId,
-          channelId,
-        });
+        await invoke("share_channel_with_alliance", { allianceId: selectedId, channelId });
       }
       await refreshDetail(selectedId);
     } catch (e) {
@@ -199,65 +203,56 @@ export function AlliancesSection({
       </p>
 
       <div className="alliances-layout">
-        {/* ── Left: list + create + join ── */}
+        {/* ── Left: list + inline create ── */}
         <div className="alliances-list-panel">
           <div className="alliances-list">
-            {alliances.length === 0 ? (
+            {alliances.length === 0 && !isCreating && (
               <p className="alliances-empty-hint muted">No alliances yet</p>
-            ) : (
-              alliances.map((a) => (
-                <button
-                  key={a.id}
-                  className={`alliance-list-item${selectedId === a.id ? " active" : ""}`}
-                  onClick={() => setSelectedId(a.id)}
-                >
-                  {a.name}
-                </button>
-              ))
+            )}
+            {alliances.map((a) => (
+              <button
+                key={a.id}
+                className={`alliance-list-item${selectedId === a.id ? " active" : ""}`}
+                onClick={() => { setSelectedId(a.id); setIsCreating(false); }}
+              >
+                {a.name}
+              </button>
+            ))}
+            {isCreating && (
+              <div className="alliance-create-inline">
+                <input
+                  ref={createInputRef}
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Alliance name"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleCreate();
+                    if (e.key === "Escape") { setIsCreating(false); setNewName(""); }
+                  }}
+                />
+                <div className="alliance-create-inline-actions">
+                  <button onClick={handleCreate} disabled={!newName.trim()}>Create</button>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => { setIsCreating(false); setNewName(""); }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 
-          <div className="alliances-mini-form">
-            <label className="settings-label">New alliance</label>
-            <div className="alliances-mini-row">
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); }}
-                placeholder="Alliance name"
-              />
-              <button
-                onClick={handleCreate}
-                disabled={!newName.trim()}
-                title="Create"
-                className="btn-icon-small"
-              >
-                +
-              </button>
-            </div>
-          </div>
-
-          <div className="alliances-mini-form">
-            <label className="settings-label">Join alliance</label>
-            <div className="alliances-mini-row">
-              <input
-                type="text"
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleJoin(); }}
-                placeholder="Paste share code…"
-              />
-              <button
-                onClick={handleJoin}
-                disabled={!joinCode.trim()}
-                title="Join"
-                className="btn-icon-small"
-              >
-                →
-              </button>
-            </div>
-          </div>
+          {!isCreating && (
+            <button
+              className="alliance-list-add"
+              onClick={() => setIsCreating(true)}
+              title="New alliance"
+            >
+              + New alliance
+            </button>
+          )}
         </div>
 
         {/* ── Right: detail panel ── */}
@@ -379,47 +374,68 @@ export function AlliancesSection({
                 )}
 
                 {tab === "invite" && (
-                  <>
-                    <p className="muted" style={{ marginBottom: "var(--space-3)" }}>
-                      Generate a share code and send it to the other hub's admin.
-                      They paste it in the Join box on the left.
-                    </p>
-                    <button className="btn-secondary" onClick={handleGenerateInvite}>
-                      {invite && invite.alliance_id === selectedId
-                        ? "Regenerate share code"
-                        : "Generate share code"}
-                    </button>
-                    {invite && invite.alliance_id === selectedId && (() => {
-                      const shareCode = btoa(JSON.stringify({
-                        u: ownHubUrl,
-                        a: invite.alliance_id,
-                        t: invite.token,
-                      }));
-                      return (
-                        <div className="alliance-share-code-block">
-                          <p className="muted">Share this code with the other hub's admin:</p>
-                          <div className="alliance-share-code-row">
-                            <code className="alliance-share-code">{shareCode}</code>
-                            <button
-                              className="btn-secondary"
-                              onClick={() => navigator.clipboard.writeText(shareCode).catch(() => {})}
-                              title="Copy to clipboard"
-                            >
-                              Copy
-                            </button>
+                  <div className="alliance-invite-tab">
+                    <div className="alliance-invite-section">
+                      <label className="settings-label">Invite another hub</label>
+                      <p className="muted">
+                        Generate a share code and send it to the other hub's admin.
+                      </p>
+                      <button className="btn-secondary" onClick={handleGenerateInvite}>
+                        {invite && invite.alliance_id === selectedId
+                          ? "Regenerate share code"
+                          : "Generate share code"}
+                      </button>
+                      {invite && invite.alliance_id === selectedId && (() => {
+                        const shareCode = btoa(JSON.stringify({
+                          u: ownHubUrl,
+                          a: invite.alliance_id,
+                          t: invite.token,
+                        }));
+                        return (
+                          <div className="alliance-share-code-block">
+                            <p className="muted">Share this code with the other hub's admin:</p>
+                            <div className="alliance-share-code-row">
+                              <code className="alliance-share-code">{shareCode}</code>
+                              <button
+                                className="btn-secondary"
+                                onClick={() => navigator.clipboard.writeText(shareCode).catch(() => {})}
+                                title="Copy to clipboard"
+                              >
+                                Copy
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })()}
-                  </>
+                        );
+                      })()}
+                    </div>
+
+                    <div className="alliance-invite-section">
+                      <label className="settings-label">Join via share code</label>
+                      <p className="muted">
+                        Paste the share code you received from another hub's admin.
+                      </p>
+                      <div className="alliance-join-row">
+                        <input
+                          type="text"
+                          value={joinCode}
+                          onChange={(e) => setJoinCode(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleJoin(); }}
+                          placeholder="Paste share code…"
+                        />
+                        <button onClick={handleJoin} disabled={!joinCode.trim()}>
+                          Join
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             </>
           ) : (
             <div className="alliances-no-selection">
               <p className="muted">
-                Select an alliance from the list to see its members, manage
-                shared channels, and invite other hubs.
+                Select an alliance from the list to see its details, or create
+                a new one with the + button.
               </p>
             </div>
           )}
