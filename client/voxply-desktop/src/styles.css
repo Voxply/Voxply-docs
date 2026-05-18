@@ -1441,7 +1441,42 @@ select,
   flex-direction: column;
 }
 
-/* ── Identity block ── */
+/* ── Voice status row (shown only when in voice) ── */
+.voice-status-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+}
+
+.voice-status-bar .voice-status-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Voice controls row (shown only when in voice) ── */
+.user-actions {
+  display: flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2) var(--space-2);
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border);
+}
+
+.user-actions-icons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+}
+
+/* ── Identity block — always visible ── */
 .user-identity {
   display: flex;
   align-items: center;
@@ -1471,39 +1506,6 @@ select,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* ── Actions bar ── */
-.user-actions {
-  display: flex;
-  align-items: center;
-  padding: var(--space-2);
-  border-top: 1px solid var(--border);
-  gap: var(--space-1);
-}
-
-.voice-status-inline {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  flex: 1;
-  min-width: 0;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  overflow: hidden;
-}
-
-.voice-status-inline .voice-status-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.user-actions-icons {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin-left: auto;
 }
 
 /* legacy — kept so nothing breaks if referenced elsewhere */

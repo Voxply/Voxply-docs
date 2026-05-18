@@ -21,7 +21,7 @@ import type {
 } from "../types";
 import type { TreeNode, FlatNode } from "../utils/channels";
 import { colorForKey } from "../utils/format";
-import { PhoneIcon, PhoneOffIcon, ChannelIcon, PingIcon } from "./Icons";
+import { PhoneOffIcon, ChannelIcon, PingIcon } from "./Icons";
 import { SortableCategoryItem, SortableChannelItem } from "./SortableItems";
 
 const CHANNEL_INDENT_PX = 16;
@@ -410,20 +410,18 @@ export function ChannelSidebar({
 
       {/* User footer */}
       <div className="user-info">
-        {/* Actions bar — top, right-aligned */}
-        <div className="user-actions">
-          {voiceChannelId && (
-            <div className="voice-status-inline">
+        {voiceChannelId && (
+          <>
+            {/* Row 1: voice channel name + ping */}
+            <div className="voice-status-bar">
               <span className="status-dot online" />
               <span className="voice-status-label">#{voiceChannelName}</span>
-              {activePing !== undefined && (
-                <PingIcon ping={activePing} />
-              )}
+              {activePing !== undefined && <PingIcon ping={activePing} />}
             </div>
-          )}
-          <div className="user-actions-icons">
-            {voiceChannelId && (
-              <>
+
+            {/* Row 2: voice controls */}
+            <div className="user-actions">
+              <div className="user-actions-icons">
                 <button
                   onClick={onToggleSelfMute}
                   className={`btn-icon-gear ${selfMuted ? "active" : ""}`}
@@ -445,39 +443,20 @@ export function ChannelSidebar({
                 >
                   {sharing ? "⏹" : "🖥"}
                 </button>
-              </>
-            )}
-            {voiceChannelId ? (
-              <button
-                onClick={onVoiceLeave}
-                className="btn-icon-gear voice-call-btn end"
-                title="Leave voice"
-                aria-label="Leave voice"
-              >
-                <PhoneOffIcon />
-              </button>
-            ) : (
-              <button
-                onClick={() => onVoiceJoin()}
-                className="btn-icon-gear voice-call-btn start"
-                disabled={!selectedChannel || selectedChannel.is_category}
-                title={
-                  !selectedChannel || selectedChannel.is_category
-                    ? "Select a channel first to join voice"
-                    : `Join voice on #${selectedChannel.name}`
-                }
-                aria-label="Join voice"
-              >
-                <PhoneIcon />
-              </button>
-            )}
-            <button onClick={onOpenSettings} className="btn-icon-gear" title="Settings">
-              ⚙
-            </button>
-          </div>
-        </div>
+                <button
+                  onClick={onVoiceLeave}
+                  className="btn-icon-gear voice-call-btn end"
+                  title="Leave voice"
+                  aria-label="Leave voice"
+                >
+                  <PhoneOffIcon />
+                </button>
+              </div>
+            </div>
+          </>
+        )}
 
-        {/* Identity block — bottom, avatar + nickname */}
+        {/* Identity block — always visible */}
         <div className="user-identity">
           <div className="user-identity-avatar" />
           <div className="user-identity-details">
@@ -485,6 +464,9 @@ export function ChannelSidebar({
               {myDisplayName || publicKey?.slice(0, 12) || "You"}
             </span>
           </div>
+          <button onClick={onOpenSettings} className="btn-icon-gear" title="Settings">
+            ⚙
+          </button>
         </div>
       </div>
     </div>
