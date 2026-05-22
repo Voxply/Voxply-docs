@@ -187,14 +187,23 @@ browser per identity.
 ### DB additions
 
 - `hub_settings` rows:
-  - `challenge_enabled` (`'0'` / `'1'`, default `'0'`)
+  - `challenge_mode` (`'off' | 'click' | 'puzzle' | 'both'`, default
+    `'off'`) — replaces the old boolean `challenge_enabled`.
+    - `'off'`: no challenge, straight to auth.
+    - `'click'`: one button press issues the token; stops HTTP-only
+      bots with no user friction.
+    - `'puzzle'`: server-generated SVG challenge (math or pattern);
+      answer verified before token is issued.
+    - `'both'`: click first, then puzzle. Maximum friction for bots,
+      still fast for humans (~5 seconds total).
   - `challenge_difficulty` (`'easy' | 'medium'`, default `'easy'`) —
-    medium adds visual noise / multi-step prompts.
-- New table `bot_challenges`:
+    applies only when `challenge_mode` includes `'puzzle'`.
+- New table `bot_challenges` — used only for `puzzle` / `both` modes:
   - `id TEXT PRIMARY KEY` — challenge id (UUID).
   - `pubkey TEXT NOT NULL` — who requested it (Ed25519 pubkey hex).
-  - `expected_answer TEXT NOT NULL` — server-stored, never sent to
-    the client.
+  - `kind TEXT NOT NULL` — `'click' | 'puzzle'`.
+  - `expected_answer TEXT` — server-stored, never sent to the client.
+    NULL for `click` rows (no answer to check).
   - `created_at INTEGER NOT NULL` — unix seconds.
   - `expires_at INTEGER NOT NULL` — `created_at + 300`.
   - `consumed_at INTEGER` — set when token is issued (one-shot).
@@ -203,97 +212,92 @@ browser per identity.
   - `token TEXT PRIMARY KEY` — random 32-byte hex.
   - `pubkey TEXT NOT NULL`.
   - `issued_at INTEGER NOT NULL`.
-  - `expires_at INTEGER NOT NULL` — `issued_at + 600` (10 min, gives
-    the user time to run PoW startup after passing).
+  - `expires_at INTEGER NOT NULL` — `issued_at + 600` (10 min).
   - `consumed_at INTEGER`.
 
 ### Routes
 
 - `GET /challenge/new` — unauthenticated.
-  Query: `?pubkey=<hex>`. Server generates a puzzle (random arithmetic
-  or pattern), stores the expected answer in `bot_challenges`, and
-  returns `{ id, prompt_kind: 'math' | 'pattern', prompt_svg: <data
-  URL or inline SVG string>, expires_at }`. The actual answer is never
-  returned. Rate-limited per IP and per pubkey.
+  Query: `?pubkey=<hex>`. Returns `{ id, mode, prompt_svg?, expires_at
+  }`. For `click` and the click step of `both`, `prompt_svg` is
+  absent — the client just shows a button. For `puzzle` / `both`
+  (puzzle step), `prompt_svg` is an inline SVG. Rate-limited per IP
+  and per pubkey.
 - `POST /challenge/verify` — unauthenticated.
-  Body: `{ id, pubkey, answer }`. Server checks the row exists, isn't
-  expired or consumed, and the answer matches. On success it marks the
-  challenge consumed and issues a `challenge_token` row, returning
-  `{ token, expires_at }`. On failure, returns `{ ok: false,
-  attempts_remaining }`. Three failures invalidate the challenge.
-- Existing `/auth/verify` (Ed25519 challenge/response) gains an optional
-  `challenge_token` field. If `challenge_enabled = '1'`, the field is
-  required and the hub validates+consumes the token before issuing the
-  session. If disabled, the field is ignored.
+  Body: `{ id, pubkey, answer? }`.
+  - For `click` rows: `answer` is omitted; mere receipt of the signed
+    request (pubkey matches) is enough to issue the token.
+  - For `puzzle` rows: `answer` is required and verified against
+    `expected_answer`. Three failures invalidate the challenge.
+  - On success: marks the challenge consumed, issues a
+    `challenge_tokens` row, returns `{ token, expires_at }`.
+  - On failure: returns `{ ok: false, attempts_remaining }`.
+- Existing `/auth/verify` gains an optional `challenge_token` field.
+  When `challenge_mode != 'off'`, the field is required; the hub
+  validates and consumes the token. For `'both'` mode, a single token
+  covers the whole flow — the click step issues it, the puzzle step
+  re-uses the same `id` (or a chained second step, see Deferred).
 
-The `min_security_level` and `challenge_enabled` settings are
-independent. A hub can require challenge but no PoW (gate spam at the
-door), require PoW but no challenge (current behavior), both, or
-neither.
+The `min_security_level` and `challenge_mode` settings are
+independent. A hub at level 0 can still use `click` or `puzzle`.
 
 ### Tauri commands
 
-- `challenge_fetch(hub_url, pubkey)` -> `ChallengePrompt { id,
-  prompt_kind, prompt_svg, expires_at }`. Calls `GET /challenge/new`.
-- `challenge_submit(hub_url, id, pubkey, answer)` ->
+- `challenge_fetch(hub_url, pubkey)` -> `ChallengePrompt { id, mode,
+  prompt_svg?, expires_at }`. Calls `GET /challenge/new`.
+- `challenge_submit(hub_url, id, pubkey, answer?)` ->
   `ChallengeResult { ok, token?, expires_at?, attempts_remaining? }`.
+  `answer` is optional; omitted for `click` mode.
 - The existing `add_hub` command grows an optional `challenge_token`
-  argument and, when the hub's `/info` reports `challenge_enabled`,
-  the client first calls the challenge commands and feeds the resulting
-  token into `add_hub`.
+  argument. When `/info` reports `challenge_mode != 'off'`, the client
+  runs the challenge flow first and passes the resulting token.
 
 ### UI sketch
 
-- **Add Hub modal** gains a new step inserted before the PoW progress
-  step: a "Quick check" panel. Shows the prompt SVG inline, a single
-  input field, a "Submit" button, and a "New puzzle" link to request a
-  fresh one.
-- **States**: `loading-prompt`, `awaiting-answer`, `submitting`,
-  `wrong-answer` (with attempts left), `passed` (1-second checkmark
-  before moving on), `expired` (auto-refresh on click).
-- **Failure handling**: after three wrong answers the challenge is
-  invalidated and the modal returns to the URL-entry state with an
-  inline error "couldn't verify — try again." No account is created.
-- The challenge step is silently skipped when the hub's `/info`
-  reports `challenge_enabled = false`.
+- **Add Hub modal** — new "Quick check" step inserted before PoW:
+  - `'click'` mode: large centred "I'm not a bot" button with the
+    hub name above it. One tap → passed → moves on.
+  - `'puzzle'` mode: prompt SVG inline, text input below, "Submit"
+    button, "New puzzle" link. States: `loading`, `awaiting-answer`,
+    `submitting`, `wrong` (attempts remaining shown), `passed`.
+  - `'both'` mode: click step first (same as above), then
+    automatically advances to the puzzle step.
+  - `'off'` mode: step is silently skipped.
+- **Passed state**: 1-second green checkmark, then the modal advances.
+- **Failure / expiry**: modal returns to URL-entry with inline error
+  "Couldn't verify — try again."
 
 ### Key decisions and tradeoffs
 
-- **Server-side rendering, no third-party service.** Puzzles are
-  rendered to SVG on the hub. We accept that this is weaker than
-  commercial alternatives — the goal is not to defeat motivated
-  attackers, only to break trivial automation. The "no external
-  dependency" rule matches the federation principle: no hub should
-  rely on a third party to gate joins.
-- **Token-based, not session-based.** A challenge token is bound to
-  the requesting pubkey, single-use, and short-lived. The hub keeps
-  one row per pending challenge; cleanup is a periodic sweep. This is
-  cheaper than tying challenges to a not-yet-existing user session.
-- **Challenge is optional and independent of PoW level.** A hub at
-  `min_security_level = 0` can still require a challenge ("we just
-  don't want bots, we don't need 15 minutes of CPU"). A hub at level
-  20 can skip it ("the PoW cost is the gate"). Coupling them would
-  reduce hub admin control for no benefit.
-- **Prompt kinds are limited and pluggable.** v1 ships `math`
-  ("what is 7 plus 4?" rendered with mild visual noise) and
-  `pattern` ("which one matches?"). Adding a third kind is one
-  generator function plus an SVG template. Not a captcha framework,
-  just two formats.
-- **Why not show prompt as plain text?** Trivial to parse with a
-  one-line script. SVG with even minimal obfuscation forces an OCR
-  step that's cheap for humans, friction for bots.
+- **`challenge_mode` enum, not a boolean.** Admin chooses the right
+  level of friction for their community: `click` for open friendly
+  hubs ("just filter headless scripts"), `puzzle` for communities
+  that expect scripted attacks, `both` for maximum deterrence.
+  A boolean `enabled` would force every hub onto one model.
+- **Click mode issues a token on bare receipt.** There is no secret
+  to verify for a click — the value is purely that a browser had to
+  render and present a button. The Ed25519 pubkey in the request body
+  is enough to bind the token to the right identity.
+- **Server-side rendering, no third-party service.** Keeps federation
+  sovereignty: no hub depends on an external captcha provider to gate
+  joins. Weaker than commercial alternatives, but the right tradeoff
+  for a decentralised platform.
+- **Token-based, single-use, short-lived.** Bound to pubkey, one row
+  per challenge, periodic cleanup sweep. Cheaper than a pre-session
+  cookie model.
+- **Prompt kinds are pluggable.** v1 ships `math` and `pattern`.
+  A third kind is one generator + SVG template.
 
 ### Deferred
 
-- Accessibility (audio challenge for screen readers) — important and
-  designed-for in the route shape (`prompt_kind` is extensible) but
-  not implemented in v1. Documented as a known gap.
-- Adaptive difficulty (raise to `medium` after N failed attempts from
-  an IP). v1 difficulty is per-hub-setting.
-- Cooperative cross-hub challenge tokens (passed a challenge on Hub A,
-  Hub B accepts it). Federation-shaped and useful, but rejected for
-  v1 — token is bound to issuing hub. Revisit alongside hub
-  certifications in [future-features.md](future-features.md).
+- `'both'` mode chaining: v1 uses a single token (click issues it,
+  puzzle is a second verification pass on the same row before the
+  token is handed to the client). A cleaner two-token chain can be
+  designed once usage patterns are known.
+- Accessibility (audio challenge). `prompt_kind` is extensible; gap
+  is documented.
+- Adaptive difficulty per IP.
+- Cross-hub challenge token acceptance (federation extension).
 
 ---
 
