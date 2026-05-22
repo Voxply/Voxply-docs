@@ -34,6 +34,8 @@ import type {
   AllianceInfo,
   AllianceSharedChannel,
   ActiveStream,
+  LobbyStatus,
+  SurveySubmitResult,
 } from "./types";
 import { ScreenSharePicker } from "./components/ScreenSharePicker";
 import { useVoice } from "./hooks/useVoice";
@@ -66,12 +68,22 @@ import { HubSidebar } from "./components/HubSidebar";
 import { ChannelSidebar } from "./components/ChannelSidebar";
 import { ContentArea } from "./components/ContentArea";
 import { DiscoverPage } from "./components/DiscoverPage";
+import { Lobby } from "./components/Lobby";
+import { BotChallenge } from "./components/BotChallenge";
+import { SurveyComponent } from "./components/Survey";
 
 function App() {
   // Multi-hub state
   const [hubs, setHubs] = useState<Hub[]>([]);
   const [activeHubId, setActiveHubId] = useState<string | null>(null);
   const [showAddHub, setShowAddHub] = useState(false);
+  const [hubScope, setHubScope] = useState<Record<string, "lobby" | "member">>({});
+  const [pendingSurveyHubId, setPendingSurveyHubId] = useState<string | null>(null);
+  const [botChallenge, setBotChallenge] = useState<{
+    hubUrl: string;
+    pubkey: string;
+    resolvedUrl: string;
+  } | null>(null);
   const [hubPreview, setHubPreview] = useState<
     | { state: "idle" }
     | { state: "loading" }
@@ -83,6 +95,7 @@ function App() {
         icon?: string | null;
         invite_only?: boolean;
         min_security_level?: number;
+        challenge_mode?: string | null;
       }
     | { state: "error"; message: string }
   >({ state: "idle" });
@@ -1214,6 +1227,28 @@ function App() {
 
   async function loadHubData() {
     try {
+      const activeHub = hubs.find((h) => h.hub_id === activeHubId) ?? hubs.find((h) => h.is_active);
+
+      // Check lobby scope first — if we're in the lobby, skip loading full hub data.
+      if (activeHub) {
+        try {
+          const lobbyStatus = await invoke<LobbyStatus>("lobby_status", { hubUrl: activeHub.hub_url });
+          if (lobbyStatus.status === "lobby") {
+            setHubScope((prev) => ({ ...prev, [activeHub.hub_id]: "lobby" }));
+            return;
+          } else {
+            setHubScope((prev) => {
+              if (prev[activeHub.hub_id] === "lobby") {
+                return { ...prev, [activeHub.hub_id]: "member" };
+              }
+              return prev;
+            });
+          }
+        } catch {
+          // lobby endpoint absent means not a lobby hub; continue normally
+        }
+      }
+
       // Pull /me FIRST. If we're pending approval, the rest of the calls
       // would just 403 and bury the user under a wall of error toasts.
       let me: MeInfo | null = null;
@@ -1669,6 +1704,7 @@ function App() {
           icon?: string | null;
           invite_only?: boolean;
           min_security_level?: number;
+          challenge_mode?: string | null;
         }>("preview_hub_info", { url: resolvedUrl });
         if (!cancelled) {
           setHubPreview({
@@ -1679,6 +1715,7 @@ function App() {
             icon: info.icon,
             invite_only: info.invite_only,
             min_security_level: info.min_security_level,
+            challenge_mode: info.challenge_mode,
           });
         }
       } catch (e) {
@@ -1691,14 +1728,25 @@ function App() {
     };
   }, [hubUrl, showAddHub]);
 
-  async function handleAddHub() {
+  async function handleAddHub(challengeToken?: string) {
     setLoading(true);
     setError(null);
     try {
       const resolvedUrl = parseHubInput(hubUrl)?.hubUrl ?? hubUrl;
+
+      if (!challengeToken && hubPreview.state === "ok" && hubPreview.challenge_mode && hubPreview.challenge_mode !== "off") {
+        if (!publicKey) {
+          setError("Identity not loaded yet. Try again in a moment.");
+          return;
+        }
+        setBotChallenge({ hubUrl: resolvedUrl, pubkey: publicKey, resolvedUrl });
+        return;
+      }
+
       const hub = await invoke<Hub>("add_hub", {
         hubUrl: resolvedUrl,
         inviteCode: inviteCode.trim() || null,
+        challengeToken: challengeToken ?? null,
       });
       const allHubs = await invoke<Hub[]>("list_hubs");
       setHubs(allHubs);
@@ -1707,6 +1755,21 @@ function App() {
       setShowAddHub(false);
       setHubUrl("");
       setInviteCode("");
+      setBotChallenge(null);
+
+      try {
+        const status = await invoke<LobbyStatus>("lobby_status", { hubUrl: resolvedUrl });
+        if (status.status === "lobby") {
+          setHubScope((prev) => ({ ...prev, [hub.hub_id]: "lobby" }));
+        } else {
+          const survey = await invoke<{ id: string } | null>("survey_current", { hubUrl: resolvedUrl });
+          if (survey) {
+            setPendingSurveyHubId(hub.hub_id);
+          }
+        }
+      } catch {
+        // lobby/survey check is best-effort
+      }
     } catch (e) {
       setError(String(e));
     } finally {
@@ -2907,6 +2970,16 @@ function App() {
                   ⚙ Set up your profile first
                 </button>
               </div>
+            ) : activeHubId && hubScope[activeHubId] === "lobby" ? (
+              <Lobby
+                hubUrl={hubs.find((h) => h.hub_id === activeHubId)?.hub_url ?? ""}
+                hubName={hubs.find((h) => h.hub_id === activeHubId)?.hub_name ?? ""}
+                onPromoted={() => {
+                  setHubScope((prev) => ({ ...prev, [activeHubId]: "member" }));
+                  loadHubData();
+                  setToast(`You're in. Welcome to ${hubs.find((h) => h.hub_id === activeHubId)?.hub_name ?? "the hub"}.`);
+                }}
+              />
             ) : myApprovalStatus === "pending" ? (
               <div className="empty-state pending-approval">
                 <div className="pending-approval-icon">⏳</div>
@@ -3074,6 +3147,37 @@ function App() {
           </div>
         )}
 
+        {botChallenge && (
+          <BotChallenge
+            hubUrl={botChallenge.hubUrl}
+            pubkey={botChallenge.pubkey}
+            onPassed={(token) => {
+              setBotChallenge(null);
+              handleAddHub(token);
+            }}
+            onCancel={() => {
+              setBotChallenge(null);
+              setLoading(false);
+            }}
+          />
+        )}
+
+        {pendingSurveyHubId && (() => {
+          const surveyHub = hubs.find((h) => h.hub_id === pendingSurveyHubId);
+          if (!surveyHub) return null;
+          return (
+            <SurveyComponent
+              hubUrl={surveyHub.hub_url}
+              onComplete={(result: SurveySubmitResult) => {
+                setPendingSurveyHubId(null);
+                if (result.next_state === "pending") {
+                  setMyApprovalStatus("pending");
+                }
+              }}
+            />
+          );
+        })()}
+
         {showAddHub && (
           <AddHubModal
             hubUrl={hubUrl}
@@ -3081,7 +3185,7 @@ function App() {
             hubPreview={hubPreview}
             loading={loading}
             error={error}
-            onAdd={handleAddHub}
+            onAdd={() => handleAddHub()}
             onClose={() => { setShowAddHub(false); setHubUrl(""); setInviteCode(""); }}
           />
         )}

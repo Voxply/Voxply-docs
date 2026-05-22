@@ -300,3 +300,84 @@ export interface PendingAllianceInvite {
   message: string | null;
   created_at: number;
 }
+
+export interface LobbyStatus {
+  status: "lobby" | "promoted" | "member";
+  required_level: number;
+  current_level: number;
+  entered_at: number | null;
+  welcome_md: string | null;
+}
+
+export interface ChallengePrompt {
+  id: string;
+  mode: "click" | "puzzle" | "both";
+  prompt_svg: string | null;
+  expires_at: number;
+}
+
+export interface ChallengeResult {
+  ok: boolean;
+  token: string | null;
+  expires_at: number | null;
+  next_challenge: ChallengePrompt | null;
+  attempts_remaining: number | null;
+}
+
+export interface SurveyChoice {
+  id: string;
+  label: string;
+  display_order: number;
+}
+
+export interface SurveyQuestion {
+  id: string;
+  prompt: string;
+  kind: "choice" | "text";
+  required: boolean;
+  display_order: number;
+  choices?: SurveyChoice[];
+}
+
+export interface Survey {
+  id: string;
+  questions: SurveyQuestion[];
+}
+
+export interface SurveyAnswer {
+  question_id: string;
+  choice_id?: string;
+  text_answer?: string;
+}
+
+export interface SurveySubmitResult {
+  next_state: "approved" | "pending";
+  applied_roles: string[];
+}
+
+export interface SurveyChoiceAdmin extends SurveyChoice {
+  role_ids: string[];
+}
+
+export interface SurveyQuestionAdmin extends SurveyQuestion {
+  choices?: SurveyChoiceAdmin[];
+}
+
+export interface SurveyAdmin {
+  id: string;
+  enabled: boolean;
+  questions: SurveyQuestionAdmin[];
+}
+
+export interface SurveyResponseAdmin {
+  response_id: string;
+  pubkey: string;
+  display_name: string | null;
+  submitted_at: number;
+  answers: Array<{
+    question_id: string;
+    prompt: string;
+    choice_label: string | null;
+    text_answer: string | null;
+  }>;
+}

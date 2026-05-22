@@ -18,6 +18,9 @@ import { AlliancesSection } from "./AlliancesSection";
 import { AllianceInvitesSection } from "./AllianceInvitesSection";
 import { HubIconsSection } from "./HubIconsSection";
 import { HubBotsSection } from "./HubBotsSection";
+import { SurveyAdminSection } from "./SurveyAdminSection";
+import { LobbySettingsSection } from "./LobbySettingsSection";
+import { ChallengeSettingsSection } from "./ChallengeSettingsSection";
 
 export type HubAdminTab =
   | "overview"
@@ -29,7 +32,10 @@ export type HubAdminTab =
   | "alliances"
   | "alliance-invites"
   | "icons"
-  | "bots";
+  | "bots"
+  | "survey"
+  | "lobby"
+  | "challenge";
 
 export interface HubAdminPageProps {
   tab: HubAdminTab;
@@ -149,6 +155,9 @@ export function HubAdminPage(props: HubAdminPageProps) {
     { id: "alliance-invites", label: "Alliance invites" },
     { id: "icons", label: "Icons" },
     { id: "bots", label: "Bots" },
+    { id: "survey", label: "Onboarding" },
+    { id: "lobby", label: "Lobby" },
+    { id: "challenge", label: "Challenge" },
   ];
 
   return (
@@ -582,6 +591,15 @@ export function HubAdminPage(props: HubAdminPageProps) {
             </p>
             <HubBotsSection />
           </section>
+        )}
+        {props.tab === "survey" && (
+          <SurveyAdminSection hubUrl={props.activeHubUrl} />
+        )}
+        {props.tab === "lobby" && (
+          <LobbySettingsSection hubUrl={props.activeHubUrl} />
+        )}
+        {props.tab === "challenge" && (
+          <ChallengeSettingsSection hubUrl={props.activeHubUrl} />
         )}
       </main>
     </div>
