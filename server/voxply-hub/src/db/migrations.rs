@@ -795,6 +795,49 @@ pub async fn run(pool: &SqlitePool) -> Result<()> {
     .execute(pool)
     .await?;
 
+    // ---- Self-service bot system ----
+    // Standalone bots table with webhook and hashed token support.
+    // The bot's public_key is also inserted into users (is_bot=1) so that
+    // message FK constraints and the member listing continue to work.
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS bots (
+            public_key   TEXT PRIMARY KEY,
+            display_name TEXT NOT NULL,
+            created_by   TEXT NOT NULL,
+            token_hash   TEXT NOT NULL,
+            webhook_url  TEXT,
+            created_at   INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+        )",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS bot_slash_commands (
+            id          TEXT PRIMARY KEY,
+            bot_pubkey  TEXT NOT NULL REFERENCES bots(public_key) ON DELETE CASCADE,
+            command     TEXT NOT NULL,
+            description TEXT NOT NULL,
+            created_at  INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+            UNIQUE(bot_pubkey, command)
+        )",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS bot_event_queue (
+            id          TEXT PRIMARY KEY,
+            bot_pubkey  TEXT NOT NULL REFERENCES bots(public_key) ON DELETE CASCADE,
+            event_type  TEXT NOT NULL,
+            payload     TEXT NOT NULL,
+            created_at  INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+            delivered   INTEGER NOT NULL DEFAULT 0
+        )",
+    )
+    .execute(pool)
+    .await?;
+
     tracing::info!("Database migrations complete");
     Ok(())
 }

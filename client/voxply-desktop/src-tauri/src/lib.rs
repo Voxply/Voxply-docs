@@ -3977,6 +3977,151 @@ async fn rotate_bot_token(public_key: String, state: State<'_, AppState>) -> Res
 }
 
 // =============================================================================
+// Feature: Self-service bot management (admin commands)
+// =============================================================================
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct BotAdminInfo {
+    public_key: String,
+    display_name: String,
+    created_by: String,
+    created_at: i64,
+    webhook_url: Option<String>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct BotCreatedResult {
+    public_key: String,
+    display_name: String,
+    created_by: String,
+    created_at: i64,
+    token: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct BotSlashCommandInfo {
+    command: String,
+    description: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct BotDetailInfo {
+    public_key: String,
+    display_name: String,
+    created_by: String,
+    created_at: i64,
+    webhook_url: Option<String>,
+    commands: Vec<BotSlashCommandInfo>,
+}
+
+#[tauri::command]
+async fn admin_list_bots(
+    hub_url: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<BotAdminInfo>, String> {
+    let token = session_for_url(&state, &hub_url)?;
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .get(format!("{base}/admin/bots"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    resp.json().await.map_err(|e| format!("Invalid response: {e}"))
+}
+
+#[tauri::command]
+async fn admin_create_bot(
+    hub_url: String,
+    display_name: String,
+    state: State<'_, AppState>,
+) -> Result<BotCreatedResult, String> {
+    let token = session_for_url(&state, &hub_url)?;
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .post(format!("{base}/admin/bots"))
+        .bearer_auth(&token)
+        .json(&serde_json::json!({ "display_name": display_name }))
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    resp.json().await.map_err(|e| format!("Invalid response: {e}"))
+}
+
+#[tauri::command]
+async fn admin_delete_bot(
+    hub_url: String,
+    pubkey: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let token = session_for_url(&state, &hub_url)?;
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .delete(format!("{base}/admin/bots/{pubkey}"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn admin_set_bot_webhook(
+    hub_url: String,
+    pubkey: String,
+    webhook_url: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let token = session_for_url(&state, &hub_url)?;
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .put(format!("{base}/admin/bots/{pubkey}/webhook"))
+        .bearer_auth(&token)
+        .json(&serde_json::json!({ "webhook_url": webhook_url }))
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn admin_get_bot_detail(
+    hub_url: String,
+    pubkey: String,
+    state: State<'_, AppState>,
+) -> Result<BotDetailInfo, String> {
+    let token = session_for_url(&state, &hub_url)?;
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .get(format!("{base}/admin/bots/{pubkey}"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    resp.json().await.map_err(|e| format!("Invalid response: {e}"))
+}
+
+// =============================================================================
 // Feature: Security Level Lobby
 // =============================================================================
 
@@ -4603,6 +4748,11 @@ pub fn run() {
             create_bot,
             delete_bot,
             rotate_bot_token,
+            admin_list_bots,
+            admin_create_bot,
+            admin_delete_bot,
+            admin_set_bot_webhook,
+            admin_get_bot_detail,
             lobby_status,
             lobby_submit_proof,
             lobby_get_welcome,

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::Json;
+use reqwest;
 use uuid::Uuid;
 
 use crate::auth::middleware::AuthUser;
@@ -106,6 +107,65 @@ pub async fn send_message(
     .execute(&state.db)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {e}")))?;
+
+    // Slash command detection — dispatch to any registered bot handlers.
+    if req.content.starts_with('/') {
+        let cmd_word = req.content[1..]
+            .split_whitespace()
+            .next()
+            .unwrap_or("")
+            .to_lowercase();
+        if !cmd_word.is_empty() {
+            #[derive(sqlx::FromRow)]
+            struct BotWebhookRow {
+                public_key: String,
+                webhook_url: Option<String>,
+            }
+            let bots = sqlx::query_as::<_, BotWebhookRow>(
+                "SELECT b.public_key, b.webhook_url FROM bot_slash_commands bc
+                 JOIN bots b ON b.public_key = bc.bot_pubkey
+                 WHERE bc.command = ?",
+            )
+            .bind(&cmd_word)
+            .fetch_all(&state.db)
+            .await
+            .unwrap_or_default();
+
+            for bot in bots {
+                let event_id = Uuid::new_v4().to_string();
+                let payload = serde_json::json!({
+                    "channel_id": channel_id,
+                    "sender": user.public_key,
+                    "content": req.content,
+                    "message_id": id
+                })
+                .to_string();
+                let _ = sqlx::query(
+                    "INSERT INTO bot_event_queue (id, bot_pubkey, event_type, payload)
+                     VALUES (?, ?, 'slash_command', ?)",
+                )
+                .bind(&event_id)
+                .bind(&bot.public_key)
+                .bind(&payload)
+                .execute(&state.db)
+                .await;
+
+                if let Some(url) = bot.webhook_url {
+                    let payload_clone = payload.clone();
+                    tokio::spawn(async move {
+                        let client = reqwest::Client::new();
+                        let _ = client
+                            .post(&url)
+                            .header("Content-Type", "application/json")
+                            .body(payload_clone)
+                            .timeout(std::time::Duration::from_secs(5))
+                            .send()
+                            .await;
+                    });
+                }
+            }
+        }
+    }
 
     let reply_ctx = if let Some(parent_id) = &req.reply_to {
         load_reply_context(&state.db, parent_id).await?

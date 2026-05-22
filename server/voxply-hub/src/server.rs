@@ -78,9 +78,15 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             "/channels/{channel_id}/messages/{message_id}/reactions/{emoji}",
             axum::routing::delete(routes::messages::remove_reaction),
         )
-        .route("/bots", get(routes::bots::list_bots).post(routes::bots::create_bot))
-        .route("/bots/{public_key}", axum::routing::delete(routes::bots::delete_bot))
-        .route("/bots/{public_key}/rotate-token", post(routes::bots::rotate_token))
+        // ---- Admin bot management ----
+        .route("/admin/bots", get(routes::bots::admin_list_bots).post(routes::bots::admin_create_bot))
+        .route("/admin/bots/{pubkey}", get(routes::bots::admin_get_bot).delete(routes::bots::admin_delete_bot))
+        .route("/admin/bots/{pubkey}/webhook", put(routes::bots::admin_set_webhook))
+        // ---- Bot API (token auth) ----
+        .route("/bot/commands", put(routes::bots::bot_set_commands))
+        .route("/bot/send", post(routes::bots::bot_send_message))
+        .route("/bot/poll", get(routes::bots::bot_poll))
+        .route("/bot/events", axum::routing::delete(routes::bots::bot_ack_events))
         .route("/users", get(routes::users::list_users))
         .route("/channels/{channel_id}/members", get(routes::users::channel_members))
         .route("/voice/populations", get(routes::channels::voice_populations))

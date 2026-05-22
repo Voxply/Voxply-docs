@@ -228,7 +228,7 @@ pub async fn list_members(
     let online = state.online_users.read().await;
 
     let users = sqlx::query_as::<_, UserAdminRow>(
-        "SELECT public_key, display_name, first_seen_at, last_seen_at
+        "SELECT public_key, display_name, first_seen_at, last_seen_at, is_bot
          FROM users ORDER BY first_seen_at",
     )
     .fetch_all(&state.db)
@@ -276,6 +276,7 @@ pub async fn list_members(
             first_seen_at: u.first_seen_at,
             last_seen_at: u.last_seen_at,
             roles: role_summaries,
+            is_bot: u.is_bot != 0,
         });
     }
 
@@ -290,6 +291,8 @@ pub struct MemberAdminInfo {
     pub first_seen_at: i64,
     pub last_seen_at: i64,
     pub roles: Vec<RoleResponse>,
+    #[serde(default)]
+    pub is_bot: bool,
 }
 
 #[derive(sqlx::FromRow)]
@@ -298,6 +301,7 @@ struct UserAdminRow {
     display_name: Option<String>,
     first_seen_at: i64,
     last_seen_at: i64,
+    is_bot: i64,
 }
 
 #[derive(sqlx::FromRow)]
