@@ -297,13 +297,92 @@ pub async fn verify(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {e}")))?;
     }
 
+    // Bot challenge gate: if challenge_mode != 'off', require a valid token.
+    let challenge_mode: String = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM hub_settings WHERE key = 'challenge_mode'",
+    )
+    .fetch_optional(&state.db)
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or_else(|| "off".to_string());
+
+    if challenge_mode != "off" {
+        match &req.challenge_token {
+            None => {
+                return Err((StatusCode::FORBIDDEN, "Challenge token required".to_string()));
+            }
+            Some(ct) => {
+                let ct_row: Option<(i64, i64, Option<i64>, String)> = sqlx::query_as(
+                    "SELECT issued_at, expires_at, consumed_at, pubkey FROM challenge_tokens WHERE token = ?",
+                )
+                .bind(ct)
+                .fetch_optional(&state.db)
+                .await
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {e}")))?;
+
+                match ct_row {
+                    None => return Err((StatusCode::FORBIDDEN, "Invalid challenge token".to_string())),
+                    Some((_issued, expires, consumed, token_pubkey)) => {
+                        if consumed.is_some() {
+                            return Err((StatusCode::FORBIDDEN, "Challenge token already used".to_string()));
+                        }
+                        if now > expires {
+                            return Err((StatusCode::FORBIDDEN, "Challenge token expired".to_string()));
+                        }
+                        if token_pubkey != req.public_key {
+                            return Err((StatusCode::FORBIDDEN, "Challenge token pubkey mismatch".to_string()));
+                        }
+                        // Mark consumed
+                        sqlx::query(
+                            "UPDATE challenge_tokens SET consumed_at = ? WHERE token = ?",
+                        )
+                        .bind(now)
+                        .bind(ct)
+                        .execute(&state.db)
+                        .await
+                        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {e}")))?;
+                    }
+                }
+            }
+        }
+    }
+
+    // Compute session scope: "lobby" if lobby is enabled and user's pow_level < min_security_level
+    let lobby_enabled: bool = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM hub_settings WHERE key = 'lobby_enabled'",
+    )
+    .fetch_optional(&state.db)
+    .await
+    .ok()
+    .flatten()
+    .map(|v| v == "1")
+    .unwrap_or(true);
+
+    let pow_level: u32 = sqlx::query_scalar::<_, i64>(
+        "SELECT pow_level FROM users WHERE public_key = ?",
+    )
+    .bind(&canonical_pubkey)
+    .fetch_optional(&state.db)
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or(0) as u32;
+
+    let scope = if lobby_enabled && pow_level < min_level {
+        "lobby".to_string()
+    } else {
+        "member".to_string()
+    };
+
     tracing::info!(
-        "User authenticated: canonical={} (cert={})",
+        "User authenticated: canonical={} (cert={}, scope={})",
         &canonical_pubkey[..16],
-        master_pubkey.is_some()
+        master_pubkey.is_some(),
+        scope,
     );
 
-    Ok(Json(VerifyResponse { token }))
+    Ok(Json(VerifyResponse { token, scope }))
 }
 
 pub fn unix_timestamp() -> i64 {

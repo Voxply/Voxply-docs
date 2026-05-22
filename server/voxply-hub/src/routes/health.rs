@@ -33,6 +33,15 @@ pub async fn info(State(state): State<Arc<AppState>>) -> Json<InfoResponse> {
     .map(|v| v == "true")
     .unwrap_or(false);
 
+    let challenge_mode: String = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM hub_settings WHERE key = 'challenge_mode'",
+    )
+    .fetch_optional(&state.db)
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or_else(|| "off".to_string());
+
     let branding = crate::routes::hub::read_branding(&state).await;
 
     Json(InfoResponse {
@@ -43,6 +52,7 @@ pub async fn info(State(state): State<Arc<AppState>>) -> Json<InfoResponse> {
         public_key: state.hub_identity.public_key_hex(),
         min_security_level,
         invite_only,
+        challenge_mode,
     })
 }
 
@@ -62,4 +72,6 @@ pub struct InfoResponse {
     pub public_key: String,
     pub min_security_level: u32,
     pub invite_only: bool,
+    #[serde(default)]
+    pub challenge_mode: String,
 }
