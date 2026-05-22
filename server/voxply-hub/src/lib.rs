@@ -1,9 +1,0 @@
-pub mod auth;
-pub mod db;
-pub mod dm_worker;
-pub mod federation;
-pub mod permissions;
-pub mod rate_limit;
-pub mod routes;
-pub mod server;
-pub mod state;
