@@ -301,6 +301,8 @@ export interface PendingAllianceInvite {
   created_at: number;
 }
 
+// ---- Security Level Lobby ----
+
 export interface LobbyStatus {
   status: "lobby" | "promoted" | "member";
   required_level: number;
@@ -308,6 +310,8 @@ export interface LobbyStatus {
   entered_at: number | null;
   welcome_md: string | null;
 }
+
+// ---- Bot Challenge ----
 
 export interface ChallengePrompt {
   id: string;
@@ -323,6 +327,8 @@ export interface ChallengeResult {
   next_challenge: ChallengePrompt | null;
   attempts_remaining: number | null;
 }
+
+// ---- Role Questionnaire / Onboarding Survey ----
 
 export interface SurveyChoice {
   id: string;

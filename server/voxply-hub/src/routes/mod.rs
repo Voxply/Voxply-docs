@@ -1,7 +1,10 @@
 pub mod bots;
 pub mod alliance_models;
+pub mod challenge;
 pub mod directory;
 pub mod alliances;
+pub mod lobby;
+pub mod survey;
 pub mod channels;
 pub mod dh_keys;
 pub mod dm_models;

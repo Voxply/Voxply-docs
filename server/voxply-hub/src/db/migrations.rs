@@ -653,6 +653,148 @@ pub async fn run(pool: &SqlitePool) -> Result<()> {
     .execute(pool)
     .await;
 
+    // ---- Feature: Security Level Lobby ----
+    // Additive columns on users
+    let _ = sqlx::query(
+        "ALTER TABLE users ADD COLUMN lobby_status TEXT NOT NULL DEFAULT 'none'",
+    )
+    .execute(pool)
+    .await;
+    let _ = sqlx::query("ALTER TABLE users ADD COLUMN lobby_entered_at INTEGER")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query(
+        "ALTER TABLE users ADD COLUMN pow_level INTEGER NOT NULL DEFAULT 0",
+    )
+    .execute(pool)
+    .await;
+
+    // Lobby settings
+    sqlx::query(
+        "INSERT OR IGNORE INTO hub_settings (key, value) VALUES ('lobby_enabled', '1')",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "INSERT OR IGNORE INTO hub_settings (key, value) VALUES ('lobby_welcome_md', '')",
+    )
+    .execute(pool)
+    .await?;
+
+    // ---- Feature: Bot Challenge ----
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS bot_challenges (
+            id           TEXT PRIMARY KEY,
+            pubkey       TEXT NOT NULL,
+            kind         TEXT NOT NULL,
+            expected_answer TEXT,
+            created_at   INTEGER NOT NULL,
+            expires_at   INTEGER NOT NULL,
+            consumed_at  INTEGER
+        )",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_bot_challenges_pubkey ON bot_challenges(pubkey, expires_at)",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS challenge_tokens (
+            token       TEXT PRIMARY KEY,
+            pubkey      TEXT NOT NULL,
+            issued_at   INTEGER NOT NULL,
+            expires_at  INTEGER NOT NULL,
+            consumed_at INTEGER
+        )",
+    )
+    .execute(pool)
+    .await?;
+
+    // Challenge settings
+    sqlx::query(
+        "INSERT OR IGNORE INTO hub_settings (key, value) VALUES ('challenge_mode', 'off')",
+    )
+    .execute(pool)
+    .await?;
+    sqlx::query(
+        "INSERT OR IGNORE INTO hub_settings (key, value) VALUES ('challenge_difficulty', 'easy')",
+    )
+    .execute(pool)
+    .await?;
+
+    // ---- Feature: Role Questionnaire / Onboarding Survey ----
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS surveys (
+            id         TEXT PRIMARY KEY,
+            enabled    INTEGER NOT NULL DEFAULT 0,
+            updated_at INTEGER NOT NULL
+        )",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS survey_questions (
+            id            TEXT PRIMARY KEY,
+            survey_id     TEXT NOT NULL REFERENCES surveys(id) ON DELETE CASCADE,
+            prompt        TEXT NOT NULL,
+            kind          TEXT NOT NULL,
+            required      INTEGER NOT NULL DEFAULT 1,
+            display_order INTEGER NOT NULL
+        )",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS survey_choices (
+            id            TEXT PRIMARY KEY,
+            question_id   TEXT NOT NULL REFERENCES survey_questions(id) ON DELETE CASCADE,
+            label         TEXT NOT NULL,
+            display_order INTEGER NOT NULL
+        )",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS survey_choice_roles (
+            choice_id TEXT NOT NULL REFERENCES survey_choices(id) ON DELETE CASCADE,
+            role_id   TEXT NOT NULL,
+            PRIMARY KEY (choice_id, role_id)
+        )",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS survey_responses (
+            id           TEXT PRIMARY KEY,
+            pubkey       TEXT NOT NULL,
+            survey_id    TEXT NOT NULL,
+            submitted_at INTEGER NOT NULL,
+            UNIQUE(pubkey, survey_id)
+        )",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS survey_answers (
+            response_id TEXT NOT NULL REFERENCES survey_responses(id) ON DELETE CASCADE,
+            question_id TEXT NOT NULL,
+            choice_id   TEXT,
+            text_answer TEXT,
+            PRIMARY KEY (response_id, question_id)
+        )",
+    )
+    .execute(pool)
+    .await?;
+
     tracing::info!("Database migrations complete");
     Ok(())
 }

@@ -160,6 +160,21 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/federation/channels", get(federation::handlers::all_federated_channels))
         .route("/federation/channels/{fed_channel_id}/messages", get(federation::handlers::federated_messages)
             .post(federation::handlers::send_federated_message))
+        // ---- Lobby ----
+        .route("/lobby/status", get(routes::lobby::get_status))
+        .route("/lobby/submit-pow", post(routes::lobby::submit_pow))
+        .route("/lobby/welcome", get(routes::lobby::get_welcome))
+        .route("/hub/settings/lobby", put(routes::lobby::update_lobby_settings))
+        // ---- Bot Challenge ----
+        .route("/challenge/new", get(routes::challenge::new_challenge))
+        .route("/challenge/verify", post(routes::challenge::verify_challenge))
+        .route("/hub/settings/challenge", put(routes::challenge::update_challenge_settings))
+        // ---- Survey ----
+        .route("/survey/current", get(routes::survey::get_current))
+        .route("/survey/submit", post(routes::survey::submit_survey))
+        .route("/admin/survey", get(routes::survey::admin_get_survey).put(routes::survey::admin_put_survey))
+        .route("/admin/survey/responses", get(routes::survey::admin_list_responses))
+        .route("/admin/survey/responses/{pubkey}", get(routes::survey::admin_get_response_for_pubkey))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }

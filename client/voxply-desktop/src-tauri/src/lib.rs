@@ -691,6 +691,16 @@ fn active_session(state: &AppState) -> Result<(String, String), String> {
     Ok((s.hub_url.clone(), s.token.clone()))
 }
 
+/// Look up a session by hub_url (for commands that receive an explicit hub_url parameter).
+fn session_for_url(state: &AppState, hub_url: &str) -> Result<String, String> {
+    let normalized = hub_url.trim_end_matches('/').to_string();
+    let hubs = state.hubs.lock().unwrap();
+    hubs.values()
+        .find(|s| s.hub_url.trim_end_matches('/') == normalized)
+        .map(|s| s.token.clone())
+        .ok_or_else(|| format!("No active session for hub: {hub_url}"))
+}
+
 #[tauri::command]
 async fn get_hub_ws_info(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
     let (hub_url, token) = active_session(&state)?;
@@ -3966,6 +3976,396 @@ async fn rotate_bot_token(public_key: String, state: State<'_, AppState>) -> Res
     v["token"].as_str().map(|s| s.to_string()).ok_or("Missing token in response".to_string())
 }
 
+// =============================================================================
+// Feature: Security Level Lobby
+// =============================================================================
+
+#[derive(Serialize, Deserialize, Clone)]
+struct LobbyStatusResult {
+    status: String,
+    required_level: u32,
+    current_level: u32,
+    entered_at: Option<i64>,
+    welcome_md: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct LobbySubmitResult {
+    promoted: bool,
+    new_level: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct LobbyWelcome {
+    welcome_md: String,
+    hub_name: String,
+    required_level: u32,
+}
+
+#[tauri::command]
+async fn lobby_status(
+    hub_url: String,
+    state: State<'_, AppState>,
+) -> Result<LobbyStatusResult, String> {
+    let token = session_for_url(&state, &hub_url)?;
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .get(format!("{base}/lobby/status"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    resp.json().await.map_err(|e| format!("Invalid response: {e}"))
+}
+
+#[tauri::command]
+async fn lobby_submit_proof(
+    hub_url: String,
+    pow_proof: String,
+    state: State<'_, AppState>,
+) -> Result<LobbySubmitResult, String> {
+    let token = session_for_url(&state, &hub_url)?;
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .post(format!("{base}/lobby/submit-pow"))
+        .bearer_auth(&token)
+        .json(&serde_json::json!({ "pow_proof": pow_proof }))
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    resp.json().await.map_err(|e| format!("Invalid response: {e}"))
+}
+
+#[tauri::command]
+async fn lobby_get_welcome(
+    hub_url: String,
+    state: State<'_, AppState>,
+) -> Result<LobbyWelcome, String> {
+    let token = session_for_url(&state, &hub_url)?;
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .get(format!("{base}/lobby/welcome"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    resp.json().await.map_err(|e| format!("Invalid response: {e}"))
+}
+
+#[tauri::command]
+async fn set_lobby_settings(
+    hub_url: String,
+    lobby_enabled: bool,
+    welcome_md: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let token = session_for_url(&state, &hub_url)?;
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .put(format!("{base}/hub/settings/lobby"))
+        .bearer_auth(&token)
+        .json(&serde_json::json!({ "lobby_enabled": lobby_enabled, "welcome_md": welcome_md }))
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    Ok(())
+}
+
+// =============================================================================
+// Feature: Bot Challenge
+// =============================================================================
+
+#[derive(Serialize, Deserialize, Clone)]
+struct ChallengePrompt {
+    id: String,
+    mode: String,
+    prompt_svg: Option<String>,
+    expires_at: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct ChallengeResult {
+    ok: bool,
+    token: Option<String>,
+    expires_at: Option<i64>,
+    next_challenge: Option<ChallengePrompt>,
+    attempts_remaining: Option<u32>,
+}
+
+#[tauri::command]
+async fn challenge_fetch(
+    hub_url: String,
+    pubkey: String,
+    state: State<'_, AppState>,
+) -> Result<ChallengePrompt, String> {
+    let base = hub_url.trim_end_matches('/');
+    // No auth needed for /challenge/new
+    let resp = state
+        .http_client
+        .get(format!("{base}/challenge/new"))
+        .query(&[("pubkey", &pubkey)])
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    resp.json().await.map_err(|e| format!("Invalid response: {e}"))
+}
+
+#[tauri::command]
+async fn challenge_submit(
+    hub_url: String,
+    id: String,
+    pubkey: String,
+    answer: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<ChallengeResult, String> {
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .post(format!("{base}/challenge/verify"))
+        .json(&serde_json::json!({ "id": id, "pubkey": pubkey, "answer": answer }))
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    resp.json().await.map_err(|e| format!("Invalid response: {e}"))
+}
+
+#[tauri::command]
+async fn set_challenge_settings(
+    hub_url: String,
+    challenge_mode: String,
+    challenge_difficulty: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let token = session_for_url(&state, &hub_url)?;
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .put(format!("{base}/hub/settings/challenge"))
+        .bearer_auth(&token)
+        .json(&serde_json::json!({
+            "challenge_mode": challenge_mode,
+            "challenge_difficulty": challenge_difficulty,
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    Ok(())
+}
+
+// =============================================================================
+// Feature: Role Questionnaire / Onboarding Survey
+// =============================================================================
+
+#[derive(Serialize, Deserialize, Clone)]
+struct SurveyChoiceTs {
+    id: String,
+    label: String,
+    display_order: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct SurveyQuestionTs {
+    id: String,
+    prompt: String,
+    kind: String,
+    required: bool,
+    display_order: i64,
+    choices: Option<Vec<SurveyChoiceTs>>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct SurveyPublicTs {
+    id: String,
+    questions: Vec<SurveyQuestionTs>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct SurveyChoiceAdminTs {
+    id: String,
+    label: String,
+    display_order: i64,
+    role_ids: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct SurveyQuestionAdminTs {
+    id: String,
+    prompt: String,
+    kind: String,
+    required: bool,
+    display_order: i64,
+    choices: Option<Vec<SurveyChoiceAdminTs>>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct SurveyAdminTs {
+    id: String,
+    enabled: bool,
+    questions: Vec<SurveyQuestionAdminTs>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct SurveyAnswer {
+    question_id: String,
+    choice_id: Option<String>,
+    text_answer: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct SurveySubmitResult {
+    next_state: String,
+    applied_roles: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct SurveyAnswerView {
+    question_id: String,
+    prompt: String,
+    choice_label: Option<String>,
+    text_answer: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct SurveyResponseAdminTs {
+    response_id: String,
+    pubkey: String,
+    display_name: Option<String>,
+    submitted_at: i64,
+    answers: Vec<SurveyAnswerView>,
+}
+
+#[tauri::command]
+async fn survey_current(
+    hub_url: String,
+    state: State<'_, AppState>,
+) -> Result<Option<SurveyPublicTs>, String> {
+    let token = session_for_url(&state, &hub_url)?;
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .get(format!("{base}/survey/current"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    resp.json().await.map_err(|e| format!("Invalid response: {e}"))
+}
+
+#[tauri::command]
+async fn survey_submit(
+    hub_url: String,
+    survey_id: String,
+    answers: Vec<SurveyAnswer>,
+    state: State<'_, AppState>,
+) -> Result<SurveySubmitResult, String> {
+    let token = session_for_url(&state, &hub_url)?;
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .post(format!("{base}/survey/submit"))
+        .bearer_auth(&token)
+        .json(&serde_json::json!({ "survey_id": survey_id, "answers": answers }))
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    resp.json().await.map_err(|e| format!("Invalid response: {e}"))
+}
+
+#[tauri::command]
+async fn survey_admin_get(
+    hub_url: String,
+    state: State<'_, AppState>,
+) -> Result<Option<SurveyAdminTs>, String> {
+    let token = session_for_url(&state, &hub_url)?;
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .get(format!("{base}/admin/survey"))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    resp.json().await.map_err(|e| format!("Invalid response: {e}"))
+}
+
+#[tauri::command]
+async fn survey_admin_put(
+    hub_url: String,
+    survey: SurveyAdminTs,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let token = session_for_url(&state, &hub_url)?;
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .put(format!("{base}/admin/survey"))
+        .bearer_auth(&token)
+        .json(&survey)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn survey_admin_responses(
+    hub_url: String,
+    status: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<SurveyResponseAdminTs>, String> {
+    let token = session_for_url(&state, &hub_url)?;
+    let base = hub_url.trim_end_matches('/');
+    let resp = state
+        .http_client
+        .get(format!("{base}/admin/survey/responses"))
+        .bearer_auth(&token)
+        .query(&[("status", &status)])
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(resp.text().await.unwrap_or_default());
+    }
+    resp.json().await.map_err(|e| format!("Invalid response: {e}"))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     use tauri::menu::{Menu, MenuItem};
@@ -4203,6 +4603,18 @@ pub fn run() {
             create_bot,
             delete_bot,
             rotate_bot_token,
+            lobby_status,
+            lobby_submit_proof,
+            lobby_get_welcome,
+            set_lobby_settings,
+            challenge_fetch,
+            challenge_submit,
+            set_challenge_settings,
+            survey_current,
+            survey_submit,
+            survey_admin_get,
+            survey_admin_put,
+            survey_admin_responses,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
