@@ -5333,3 +5333,116 @@ select:focus {
   align-items: flex-start;
 }
 
+/* ---- Bots ---- */
+.bot-badge {
+  font-size: var(--text-xs);
+  background: var(--accent);
+  color: var(--bg);
+  border-radius: var(--r-sm);
+  padding: 1px 5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  margin-left: var(--space-1);
+}
+
+.member-section {
+  padding: var(--space-1) var(--space-2);
+}
+
+.member-section-header {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  padding: var(--space-1) 0;
+  text-align: left;
+  width: 100%;
+}
+
+.member-section-header:hover {
+  color: var(--text);
+}
+
+.member-section-bots .member-list-item {
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) 0;
+  font-size: var(--text-sm);
+}
+
+.slash-command-popup {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.2);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  margin-bottom: 4px;
+}
+
+.slash-command-item {
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.slash-command-item:hover,
+.slash-command-item.selected {
+  background: var(--bg-hover, rgba(255,255,255,0.06));
+}
+
+.slash-command-name {
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.slash-command-desc {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.slash-command-bot {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.bot-token-box {
+  font-family: monospace;
+  font-size: var(--text-sm);
+  background: var(--bg-secondary, rgba(0,0,0,0.2));
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--space-3);
+  word-break: break-all;
+  user-select: all;
+  margin: var(--space-2) 0;
+  display: block;
+}
+
+.bot-token-warning {
+  color: var(--color-warning, #f59e0b);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-2);
+}
+

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import type {
   Channel,
   Hub,
@@ -39,6 +39,12 @@ interface SelectedAllianceChannel {
 }
 
 interface TypingEntry { name: string; ts: number }
+
+interface SlashCommandEntry {
+  command: string;
+  description: string;
+  bot_name: string;
+}
 
 interface Props {
   view: "channels" | "dms";
@@ -111,6 +117,7 @@ interface Props {
   onOpenImage: (src: string, alt: string) => void;
   onToast: (msg: string) => void;
   onError: (msg: string) => void;
+  slashCommands?: SlashCommandEntry[];
   activeScreenShares: ActiveStream[];
   screenShareViewerRef: React.RefObject<ScreenShareViewerRef | null>;
   sharing: boolean;
@@ -139,9 +146,63 @@ export function ContentArea({
   onJumpToBottom, onMessagesScroll,
   onSetUserContextMenu, onSetEditingDraft, onInputTextChange, onKeyDown,
   onOpenImage, onToast, onError,
+  slashCommands = [],
   activeScreenShares, screenShareViewerRef,
   sharing, shareKbps, onStopShare,
 }: Props) {
+  const [slashSuggestions, setSlashSuggestions] = useState<SlashCommandEntry[]>([]);
+  const [slashSelectedIdx, setSlashSelectedIdx] = useState(0);
+
+  function handleSlashInputChange(value: string) {
+    onInputTextChange(value);
+    if (value.startsWith("/") && !value.includes(" ")) {
+      const prefix = value.slice(1).toLowerCase();
+      const matches = slashCommands.filter((s) =>
+        s.command.toLowerCase().startsWith(prefix)
+      );
+      setSlashSuggestions(matches);
+      setSlashSelectedIdx(0);
+    } else {
+      setSlashSuggestions([]);
+    }
+  }
+
+  function fillSlashCommand(command: string) {
+    onInputTextChange("/" + command + " ");
+    setSlashSuggestions([]);
+    setSlashSelectedIdx(0);
+  }
+
+  function handleSlashKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (slashSuggestions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSlashSelectedIdx((i) => (i + 1) % slashSuggestions.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSlashSelectedIdx((i) => (i - 1 + slashSuggestions.length) % slashSuggestions.length);
+        return;
+      }
+      if (e.key === "Tab" || e.key === "Enter") {
+        e.preventDefault();
+        fillSlashCommand(slashSuggestions[slashSelectedIdx].command);
+        return;
+      }
+      if (e.key === "Escape") {
+        setSlashSuggestions([]);
+        return;
+      }
+    }
+    if (e.key === "Escape" && replyTarget) {
+      e.preventDefault();
+      onSetReplyTarget(null);
+      return;
+    }
+    onKeyDown(e);
+  }
+
   return (
     <>
       <div className="content">
@@ -594,21 +655,36 @@ export function ContentArea({
                   onChange={(e) => { onAttachFiles(e.target.files); (e.target as HTMLInputElement).value = ""; }}
                 />
               </label>
-              <input
-                ref={messageInputRef}
-                type="text"
-                value={inputText}
-                onChange={(e) => { onInputTextChange(e.target.value); if (e.target.value.length > 0) onPingTyping(); }}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape" && replyTarget) { e.preventDefault(); onSetReplyTarget(null); return; }
-                  onKeyDown(e);
-                }}
-                placeholder={
-                  replyTarget
-                    ? `Reply to ${users.find((u) => u.public_key === replyTarget.sender)?.display_name ?? "user"}`
-                    : `Message #${selectedChannel.name}`
-                }
-              />
+              <div style={{ position: "relative", flex: 1 }}>
+                {slashSuggestions.length > 0 && (
+                  <div className="slash-command-popup">
+                    {slashSuggestions.map((s, i) => (
+                      <div
+                        key={s.command}
+                        className={`slash-command-item${i === slashSelectedIdx ? " selected" : ""}`}
+                        onMouseDown={(e) => { e.preventDefault(); fillSlashCommand(s.command); }}
+                      >
+                        <span className="slash-command-name">/{s.command}</span>
+                        <span className="slash-command-desc">{s.description}</span>
+                        <span className="slash-command-bot">{s.bot_name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <input
+                  ref={messageInputRef}
+                  type="text"
+                  value={inputText}
+                  style={{ width: "100%" }}
+                  onChange={(e) => { handleSlashInputChange(e.target.value); if (e.target.value.length > 0) onPingTyping(); }}
+                  onKeyDown={handleSlashKeyDown}
+                  placeholder={
+                    replyTarget
+                      ? `Reply to ${users.find((u) => u.public_key === replyTarget.sender)?.display_name ?? "user"}`
+                      : `Message #${selectedChannel.name}`
+                  }
+                />
+              </div>
               <button onClick={onSend}>Send</button>
             </div>
           </>

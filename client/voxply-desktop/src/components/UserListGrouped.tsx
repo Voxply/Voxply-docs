@@ -12,6 +12,8 @@ export function UserListGrouped({
   onContextMenu?: (e: React.MouseEvent, user: User) => void;
 }) {
   const [filter, setFilter] = useState("");
+  const [botsExpanded, setBotsExpanded] = useState(false);
+
   // Filter on lowercased display_name OR pubkey prefix so users can find
   // someone they know by name even when their display_name is null.
   const q = filter.trim().toLowerCase();
@@ -21,11 +23,14 @@ export function UserListGrouped({
       )
     : users;
 
+  const bots = matched.filter((u) => u.is_bot);
+  const humans = matched.filter((u) => !u.is_bot);
+
   // Online first, then offline. Within each, bucket by group_role (the name of
   // the highest-priority role with display_separately=true), with null-role
   // members falling into a generic "Online" / "Offline" bucket.
-  const online = matched.filter((u) => u.online);
-  const offline = matched.filter((u) => !u.online);
+  const online = humans.filter((u) => u.online);
+  const offline = humans.filter((u) => !u.online);
 
   function bucket(group: User[], fallback: string): [string, User[]][] {
     const grouped = new Map<string, User[]>();
@@ -46,12 +51,12 @@ export function UserListGrouped({
   const onlineBuckets = bucket(online, "Online");
   const offlineBuckets = bucket(offline, "Offline");
 
-  const onlineCount = users.filter((u) => u.online).length;
+  const onlineCount = humans.filter((u) => u.online).length;
   return (
     <>
       <div className="user-list-header">
         <span className="user-list-total">
-          {users.length} {users.length === 1 ? "member" : "members"}
+          {humans.length} {humans.length === 1 ? "member" : "members"}
         </span>
         <span className="user-list-online" title="Online">
           <span className="status-dot online" />
@@ -85,7 +90,6 @@ export function UserListGrouped({
                 <span className="status-dot online" />
                 <span className="user-name">
                   {u.display_name || u.public_key.slice(0, 16)}
-                  {u.is_bot && <span className="bot-badge">BOT</span>}
                 </span>
                 {inVoice?.has(u.public_key) && (
                   <span className="user-in-voice" title="In voice">
@@ -113,7 +117,6 @@ export function UserListGrouped({
                 <span className="status-dot offline" />
                 <span className="user-name">
                   {u.display_name || u.public_key.slice(0, 16)}
-                  {u.is_bot && <span className="bot-badge">BOT</span>}
                 </span>
                 {inVoice?.has(u.public_key) && (
                   <span className="user-in-voice" title="In voice">
@@ -125,6 +128,22 @@ export function UserListGrouped({
           </ul>
         </div>
       ))}
+      {bots.length > 0 && (
+        <div className="member-section member-section-bots">
+          <button
+            className="member-section-header"
+            onClick={() => setBotsExpanded((prev) => !prev)}
+          >
+            BOTS — {bots.length}
+          </button>
+          {botsExpanded && bots.map((bot) => (
+            <div key={bot.public_key} className="member-list-item">
+              <span className="member-name">{bot.display_name ?? "Bot"}</span>
+              <span className="bot-badge">BOT</span>
+            </div>
+          ))}
+        </div>
+      )}
     </>
   );
 }

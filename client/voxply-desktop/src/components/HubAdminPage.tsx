@@ -17,7 +17,7 @@ import { RoleEditor } from "./RoleEditor";
 import { AlliancesSection } from "./AlliancesSection";
 import { AllianceInvitesSection } from "./AllianceInvitesSection";
 import { HubIconsSection } from "./HubIconsSection";
-import { HubBotsSection } from "./HubBotsSection";
+import { BotAdminSection } from "./BotAdminSection";
 import { SurveyAdminSection } from "./SurveyAdminSection";
 import { LobbySettingsSection } from "./LobbySettingsSection";
 import { ChallengeSettingsSection } from "./ChallengeSettingsSection";
@@ -90,6 +90,7 @@ export interface HubAdminPageProps {
   onUnban: (publicKey: string) => void;
   invites: InviteInfo[];
   activeHubUrl: string;
+  myPubkey: string;
   onCreateInvite: (maxUses: number | null, expiresInSeconds: number | null) => void;
   onRevokeInvite: (code: string) => void;
   channels: Channel[];
@@ -583,14 +584,10 @@ export function HubAdminPage(props: HubAdminPageProps) {
           </section>
         )}
         {props.tab === "bots" && (
-          <section>
-            <h1>Bots</h1>
-            <p className="muted">
-              Bots are hub members with a long-lived API token. Tokens are only
-              shown once — copy them immediately after creating or rotating.
-            </p>
-            <HubBotsSection />
-          </section>
+          <BotAdminSection
+            hubUrl={props.activeHubUrl}
+            myPubkey={props.myPubkey}
+          />
         )}
         {props.tab === "survey" && (
           <SurveyAdminSection hubUrl={props.activeHubUrl} />

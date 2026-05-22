@@ -36,6 +36,8 @@ import type {
   ActiveStream,
   LobbyStatus,
   SurveySubmitResult,
+  BotAdminInfo,
+  BotDetailInfo,
 } from "./types";
 import { ScreenSharePicker } from "./components/ScreenSharePicker";
 import { useVoice } from "./hooks/useVoice";
@@ -692,6 +694,14 @@ function App() {
   // Hub users
   const [users, setUsers] = useState<User[]>([]);
 
+  // Slash command autocomplete entries — populated after hub load.
+  interface SlashCommandEntry {
+    command: string;
+    description: string;
+    bot_name: string;
+  }
+  const [slashCommands, setSlashCommands] = useState<SlashCommandEntry[]>([]);
+
   // Indexes for mention rendering. knownDisplayNames is the lower-cased set
   // of all display names on this hub so MessageContent can decide which
   // @tokens are real mentions vs just text.
@@ -1314,6 +1324,26 @@ function App() {
     }
   }
 
+  async function loadSlashCommands(hubUrl: string) {
+    try {
+      const bots = await invoke<BotAdminInfo[]>("admin_list_bots", { hubUrl });
+      const entries: SlashCommandEntry[] = [];
+      for (const bot of bots) {
+        try {
+          const detail = await invoke<BotDetailInfo>("admin_get_bot_detail", { hubUrl, pubkey: bot.public_key });
+          for (const cmd of detail.commands) {
+            entries.push({ command: cmd.command, description: cmd.description, bot_name: bot.display_name });
+          }
+        } catch {
+          // skip bots whose detail fails to load
+        }
+      }
+      setSlashCommands(entries);
+    } catch {
+      setSlashCommands([]);
+    }
+  }
+
   async function openHubAdmin() {
     setHubDropdownOpen(false);
     setShowHubAdmin(true);
@@ -1905,9 +1935,13 @@ function App() {
   useEffect(() => {
     if (activeHubId) {
       loadHubData();
+      const hub = hubs.find((h) => h.hub_id === activeHubId);
+      if (hub) loadSlashCommands(hub.hub_url);
+      else setSlashCommands([]);
     } else {
       // No active hub — clear approval state so the next switch starts fresh.
       setMyApprovalStatus("unknown");
+      setSlashCommands([]);
     }
   }, [activeHubId]);
 
@@ -2838,6 +2872,7 @@ function App() {
             onUnban={handleUnban}
             invites={adminInvites}
             activeHubUrl={hubs.find((h) => h.hub_id === activeHubId)?.hub_url ?? ""}
+            myPubkey={publicKey ?? ""}
             onCreateInvite={handleCreateInvite}
             onRevokeInvite={handleRevokeInvite}
             channels={channels}
@@ -3133,6 +3168,7 @@ function App() {
                   onSetEditingDraft={setEditingDraft}
                   onInputTextChange={setInputText}
                   onKeyDown={handleKeyDown}
+                  slashCommands={slashCommands}
                   onOpenImage={openImage}
                   onToast={setToast}
                   onError={setError}
