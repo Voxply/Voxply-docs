@@ -8,12 +8,12 @@ community-built games — all keypair-based identity, no central servers.
 
 | Repo | Local path | Contents |
 |---|---|---|
-| [Voxply](https://github.com/YOUR_ORG/Voxply) *(this repo)* | `docs/` | Architecture docs, ROADMAP, design decisions, API spec |
-| [Voxply-server](https://github.com/YOUR_ORG/Voxply-server) | `hub/` | Hub server, seed server, identity crate |
-| [Voxply-desktop](https://github.com/YOUR_ORG/Voxply-desktop) | `desktop/` | Tauri + React desktop client, voice crate |
-| [Voxply-android](https://github.com/YOUR_ORG/Voxply-android) | `android/` | Tauri Android client |
-| [Voxply-web](https://github.com/YOUR_ORG/Voxply-web) | `web/` | Browser client |
-| [Voxply-discovery](https://github.com/YOUR_ORG/Voxply-discovery) | `discovery/` | Hub discovery web app |
+| [Voxply](https://github.com/Voxply/Voxply) *(this repo)* | `docs/` | Architecture docs, ROADMAP, design decisions, API spec |
+| [Voxply-server](https://github.com/Voxply/Voxply-server) | `hub/` | Hub server, seed server, identity crate |
+| [Voxply-desktop](https://github.com/Voxply/Voxply-desktop) | `desktop/` | Tauri + React desktop client, voice crate |
+| [Voxply-android](https://github.com/Voxply/Voxply-android) | `android/` | Tauri Android client |
+| [Voxply-web](https://github.com/Voxply/Voxply-web) | `web/` | Browser client |
+| [Voxply-discovery](https://github.com/Voxply/Voxply-discovery) | `discovery/` | Hub discovery web app |
 
 ## Documentation
 
@@ -22,7 +22,7 @@ community-built games — all keypair-based identity, no central servers.
   and glossary.
 - [`ROADMAP.md`](ROADMAP.md) — what's next, known issues, undesigned
   wishlist, and explicit "won't do" decisions.
-- [`hub/openapi.yaml`](https://github.com/YOUR_ORG/Voxply-server/blob/main/openapi.yaml) — full API spec (OpenAPI 3.0). Reference for client implementors.
+- [`hub/openapi.yaml`](https://github.com/Voxply/Voxply-server/blob/main/openapi.yaml) — full API spec (OpenAPI 3.0). Reference for client implementors.
 
 ## Features
 
