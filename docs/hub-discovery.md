@@ -72,12 +72,12 @@ a QR code for in-person sharing.
 
 ### Separate repository
 
-The directory lives in a separate repo (`voxply-discovery`). Rationale:
-it is a web service with its own deployment lifecycle (deploy a CSS fix
-without touching the desktop or hub releases), its own CI/CD (Vercel /
-Cloudflare Pages), and a different contributor profile (web developers
-who don't need Rust toolchains). The API contract documented here is the
-boundary between repos.
+The directory lives in a separate repo (`Voxply-discovery`, a Next.js
+project). Rationale: it is a web service with its own deployment
+lifecycle (deploy a CSS fix without touching the desktop or hub
+releases), its own CI/CD (Vercel / Cloudflare Pages), and a different
+contributor profile (web developers who don't need Rust toolchains). The
+API contract documented here is the boundary between repos.
 
 ### What the website is
 
@@ -165,7 +165,7 @@ The hub's private key never leaves the server.
 ### Anti-spam
 
 - Submissions require solving a PoW puzzle (same SHA-256 primitive
-  already in `shared/voxply-identity/src/pow.rs`). Level TBD — high
+  already in `identity/src/pow.rs` in Voxply-server). Level TBD — high
   enough to deter bulk fake listings, low enough that a single legit
   submission takes under a second.
 - The directory service re-verifies (`/info` scrape) listings on a
@@ -296,9 +296,9 @@ client verify the list was produced by the user, not the hub operator.
 1. **Layer 1: deep links + address entry + hub preview card** — pure
    client work, no new service. Adds `voxply://` registration, reworks
    the "Add hub" dialog, adds the Share button to hub admin.
-2. **Layer 2: directory API + website** — new `voxply-discovery` repo.
-   Parallel work: hub-side signing endpoint + Tauri command + "Submit to
-   directory" UI.
+2. **Layer 2: directory API + website** — in the `Voxply-discovery`
+   repo. Parallel work: hub-side signing endpoint + Tauri command +
+   "Submit to directory" UI.
 3. **Layer 2: client Discover tab** — wires the directory API into the
    desktop client once the API is live.
 4. **Layer 3: public profiles** — new hub endpoint + client UI. Design
@@ -317,6 +317,6 @@ client verify the list was produced by the user, not the hub operator.
 - **Hub-initiated delisting** — if a hub goes private after listing,
   should the `/info` scrape automatically remove it? Probably yes if
   `invite_only` flips to true and no invite code is stored.
-- **Tech stack for `voxply-discovery`** — Next.js (TypeScript, SSR,
-  easy Vercel deploy) is a natural fit given the desktop client is
-  already TypeScript/React. Decision belongs in that repo.
+- **Tech stack for `Voxply-discovery`** — Next.js (TypeScript, SSR,
+  easy Vercel deploy) is what the repo ships with, a natural fit given
+  the desktop client is already TypeScript/React.

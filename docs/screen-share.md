@@ -76,8 +76,8 @@ share view (picture-in-picture style). Disabling the webcam toggles
 the second stream off without affecting the screen share.
 
 Webcam audio is **not** captured (the user's mic is already handled
-by the voice pipeline in `shared/voxply-voice/`). Mixing webcam mic
-into the screen-share audio path would double-mic the user.
+by the voice pipeline in the `voice/` crate of Voxply-desktop). Mixing
+webcam mic into the screen-share audio path would double-mic the user.
 
 Webcam-only sharing (no screen) is allowed: same path, just the
 webcam stream and no screen stream. Useful for video calls.
@@ -117,9 +117,9 @@ before they can decode anything.
 ### Wire format
 
 Two new envelope variants on the existing typed message channel in
-`server/voxply-hub/src/routes/chat_models.rs` (the same enum that
+`hub/src/routes/chat_models.rs` (Voxply-server) — the same enum that
 already carries `Subscribe` / `Unsubscribe` at
-lines 175-181 (`SubscribeAll` removed — hub auto-subscribes on connect)):
+lines 175-181 (`SubscribeAll` removed — hub auto-subscribes on connect):
 
 ```
 // Client → Hub
@@ -269,7 +269,7 @@ simply produces silent audio if no driver is present, with no error.
 ### Webcam mic
 
 Not captured. The user's mic is already in the voice channel via
-the cpal pipeline (`shared/voxply-voice/src/capture.rs`). Capturing
+the cpal pipeline (`voice/src/capture.rs` in Voxply-desktop). Capturing
 it twice would echo or double-mic.
 
 ### Viewer volume
@@ -285,9 +285,9 @@ client prefs.
 
 | Change | Where |
 |---|---|
-| New WS envelopes (`ScreenShareStart`/`Chunk`/`Stop` + `*Started`/`ChunkOut`/`Stopped`) | `server/voxply-hub/src/routes/chat_models.rs` (extend the enums at line 175 and 196) |
-| Binary frame correlation (envelope ↔ next binary frame) | `server/voxply-hub/src/routes/ws.rs` |
-| In-memory `ActiveShare` map per channel | `server/voxply-hub/src/state.rs` (sibling of `voice_channels`) |
+| New WS envelopes (`ScreenShareStart`/`Chunk`/`Stop` + `*Started`/`ChunkOut`/`Stopped`) | `hub/src/routes/chat_models.rs` in Voxply-server (extend the enums at line 175 and 196) |
+| Binary frame correlation (envelope ↔ next binary frame) | `hub/src/routes/ws.rs` (Voxply-server) |
+| In-memory `ActiveShare` map per channel | `hub/src/state.rs` (Voxply-server, sibling of `voice_channels`) |
 | Init-chunk cache per active stream | Same map, fixed-size byte buffer per stream |
 | Permission check on `ScreenShareStart` | Reuses existing channel-membership + role check |
 | At-most-one-sharer-per-channel enforcement | Reject `ScreenShareStart` if `ActiveShare` exists; allow same sharer to add a second stream (webcam) |

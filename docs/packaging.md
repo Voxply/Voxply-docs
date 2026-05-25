@@ -107,6 +107,9 @@ Tauri 2 updater JSON, served from the endpoint:
 
 Two workflows. **Describe their structure; do not write the YAML here.**
 
+Each repo carries its own workflows. The desktop client workflows below
+live in Voxply-desktop.
+
 ### `release.yml` — on `git tag v*`
 
 | Step | Notes |
@@ -125,7 +128,7 @@ Two workflows. **Describe their structure; do not write the YAML here.**
 |---|---|
 | Matrix | `windows-latest`, `ubuntu-22.04` |
 | Setup Rust + Node | as above, no Tauri targets needed |
-| Validate | `cargo check --workspace` + `tsc --noEmit` in `client/voxply-desktop` |
+| Validate | `cargo check --workspace` + `tsc --noEmit` in `desktop/` (Voxply-desktop) |
 | No bundling | No installers, no signing — fast PR feedback |
 
 ### Secrets matrix
@@ -142,12 +145,13 @@ and when the project has a budget for signing certs.
 
 ## 5. Hub server distribution
 
-The hub (`server/voxply-hub`) is a separate Rust binary with its own
-release shape — no Tauri, no updater. Two artifacts per release:
+The hub (the `hub/` crate in Voxply-server) is a separate Rust binary
+with its own release shape — no Tauri, no updater. Two artifacts per
+release, produced by Voxply-server's own CI:
 
 ### Docker image
 
-- `server/voxply-hub/Dockerfile`: multi-stage build.
+- `hub/Dockerfile` in Voxply-server: multi-stage build.
   - Stage 1: `rust:1-slim` builds the binary.
   - Stage 2: `gcr.io/distroless/cc` runs it. Distroless = no shell,
     no package manager, tiny attack surface.
@@ -181,9 +185,11 @@ TLS terminate it in a reverse proxy (Caddy / nginx); see `hosting.md`.
 ## 6. Versioning
 
 - **Semver**. `v0.x.y` until the wire protocol stabilises.
-- **Client and hub share a single tag** — monorepo = one tag covers
-  both. Mismatched client/hub versions are an operator concern only when
-  someone runs a non-release build of one against the other.
+- **Each repo tags independently**. Voxply-server, Voxply-desktop,
+  Voxply-android, Voxply-web, and Voxply-discovery each carry their
+  own version. Wire-compat is the contract; the openapi.yaml in the
+  docs repo is the authoritative shape. Mismatched client/hub versions
+  are an operator concern only when wire-compat is broken.
 - **`CHANGELOG.md`** at repo root, [Keep a Changelog](https://keepachangelog.com/)
   format. Sections: Added / Changed / Deprecated / Removed / Fixed /
   Security.

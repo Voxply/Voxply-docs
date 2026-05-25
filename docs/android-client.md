@@ -1,10 +1,11 @@
 # Android Client
 
-A third client at `client/voxply-android/` that wraps the **browser
-client's** React UI and platform layer inside a Tauri 2 Android shell.
-Tauri 2 supports Android with no licensing cost; the Android keystore is
-free. We use Tauri only for the OS shell (window, status bar, deep
-links, secure storage), not for a Rust backend on-device.
+A third client living in the **Voxply-android** repo (at `android/`)
+that wraps the **browser client's** React UI and platform layer inside
+a Tauri 2 Android shell. Tauri 2 supports Android with no licensing
+cost; the Android keystore is free. We use Tauri only for the OS shell
+(window, status bar, deep links, secure storage), not for a Rust
+backend on-device.
 
 The Android client is **feature-subset, not feature-parity**: voice and
 screen share are deferred (same UDP/WebRTC story as the browser), and
@@ -22,23 +23,27 @@ differently than on desktop. Two options:
 
 | Option | Verdict |
 |---|---|
-| Port the desktop Rust backend (`src-tauri/src/lib.rs`) to Android via Tauri's mobile plugin model — keep the `invoke()` surface | Maintenance: two Rust backends to keep in sync (Tauri commands' signatures, the WS task, the voice pipeline). Rejected. |
-| **Reuse `voxply-web`'s `@platform` layer verbatim**: HTTP via `fetch`, WS via `WebSocket`, identity in encrypted storage. Tauri is just the shell. | Pick this. The browser client already proved the surface; Android inherits it for free. |
+| Port the desktop Rust backend (`desktop/src-tauri/src/lib.rs` in Voxply-desktop) to Android via Tauri's mobile plugin model — keep the `invoke()` surface | Maintenance: two Rust backends to keep in sync (Tauri commands' signatures, the WS task, the voice pipeline). Rejected. |
+| **Reuse Voxply-web's `@platform` layer verbatim**: HTTP via `fetch`, WS via `WebSocket`, identity in encrypted storage. Tauri is just the shell. | Pick this. The browser client already proved the surface; Android inherits it for free. |
 
-The Android client imports the **same** `client/voxply-web/src/platform/`
-modules through a Vite alias — no separate adapter. The only Android-
-specific code is (a) identity storage (secure keystore-backed instead
-of IndexedDB), (b) a thin Tauri command set for OS integration
-(notifications, deep links, "share" intent), and (c) any UI
-adjustments.
+The Android client imports the **same** `web/src/platform/` modules
+from Voxply-web through a Vite alias (the repos are siblings on disk,
+or pulled in via npm workspace / git submodule depending on the
+chosen sharing mechanism — see the open question below). No separate
+adapter. The only Android-specific code is (a) identity storage
+(secure keystore-backed instead of IndexedDB), (b) a thin Tauri
+command set for OS integration (notifications, deep links, "share"
+intent), and (c) any UI adjustments.
 
 ### Project layout
 
+Inside the Voxply-android repo:
+
 ```
-client/voxply-android/
+android/
 ├── package.json
-├── vite.config.ts            aliases to ../voxply-desktop/src/components
-│                             and ../voxply-web/src/platform
+├── vite.config.ts            aliases to shared component + platform sources
+│                             (from Voxply-desktop and Voxply-web)
 ├── index.html
 ├── src/
 │   ├── main.tsx              entry, same shape as web
@@ -55,9 +60,9 @@ client/voxply-android/
 ```
 
 The Rust side carries no business logic — no hub HTTP, no WS, no
-crypto. Everything that exists in `voxply-desktop/src-tauri/src/lib.rs`
-already has a TypeScript twin in `voxply-web/src/platform/`; that twin
-is what Android uses.
+crypto. Everything that exists in `desktop/src-tauri/src/lib.rs` (in
+Voxply-desktop) already has a TypeScript twin in `web/src/platform/`
+(in Voxply-web); that twin is what Android uses.
 
 ---
 
@@ -75,8 +80,8 @@ The desktop layout (HubSidebar | ChannelSidebar | ContentArea — see
 **Concretely**:
 
 - A new `MobileShell` component (lives in
-  `voxply-desktop/src/components/MobileShell.tsx` so all three clients
-  can use it via the alias) wraps the three-pane layout in a drawer
+  `desktop/src/components/MobileShell.tsx` in Voxply-desktop so all
+  three clients can use it via the alias) wraps the three-pane layout in a drawer
   pattern: tap a hamburger to slide in the hub list, tap again for the
   channel list, swipe right to reveal members.
 - The breakpoint is `max-width: 768px`. Below that, `MobileShell`
@@ -120,7 +125,7 @@ plugin exposes a key/value API identical in shape to the desktop's
 `tauri-plugin-store`, so a single `identity-store.ts` adapter does:
 
 ```ts
-// Same IdentityRecord shape as voxply-web (seed_hex, security_nonce, security_level)
+// Same IdentityRecord shape as Voxply-web (seed_hex, security_nonce, security_level)
 async function loadIdentity(): Promise<IdentityRecord | null>;
 async function saveIdentity(rec: IdentityRecord): Promise<void>;
 ```
@@ -209,7 +214,8 @@ The current `build.yml` runs on every PR across Windows and Linux in
   - Push to `main` (post-merge, so PR feedback stays fast),
   - Tag `v*` (release builds),
   - Manual `workflow_dispatch` (developer can run on a branch on demand).
-- Not on PRs by default. A PR touching `client/voxply-android/**` can
+- Not on PRs by default. A PR touching the Voxply-android repo's
+  `android/**` paths can
   opt in via a `paths:` filter — but the default stays "fast PR
   feedback".
 - Uses `ubuntu-22.04` with `android-actions/setup-android@v3` for the
@@ -219,9 +225,10 @@ The current `build.yml` runs on every PR across Windows and Linux in
 - Output artefact: signed release APK attached to the GitHub Release
   (release workflow) or to the workflow run (post-merge / dispatch).
 
-The `release.yml` matrix gains an `android` job that produces the APK
-and uploads it alongside the desktop installers; it shares the
-keystore-decoding step described above.
+Since Voxply-android is its own repo, the release workflow lives there
+and produces the APK independently of Voxply-desktop's installer
+workflow. The keystore-decoding step described above is duplicated in
+that workflow.
 
 ---
 
@@ -230,26 +237,30 @@ keystore-decoding step described above.
 Ordered so a developer can follow without backtracking. Each step is
 self-contained and leaves the tree compiling.
 
-1. **Bootstrap the project**. `npm create vite@latest voxply-android --
-   --template react-ts` under `client/`. Mirror `voxply-web`'s
-   `package.json` deps (React 19, noble stack, `idb`, `bip39`).
-2. **Wire Vite aliases**. Copy `voxply-web/vite.config.ts` and add
-   aliases pointing at `../voxply-desktop/src/components`,
-   `../voxply-desktop/src/types.ts`, `../voxply-web/src/platform`,
-   `../voxply-web/src/identity`. Verify a `tsc --noEmit` passes.
+1. **Bootstrap the project**. `npm create vite@latest android --
+   --template react-ts` inside the Voxply-android repo. Mirror
+   Voxply-web's `package.json` deps (React 19, noble stack, `idb`,
+   `bip39`).
+2. **Wire Vite aliases**. Copy `web/vite.config.ts` from Voxply-web and
+   add aliases pointing at the shared component and platform sources
+   from Voxply-desktop (`desktop/src/components`, `desktop/src/types.ts`)
+   and Voxply-web (`web/src/platform`, `web/src/identity`). The
+   resolution strategy (sibling checkouts, git submodules, or an npm
+   workspace) is an open question — see below. Verify a
+   `tsc --noEmit` passes.
 3. **Add Tauri Android scaffold**. `cargo install tauri-cli --version "^2"`
-   then `cargo tauri android init` inside `client/voxply-android/`.
+   then `cargo tauri android init` inside `android/` (Voxply-android).
    Set `identifier: com.voxply.android` in `tauri.conf.json`.
 4. **Plug in identity storage**. Add `tauri-plugin-store` (Android
    build feature). Write `platform-android/identity-store.ts` exposing
-   the same `IdentityRecord` shape as `voxply-web`. Swap the web's
+   the same `IdentityRecord` shape as Voxply-web. Swap the web's
    `identity/store.ts` import in `App.tsx` via a build-time flag —
    simplest is a Vite `define` (`__VOXPLY_PLATFORM__: 'android'`).
-5. **Add the `MobileShell` component** to
-   `voxply-desktop/src/components/`. Refactor `App.tsx` to render
-   `MobileShell` below the 768 px breakpoint (or always on Android).
-   No new logic — only layout. The desktop client picks this up
-   automatically when run on a narrow window.
+5. **Add the `MobileShell` component** to `desktop/src/components/`
+   in Voxply-desktop. Refactor `App.tsx` to render `MobileShell` below
+   the 768 px breakpoint (or always on Android). No new logic — only
+   layout. The desktop client picks this up automatically when run on
+   a narrow window.
 6. **Mobile CSS overlay**. `styles-mobile.css` imports the shared
    `styles.css` and applies touch-target sizing, drawer transitions,
    safe-area-inset for the status bar.
@@ -258,8 +269,8 @@ self-contained and leaves the tree compiling.
    `tauri-plugin-dialog` for attachment picking. Wire a Rust back-press
    handler that emits an event the UI catches.
 8. **Generate the signing keystore**. Document the keytool command in
-   `client/voxply-android/SIGNING.md`. Store the keystore base64 +
-   passwords as GitHub secrets.
+   `SIGNING.md` at the root of Voxply-android. Store the keystore
+   base64 + passwords as GitHub secrets on that repo.
 9. **Add `android.yml` workflow**. Triggers: `push` on main, `tag v*`,
    `workflow_dispatch`. Steps: setup JDK 17, setup Android SDK,
    restore Gradle cache, decode keystore, `cargo tauri android build

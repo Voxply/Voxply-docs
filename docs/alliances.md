@@ -14,7 +14,7 @@ without joining every member hub separately.
 
 ## Tables
 
-Defined in `server/voxply-hub/src/db/migrations.rs`:
+Defined in `hub/src/db/migrations.rs` (Voxply-server):
 
 - `alliances` — alliance id, name, creator, created_at. The `name` here
   is the **local label** this hub uses for the alliance; there is no
@@ -29,7 +29,7 @@ Defined in `server/voxply-hub/src/db/migrations.rs`:
 
 ## Routes
 
-All in `server/voxply-hub/src/routes/alliances.rs`:
+All in `hub/src/routes/alliances.rs` (Voxply-server):
 
 | Route                                                | Who      | Purpose                              |
 |------------------------------------------------------|----------|--------------------------------------|

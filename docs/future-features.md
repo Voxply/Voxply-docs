@@ -22,8 +22,8 @@ instantly. Without friction, a hub can be flooded by fresh keys.
 - Proof stored in the identity file. Hub verifies instantly with one
   hash check. Cannot be faked — pure math.
 
-PoW primitives already exist in
-`shared/voxply-identity/src/pow.rs`; they aren't enforced yet.
+PoW primitives already exist in `identity/src/pow.rs` (Voxply-server);
+they aren't enforced yet.
 
 ### Layer 2 — hub certification (reputation)
 
@@ -69,8 +69,8 @@ proven.
 
 > Some of these (`voice_mutes`, talk power) have admin UI scaffolding
 > already; the enforcement is partial. Check
-> `server/voxply-hub/src/routes/moderation.rs` and
-> `routes/role_models.rs` for current state.
+> `hub/src/routes/moderation.rs` and
+> `hub/src/routes/role_models.rs` (both in Voxply-server) for current state.
 
 ---
 

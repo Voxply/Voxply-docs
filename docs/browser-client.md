@@ -1,9 +1,9 @@
 # Browser Client
 
-A second client at `client/voxply-web/` that hosts the same React UI as
-the desktop ([client.md](client.md)) but with no Tauri shell. The hub's
-HTTP + WebSocket API is unchanged; what changes is the platform layer
-sitting between the UI and the network.
+A second client living in the **Voxply-web** repo (at `web/`) that
+hosts the same React UI as the desktop ([client.md](client.md)) but
+with no Tauri shell. The hub's HTTP + WebSocket API is unchanged; what
+changes is the platform layer sitting between the UI and the network.
 
 The browser client is **feature-subset, not feature-parity**: voice is
 deferred (no raw UDP from the browser), and everything voice-adjacent
@@ -14,12 +14,13 @@ flows all work.
 
 ## Project layout
 
-New crate-less project at `client/voxply-web/`. Same React 19 +
-TypeScript + Vite versions as `voxply-desktop` — share a `package.json`
-catalog if the toolchain allows; otherwise pin identically.
+A crate-less project at `web/` inside Voxply-web. Same React 19 +
+TypeScript + Vite versions as the desktop client — pin identically
+across the two repos (a shared `package.json` catalog needs cross-repo
+machinery; pin-by-convention is the v1 answer).
 
 ```
-client/voxply-web/
+web/                            (Voxply-web repo)
 ├── index.html
 ├── package.json
 ├── vite.config.ts
@@ -38,8 +39,8 @@ client/voxply-web/
     │   ├── store.ts        IndexedDB read/write of the seed
     │   ├── crypto.ts       DH derive, encrypt/decrypt, signing
     │   └── recovery.ts     BIP39 wrap/unwrap of the 32-byte seed
-    ├── components/         shared with desktop
-    └── styles.css          copy of desktop/src/styles.css
+    ├── components/         shared with desktop (via cross-repo alias)
+    └── styles.css          copy of Voxply-desktop's desktop/src/styles.css
 ```
 
 ### Sharing UI with the desktop
@@ -50,13 +51,15 @@ considered:
 | Option | Verdict |
 |---|---|
 | Copy `components/` into both trees | Drift risk; rejected |
-| npm workspace with a `voxply-ui` shared package | Cleanest but reshuffles the desktop tree; deferred to a later refactor |
-| Vite alias + filesystem path back to `voxply-desktop/src/components` | Pick this for v1 |
+| npm workspace with a `voxply-ui` shared package across repos | Cleanest but adds release machinery between repos; deferred to a later refactor |
+| Vite alias + cross-repo filesystem path back to Voxply-desktop's `desktop/src/components` | Pick this for v1 |
 
-`voxply-web/vite.config.ts` resolves `@components` and `@shared` to
-`../voxply-desktop/src/components` and `../voxply-desktop/src/...`. No
-file duplication, no package machinery. The same trick covers
-`types.ts`, `utils/`, and the reconnect-backoff hook.
+`web/vite.config.ts` resolves `@components` and `@shared` to the
+Voxply-desktop checkout's `desktop/src/components` and `desktop/src/...`
+(the path is parameterised by an env var so CI and developer machines
+can point at the right sibling checkout). No file duplication inside
+Voxply-web, no cross-repo package release machinery. The same trick
+covers `types.ts`, `utils/`, and the reconnect-backoff hook.
 
 CSS is a verbatim copy of `styles.css` for v1, not a fork. When the
 desktop adds a token (a theme variable, a new component class) the
@@ -240,8 +243,8 @@ interface WsHandlers {
 }
 ```
 
-**Reconnect.** Reuse the algorithm from
-`voxply-desktop/src/hooks/useReconnectBackoff.ts` — same exponential
+**Reconnect.** Reuse the algorithm from Voxply-desktop's
+`desktop/src/hooks/useReconnectBackoff.ts` — same exponential
 backoff (1s, 2s, 4s, …, cap 30s), same manual "Reconnect" button
 override. The hook itself is portable as-is; copy it via the Vite alias.
 
@@ -321,7 +324,7 @@ function signBytes(msg: Uint8Array, seedHex: string): string;  // hex
 ```
 
 The envelope shape matches the Rust producer in
-`voxply-desktop/src-tauri/src/lib.rs` (the `encrypt_dm` Tauri command);
+`desktop/src-tauri/src/lib.rs` in Voxply-desktop (the `encrypt_dm` Tauri command);
 the canonical signing bytes match the format defined in
 [e2e-encryption.md](e2e-encryption.md) §"Message authentication"
 (domain-separated prefix, length-prefixed strings).
@@ -435,6 +438,6 @@ Everything else — `getDisplayMedia`, the WebSocket frame protocol, the
 - E2E envelope format (must match byte-for-byte): [e2e-encryption.md](e2e-encryption.md)
 - Identity model and seed format: [identity.md](identity.md)
 - Voice pipeline (why it can't ride along in v1): [voice.md](voice.md)
-- Hub HTTP routes: `server/voxply-hub/src/routes/mod.rs`
-- Tauri commands the adapter replaces: `client/voxply-desktop/src-tauri/src/lib.rs`
-- Shared types the browser also consumes: `client/voxply-desktop/src/types.ts`
+- Hub HTTP routes: `hub/src/routes/mod.rs` (Voxply-server)
+- Tauri commands the adapter replaces: `desktop/src-tauri/src/lib.rs` (Voxply-desktop)
+- Shared types the browser also consumes: `desktop/src/types.ts` (Voxply-desktop)

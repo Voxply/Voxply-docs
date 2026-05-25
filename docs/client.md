@@ -1,11 +1,12 @@
 # Desktop Client
 
-Tauri 2 + React 19 + TypeScript. Two halves:
+Tauri 2 + React 19 + TypeScript. Lives in the Voxply-desktop repo. Two
+halves:
 
-- **Rust shell** (`client/voxply-desktop/src-tauri/`) — file I/O, voice,
-  OS notifications, system tray, OS-native dialogs. Communicates with
-  the UI via Tauri commands.
-- **React UI** (`client/voxply-desktop/src/`) — everything visual.
+- **Rust shell** (`desktop/src-tauri/` in Voxply-desktop) — file I/O,
+  voice, OS notifications, system tray, OS-native dialogs. Communicates
+  with the UI via Tauri commands.
+- **React UI** (`desktop/src/` in Voxply-desktop) — everything visual.
 
 ## React entry
 
@@ -84,7 +85,7 @@ These do **not** sync across devices today. (See [decisions.md](decisions.md).)
 
 ## Tauri commands
 
-Defined in `client/voxply-desktop/src-tauri/src/lib.rs`. A non-exhaustive
+Defined in `desktop/src-tauri/src/lib.rs` (Voxply-desktop). A non-exhaustive
 list:
 
 - `load_identity` / `save_identity` — keypair persistence

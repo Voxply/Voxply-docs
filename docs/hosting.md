@@ -1,9 +1,9 @@
 # Hosting a Hub
 
-This is the practical guide for running `voxply-hub` as a real
-service — not a dev `cargo run`. For architecture, see
-[architecture.md](architecture.md). For the threat model, see
-[threat-model.md](threat-model.md).
+This is the practical guide for running the hub binary (built from the
+`hub/` crate in Voxply-server) as a real service — not a dev
+`cargo run`. For architecture, see [architecture.md](architecture.md).
+For the threat model, see [threat-model.md](threat-model.md).
 
 ## What you need
 
@@ -20,13 +20,15 @@ service — not a dev `cargo run`. For architecture, see
 ## Build
 
 ```bash
-git clone <repo-url> voxply
-cd voxply
-cargo build --release -p voxply-hub
-# Binary lands at target/release/voxply-hub
+git clone <Voxply-server-repo-url> voxply-server
+cd voxply-server
+cargo build --release -p hub
+# Binary lands at target/release/hub
 ```
 
 For a server install, copy the binary to `/usr/local/bin/voxply-hub`.
+(The systemd/service examples in this doc keep the on-disk name
+`voxply-hub` for clarity, even though the cargo target is `hub`.)
 
 ## Configuration
 
@@ -168,12 +170,12 @@ re-add this hub under its new key.
 ## Upgrades
 
 ```bash
-cd /path/to/voxply
+cd /path/to/voxply-server
 git pull
-cargo build --release -p voxply-hub
+cargo build --release -p hub
 sudo systemctl stop voxply-hub
 sudo install -o root -g root -m 755 \
-  target/release/voxply-hub /usr/local/bin/voxply-hub
+  target/release/hub /usr/local/bin/voxply-hub
 sudo systemctl start voxply-hub
 ```
 

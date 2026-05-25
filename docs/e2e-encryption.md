@@ -1,10 +1,10 @@
 # End-to-End Encrypted Direct Messages
 
 DMs today are plaintext in the hub's SQLite (`dm_messages.content`,
-`server/voxply-hub/src/db/migrations.rs:432-443`). The hub operator can
-read every conversation. This doc designs E2E encryption that lets hubs
-**store and relay** without **decrypt**. v1 covers 1:1 text DMs and their
-attachments only.
+`hub/src/db/migrations.rs:432-443` in Voxply-server). The hub operator
+can read every conversation. This doc designs E2E encryption that lets
+hubs **store and relay** without **decrypt**. v1 covers 1:1 text DMs
+and their attachments only.
 
 ---
 
@@ -27,7 +27,7 @@ mix networks) and not pursued in v1.
 ## Key material
 
 Each user already has an Ed25519 **identity key** for signing
-(`shared/voxply-identity/src/lib.rs:23-127`). For E2E we add an
+(`identity/src/lib.rs:23-127` in Voxply-server). For E2E we add an
 **X25519 DH key** for key agreement, deterministically derived from the
 same seed — no new key storage.
 
@@ -81,7 +81,7 @@ relying client re-verifies. Storage is a new `dh_keys` row keyed by
 `home_hub_designations`.
 
 The signing pattern follows the existing wire types in
-`shared/voxply-identity/src/wire.rs:32-66` — domain-separated prefix,
+`identity/src/wire.rs:32-66` (Voxply-server) — domain-separated prefix,
 length-prefixed strings, identity-key signature.
 
 ---
@@ -130,7 +130,7 @@ plaintexts after a key compromise. The Ed25519 signature on the envelope
 binds the ciphertext to Alice's identity key, which the hub does not have.
 
 **Canonical bytes** (domain-separated, length-prefixed, matches the
-pattern in `shared/voxply-identity/src/wire.rs`):
+pattern in `identity/src/wire.rs` in Voxply-server):
 
 ```
 "voxply/dm-ciphertext/v1\0"
@@ -189,15 +189,17 @@ design doc is the bookkeeping.
 
 The hub is **storage and relay**. No key material lives on the hub.
 
+All hub-side paths below live in Voxply-server.
+
 | Change | File | Note |
 |---|---|---|
-| `dm_messages.is_encrypted` BOOLEAN DEFAULT 0 | `server/voxply-hub/src/db/migrations.rs` | Additive `ALTER TABLE` — legacy rows stay 0 |
+| `dm_messages.is_encrypted` BOOLEAN DEFAULT 0 | `hub/src/db/migrations.rs` | Additive `ALTER TABLE` — legacy rows stay 0 |
 | `dm_messages.ciphertext_json` TEXT NULL | same | Holds the envelope JSON for encrypted msgs; `content` stays NULL when encrypted |
 | New table `dh_keys (pubkey PK, dh_pubkey_hex, signature_hex, published_at)` | same | One row per user; replicated across the home hub list like `home_hub_designations` |
-| `GET/PUT /identity/:pubkey/dh-key` routes | new `routes/dh_keys.rs` | Mirrors the existing identity-keyed write+read shape |
-| `send_dm` accepts encrypted envelopes | `server/voxply-hub/src/routes/dms.rs:132-288` | New `SendDmRequest` variant; on encrypted, verifies signature, persists envelope, leaves `content` NULL |
+| `GET/PUT /identity/:pubkey/dh-key` routes | new `hub/src/routes/dh_keys.rs` | Mirrors the existing identity-keyed write+read shape |
+| `send_dm` accepts encrypted envelopes | `hub/src/routes/dms.rs:132-288` | New `SendDmRequest` variant; on encrypted, verifies signature, persists envelope, leaves `content` NULL |
 | `list_dm_messages` returns the envelope when `is_encrypted=1` | same file, ~290 | `content` field becomes `Option<String>`; client decodes ciphertext locally |
-| Federated DM delivery carries the envelope | `FederatedDmRequest` in `routes/dm_models.rs` | New optional `encrypted_envelope` field; existing `content/signature` stays for legacy plaintext peers |
+| Federated DM delivery carries the envelope | `FederatedDmRequest` in `hub/src/routes/dm_models.rs` | New optional `encrypted_envelope` field; existing `content/signature` stays for legacy plaintext peers |
 
 **Hub validation**: on encrypted send, the hub verifies the Ed25519
 signature on the envelope before INSERT. Garbage envelopes get a 400.
@@ -215,10 +217,10 @@ indexed" in the search UI.
 
 | Change | Where |
 |---|---|
-| `Identity::dh_keypair() -> X25519KeyPair` | `shared/voxply-identity/src/lib.rs` (extends the existing `Identity`) |
-| Tauri command `publish_dh_key` | `client/voxply-desktop/src-tauri` — runs on first launch post-upgrade, or after identity creation |
+| `Identity::dh_keypair() -> X25519KeyPair` | `identity/src/lib.rs` in Voxply-server (extends the existing `Identity`) |
+| Tauri command `publish_dh_key` | `desktop/src-tauri` in Voxply-desktop — runs on first launch post-upgrade, or after identity creation |
 | Tauri command `fetch_dh_key(pubkey, hub_url)` | with a local cache, 24 h TTL, evict on signature-verify failure |
-| DM send path: encrypt when recipient DH key is known | `client/voxply-desktop/src/...` DM send handler |
+| DM send path: encrypt when recipient DH key is known | `desktop/src/...` in Voxply-desktop, DM send handler |
 | DM send path: warn-then-send-plaintext otherwise | UI banner: "Recipient hasn't published an encryption key — this message will not be encrypted." User confirms or cancels |
 | DM receive path: detect `is_encrypted`, decrypt locally | same handler that processes `dm_messages` and the `DmEvent::Message` WS stream |
 | Lock-icon UI | Per-message indicator. Closed lock = E2E. Open lock = plaintext. Tooltip explains. Mixed conversations are allowed |
@@ -287,10 +289,10 @@ table.
 
 ## Cross-references
 
-- Identity model and Ed25519 seed: `shared/voxply-identity/src/lib.rs:23-127`
-- Existing signed wire types (signing pattern this doc reuses): `shared/voxply-identity/src/wire.rs:32-191`
-- Current plaintext DM storage and federation path: `server/voxply-hub/src/routes/dms.rs`
-- DM schema: `server/voxply-hub/src/db/migrations.rs:432-471`
+- Identity model and Ed25519 seed: `identity/src/lib.rs:23-127` (Voxply-server)
+- Existing signed wire types (signing pattern this doc reuses): `identity/src/wire.rs:32-191` (Voxply-server)
+- Current plaintext DM storage and federation path: `hub/src/routes/dms.rs` (Voxply-server)
+- DM schema: `hub/src/db/migrations.rs:432-471` (Voxply-server)
 - Multi-device / master + subkey: [multi-device.md](multi-device.md)
 - Home hub list (where DH keys are replicated): [home-hub.md](home-hub.md)
 - Threat model (the broader view this doc slots into): [threat-model.md](threat-model.md)

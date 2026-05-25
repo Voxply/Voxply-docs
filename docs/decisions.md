@@ -185,12 +185,12 @@ invites are built for.
 - *DB*: new `pending_alliance_invites` table (alliance_id,
   from_hub_pubkey, from_hub_url, alliance_name, message?,
   invite_token, created_at).
-- *Hub routes* (`server/voxply-hub/src/routes/alliances.rs`):
+- *Hub routes* (`hub/src/routes/alliances.rs` in Voxply-server):
   `POST /alliances/:id/push-invite` (admin-only, calls Hub B);
   `GET /alliances/pending-invites`,
   `POST /alliances/pending-invites/:id/accept`,
   `POST /alliances/pending-invites/:id/decline` (admin-only).
-- *Federation* (`server/voxply-hub/src/federation/handlers.rs`):
+- *Federation* (`hub/src/federation/handlers.rs` in Voxply-server):
   `POST /federation/alliance-invite` — unauthenticated, validates
   payload shape, inserts the pending row.
 - *Client*: Hub Settings gains an Alliance invites tab (list of
@@ -261,7 +261,7 @@ native tools) exists if Tauri's defaults ever stop fitting.
 - New `.github/workflows/release.yml` (tag-triggered, matrix bundle +
   GitHub Release upload) and `.github/workflows/build.yml` (PR
   validation: `cargo check` + `tsc --noEmit`).
-- New `server/voxply-hub/Dockerfile` (multi-stage, distroless final
+- New `hub/Dockerfile` in Voxply-server (multi-stage, distroless final
   image) and a sample `docker-compose.yml` for self-hosters.
 - `CHANGELOG.md` created at repo root, Keep a Changelog format.
 - Secrets configured in GitHub: the updater key, the Apple notarization
@@ -315,8 +315,8 @@ plaintext in v1. Full design in
 
 **Tradeoff**: we accept "no forward secrecy in v1" in exchange for an
 implementation that fits in a couple hundred lines and reuses the
-existing identity seed, signing pattern (`shared/voxply-identity/src/wire.rs:32-66`),
-and DM storage path (`server/voxply-hub/src/routes/dms.rs:132-288`).
+existing identity seed, signing pattern (`identity/src/wire.rs:32-66` in Voxply-server),
+and DM storage path (`hub/src/routes/dms.rs:132-288` in Voxply-server).
 The hub goes from "reads everything" to "stores opaque ciphertexts and
 verified envelopes" — a step change in trust posture — without a
 protocol rewrite. The forward-secrecy gap is real and documented; it
@@ -352,7 +352,7 @@ media. It costs an entirely new protocol stack (peer connection
 lifecycle, ICE/STUN/TURN configuration, NAT traversal, per-viewer
 uploads on the sharer), none of which Voxply currently exercises.
 The hub-relayed path reuses the existing typed WS envelope channel
-(`server/voxply-hub/src/routes/chat_models.rs` line 175), the
+(`hub/src/routes/chat_models.rs` in Voxply-server, line 175), the
 existing subscriber broadcast logic, and the existing identity/role
 permission machinery. Net cost is a handful of new envelope variants
 plus a per-channel `ActiveShare` map. The hub egress ceiling
@@ -379,7 +379,7 @@ Full design in [`docs/hub-discovery.md`](hub-discovery.md).
 
 **Key choices within the design**:
 
-- **Directory lives in a separate repo** (`voxply-discovery`). Separate
+- **Directory lives in a separate repo** (`Voxply-discovery`). Separate
   deployment lifecycle (web service), separate CI/CD, separate
   contributor profile. The API contract in hub-discovery.md is the
   boundary.
@@ -405,7 +405,7 @@ access mismatch).
 **Context**: schema already supports arbitrary nesting
 (`channels.parent_id`, `is_category`); server validates cycles and
 parent-must-be-category. The client today builds a one-level tree
-(`buildChannelTree` in `client/voxply-desktop/src/utils/channels.ts`)
+(`buildChannelTree` in `desktop/src/utils/channels.ts` in Voxply-desktop)
 and `handleDragEnd` in `App.tsx` (~line 2952) does a flat global
 `arrayMove` and POSTs to `reorder_channels`. `move_channel` exists but
 is never invoked from drag. Goal of this entry: pick the four
@@ -502,7 +502,7 @@ half-implementations.
 
 ### What changes on the implementation side
 
-- `client/voxply-desktop/src/utils/channels.ts`: rewrite
+- `desktop/src/utils/channels.ts` (Voxply-desktop): rewrite
   `buildChannelTree` to be fully recursive; export a sibling
   `flattenTree(tree)` that yields `{ node, depth, parentId }[]` in
   DFS order for the sortable. Also export `descendantIds(tree, id)`
@@ -568,7 +568,7 @@ first run. No in-channel first-use hints in this pass.
    an invite / running your own.
 
 **Demo hub concretely**:
-- New constant `DEMO_HUB_URL: string | null` in `client/voxply-desktop/src/constants.ts`,
+- New constant `DEMO_HUB_URL: string | null` in `desktop/src/constants.ts` (Voxply-desktop),
   initially `null` until a Voxply-operated demo server is stood up.
 - The "Try a demo hub" button is conditionally rendered on
   `DEMO_HUB_URL != null`. No dead button ships.
@@ -1005,8 +1005,17 @@ sovereignty.
 
 ## Three crates, not a monorepo soup
 
-**Decision**: `shared/`, `server/`, `client/` as the top-level split,
-each with one or two crates.
+**Status**: structurally superseded — the project has since been split
+into six separate repos (Voxply for docs, Voxply-server for the Rust
+workspace with `hub/`/`seed/`/`identity/` crates, Voxply-desktop for
+the desktop client and `voice/` crate, Voxply-android, Voxply-web,
+Voxply-discovery). The original rationale below still applies to the
+crate-vs-feature-flag split inside Voxply-server.
+
+**Decision**: separate crates for the cross-cutting concerns (identity,
+voice) rather than one giant crate with feature flags. Originally
+expressed as a `shared/`, `server/`, `client/` top-level split in a
+single monorepo.
 
 **Why**: identity rules and voice rules must agree exactly between client
 and server. One crate per cross-cutting concern prevents drift. Beyond
@@ -1043,7 +1052,7 @@ the message and pushes it to the recipient's hub.
 ## No proof-of-work yet
 
 **Decision**: anti-spam is in the ROADMAP, not shipped. The PoW
-primitives exist (`shared/voxply-identity/src/pow.rs`) but aren't
+primitives exist (`identity/src/pow.rs` in Voxply-server) but aren't
 enforced.
 
 **Why**: premature spam mitigation in a private-network product would

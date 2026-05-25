@@ -15,17 +15,19 @@ design we'd start from.
 The three stack as a single flow: challenge -> lobby (PoW + survey) ->
 full member or pending review.
 
-Authoritative code targets (not yet written):
-- `server/voxply-hub/src/routes/lobby.rs`
-- `server/voxply-hub/src/routes/challenge.rs`
-- `server/voxply-hub/src/routes/survey.rs`
-- `client/voxply-desktop/src/components/Lobby.tsx`
-- `client/voxply-desktop/src/components/BotChallenge.tsx`
-- `client/voxply-desktop/src/components/Survey.tsx`
+Authoritative code targets (not yet written). Paths under `hub/` live
+in Voxply-server; paths under `desktop/` live in Voxply-desktop.
+
+- `hub/src/routes/lobby.rs` (Voxply-server)
+- `hub/src/routes/challenge.rs` (Voxply-server)
+- `hub/src/routes/survey.rs` (Voxply-server)
+- `desktop/src/components/Lobby.tsx` (Voxply-desktop)
+- `desktop/src/components/BotChallenge.tsx` (Voxply-desktop)
+- `desktop/src/components/Survey.tsx` (Voxply-desktop)
 
 Cross-references: anti-spam design space in
 [future-features.md](future-features.md); PoW primitives at
-`shared/voxply-identity/src/pow.rs`; approval flow today via
+`identity/src/pow.rs` in Voxply-server; approval flow today via
 `users.approval_status`.
 
 ---

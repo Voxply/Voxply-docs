@@ -1,7 +1,7 @@
 # Data Model
 
 The hub uses SQLite (via sqlx). Schema migrations live in one file:
-`server/voxply-hub/src/db/migrations.rs`. This page is a map, not the
+`hub/src/db/migrations.rs` (in Voxply-server). This page is a map, not the
 schema — read the migrations file for column-level detail.
 
 ## Tables by concern
@@ -62,7 +62,7 @@ are added; we don't drop or rename in place.
 
 ## Querying
 
-All query code is in `server/voxply-hub/src/routes/*.rs` next to the
+All query code is in `hub/src/routes/*.rs` (Voxply-server) next to the
 endpoint that owns the data. There's no separate repository layer — sqlx
 queries are written inline with `sqlx::query!`/`query_as!` macros for
 compile-time checking.

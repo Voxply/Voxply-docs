@@ -1,8 +1,8 @@
 # Farm Model (future)
 
-Voxply today is 1:1 — one `voxply-hub` process hosts exactly one hub.
-The **farm model** is a planned future layer that lets one server host
-many hubs.
+Voxply today is 1:1 — one `hub` binary (built from the `hub/` crate in
+Voxply-server) hosts exactly one hub. The **farm model** is a planned
+future layer that lets one server host many hubs.
 
 > Not built. This page captures the design so we don't paint ourselves
 > into a corner with current work.
@@ -134,7 +134,7 @@ Multi-month roadmap. Don't start without explicit direction:
    third-party indexers
 
 Right time to start: when the user has 2+ hubs themselves OR a real
-user complains about running multiple `voxply-hub` processes.
+user complains about running multiple hub processes.
 
 ## How to apply
 
@@ -142,4 +142,4 @@ When a discussion involves "many hubs on one machine," "server hosting
 hubs," or hub directories, this is the farm model. Don't confuse it with:
 
 - **Hub federation** (layer 3 — hubs on different machines talking)
-- **The seed crate** (layer 5 — cross-farm discovery)
+- **The `seed/` crate** in Voxply-server (layer 5 — cross-farm discovery)

@@ -273,23 +273,24 @@ Devices and friends learn about a new `HomeHubList` through:
 
 ## Files this will touch
 
-Pointers, not code copies — wiki convention.
+Pointers, not code copies — wiki convention. Paths under `hub/` live in
+Voxply-server; paths under `desktop/` live in Voxply-desktop.
 
-- `server/voxply-hub/src/routes/identity.rs` (new) — device registry,
+- `hub/src/routes/identity.rs` (new, Voxply-server) — device registry,
   revocations, pairing endpoints, prefs blob, designation storage.
-- `server/voxply-hub/src/routes/home_hub_dms.rs` (new) — canonical DM
+- `hub/src/routes/home_hub_dms.rs` (new, Voxply-server) — canonical DM
   inbox endpoints distinct from the federation DM endpoints.
-- `server/voxply-hub/src/dm_worker.rs` — list-walking failover, plus
+- `hub/src/dm_worker.rs` (Voxply-server) — list-walking failover, plus
   mirror-forward step for DMs accepted by any home hub.
-- `server/voxply-hub/src/migrations.rs` — `subkey_certs`,
+- `hub/src/migrations.rs` (Voxply-server) — `subkey_certs`,
   `revocations`, `pairing_offers`, `prefs_blobs`,
   `home_hub_designations`, `dm_inbox_canonical`, `dm_mirror_forwards`.
-- `server/voxply-hub/src/federation/handlers.rs` — accept
+- `hub/src/federation/handlers.rs` (Voxply-server) — accept
   designation refreshes from peer hubs.
-- `client/voxply-desktop/src-tauri/src/lib.rs` — home hub list
+- `desktop/src-tauri/src/lib.rs` (Voxply-desktop) — home hub list
   setting, designation cache, write-to-all replication.
-- `client/voxply-desktop/src/` — list editor UI, divergence alert UI,
-  per-slot status indicator.
+- `desktop/src/` (Voxply-desktop) — list editor UI, divergence alert
+  UI, per-slot status indicator.
 
 ## Consumers — what reads/writes the home hub list
 

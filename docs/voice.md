@@ -1,8 +1,10 @@
 # Voice
 
 Real-time voice over UDP, Opus-encoded, with RNNoise denoise and voice
-activity detection. Lives in `shared/voxply-voice` so client and server
-agree on the wire format.
+activity detection. The capture/encode/playback side lives in the
+`voice/` crate in Voxply-desktop; the hub-side UDP relay lives in the
+`hub/` crate in Voxply-server. Both sides share the wire format
+defined in the `voice/` crate.
 
 ## Pipeline
 
@@ -13,7 +15,7 @@ RNNoise denoise + VAD
    ↓
 Opus encode
    ↓
-UDP packet (server/voxply-hub UDP relay)
+UDP packet (hub/ crate UDP relay in Voxply-server)
    ↓
 Opus decode
    ↓
@@ -22,16 +24,18 @@ playback (cpal)
 
 ## Files
 
+All paths below are in the `voice/` crate of Voxply-desktop:
+
 | Stage              | File |
 |--------------------|------|
-| Pipeline orch.     | `shared/voxply-voice/src/pipeline.rs` |
-| Audio capture      | `shared/voxply-voice/src/capture.rs` |
-| Denoise + VAD      | `shared/voxply-voice/src/denoise.rs` |
-| Opus codec         | `shared/voxply-voice/src/codec.rs` |
-| UDP transport      | `shared/voxply-voice/src/transport.rs` |
-| Wire protocol      | `shared/voxply-voice/src/protocol.rs` |
-| Audio output       | `shared/voxply-voice/src/playback.rs` |
-| Device enumeration | `shared/voxply-voice/src/devices.rs` |
+| Pipeline orch.     | `voice/src/pipeline.rs` |
+| Audio capture      | `voice/src/capture.rs` |
+| Denoise + VAD      | `voice/src/denoise.rs` |
+| Opus codec         | `voice/src/codec.rs` |
+| UDP transport      | `voice/src/transport.rs` |
+| Wire protocol      | `voice/src/protocol.rs` |
+| Audio output       | `voice/src/playback.rs` |
+| Device enumeration | `voice/src/devices.rs` |
 
 ## Why UDP, not WebRTC
 

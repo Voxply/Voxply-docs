@@ -17,7 +17,7 @@ Low-risk surface; no multiplayer machinery. Good for casual hub use.
 - Currently per-hub installation
 - Iframe sandbox
 - Today's reference game: dice game
-  (`client/voxply-desktop/public/demo-games/dice.html`)
+  (`desktop/public/demo-games/dice.html` in Voxply-desktop)
 
 **Authoring a Tier 1 game** — see
 [the manifest reference and SDK below](#authoring-a-tier-1-game).

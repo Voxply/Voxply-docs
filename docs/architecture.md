@@ -1,39 +1,43 @@
 # Architecture
 
-Voxply is three crates plus one TypeScript client, all in one repo.
+Voxply is six repositories. The hub backend lives in one Rust workspace;
+each client and the discovery service is its own repo.
 
-## The three layers
+## The repository map
 
 ```
-shared/   ── pure logic, no I/O, used by both client and server
-server/   ── hub: long-running daemon, holds state for one community
-client/   ── desktop app: connects to one or many hubs
+Voxply              ── docs, ROADMAP.md, openapi.yaml (this repo)
+Voxply-server       ── Rust workspace: hub/, seed/, identity/ crates
+Voxply-desktop      ── Tauri 2 + React desktop client: desktop/, voice/
+Voxply-android      ── Tauri 2 Android wrapper: android/
+Voxply-web          ── Browser React client: web/
+Voxply-discovery    ── Next.js hub discovery service
 ```
 
-### `shared/voxply-identity`
+### `identity/` crate (in Voxply-server)
 
 Ed25519 keypairs, BIP39 recovery phrases, proof-of-work helpers. No
 networking, no storage. Both the hub and the desktop client depend on it
 so that signing and verification use the exact same code.
 
-- Lib entry: `shared/voxply-identity/src/lib.rs`
-- Recovery phrases: `shared/voxply-identity/src/recovery.rs`
-- PoW helpers (anti-spam, future): `shared/voxply-identity/src/pow.rs`
+- Lib entry: `identity/src/lib.rs` (Voxply-server)
+- Recovery phrases: `identity/src/recovery.rs` (Voxply-server)
+- PoW helpers (anti-spam, future): `identity/src/pow.rs` (Voxply-server)
 
-### `shared/voxply-voice`
+### `voice/` crate (in Voxply-desktop)
 
 Audio pipeline: capture → denoise (RNNoise) → encode (Opus) → transport
 → decode → playback. Used by the desktop client and (in some flows) the
 hub voice relay.
 
-- Pipeline orchestration: `shared/voxply-voice/src/pipeline.rs`
-- Codec: `shared/voxply-voice/src/codec.rs`
-- UDP transport: `shared/voxply-voice/src/transport.rs`
-- Wire protocol: `shared/voxply-voice/src/protocol.rs`
+- Pipeline orchestration: `voice/src/pipeline.rs` (Voxply-desktop)
+- Codec: `voice/src/codec.rs` (Voxply-desktop)
+- UDP transport: `voice/src/transport.rs` (Voxply-desktop)
+- Wire protocol: `voice/src/protocol.rs` (Voxply-desktop)
 
 See [voice.md](voice.md) for the full data flow.
 
-### `server/voxply-hub`
+### `hub/` crate (in Voxply-server)
 
 A single hub. Owns:
 - An axum HTTP+WebSocket API (port 3000 by default).
@@ -42,21 +46,21 @@ A single hub. Owns:
 - An outbox worker for federated DMs (`dm_worker.rs`).
 - A federation client for talking to other hubs.
 
-Entry: `server/voxply-hub/src/main.rs` → `server.rs` (router setup).
+Entry: `hub/src/main.rs` → `server.rs` (router setup), in Voxply-server.
 
-Key submodules:
+Key submodules (all under `hub/src/` in Voxply-server):
 - `auth/` — challenge-response signature auth (see [identity.md](identity.md))
 - `routes/` — every HTTP endpoint, one file per resource
 - `federation/` — hub-to-hub HTTP client + handlers
 - `db/migrations.rs` — schema (see [data-model.md](data-model.md))
 
-### `client/voxply-desktop`
+### `desktop/` (in Voxply-desktop)
 
 Tauri 2 (Rust shell) + React 19 (UI). The Rust side handles file I/O,
 voice, and OS integration; the React side is everything you see.
 
-- React entry: `client/voxply-desktop/src/main.tsx` → `App.tsx`
-- Tauri commands (Rust ↔ JS bridge): `client/voxply-desktop/src-tauri/src/lib.rs`
+- React entry: `desktop/src/main.tsx` → `App.tsx` (Voxply-desktop)
+- Tauri commands (Rust ↔ JS bridge): `desktop/src-tauri/src/lib.rs` (Voxply-desktop)
 
 See [client.md](client.md) for the structure.
 
@@ -77,6 +81,7 @@ See [federation.md](federation.md) for the protocol and
 - **Hubs over a central server**: communities own their data and their
   moderation policy. Federation lets them stay connected without a single
   operator. (See [decisions.md](decisions.md).)
-- **Shared crates**: identity and voice rules must agree exactly between
-  hub and client; one crate prevents drift.
+- **Shared identity crate**: identity rules must agree exactly between
+  hub and client. The `identity/` crate ships from Voxply-server and is
+  consumed by clients that link to it directly.
 - **Tauri over Electron**: smaller binaries, native voice, real OS APIs.

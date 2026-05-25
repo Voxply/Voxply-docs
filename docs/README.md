@@ -8,7 +8,7 @@ you the rationale and points you to the right files.
 
 If you're new, read in this order:
 
-1. [architecture.md](architecture.md) — what runs where, the three crates
+1. [architecture.md](architecture.md) — what runs where, the six repos and the crates inside Voxply-server
 2. [identity.md](identity.md) — keypairs, recovery, auth
 3. [federation.md](federation.md) — how hubs talk to each other
 4. [alliances.md](alliances.md) — multi-hub groups (Voxply's differentiator)
@@ -107,8 +107,9 @@ Reading order is for learning the system end-to-end. This section is for
 ## How to use this wiki
 
 - **For LLMs**: each file is self-contained and small enough to read whole.
-  File:line pointers (`server/voxply-hub/src/routes/messages.rs:42`) lead to
-  authoritative code. Don't copy code from the wiki — read the source.
+  File:line pointers (e.g. `hub/src/routes/messages.rs:42` in
+  Voxply-server) lead to authoritative code. Don't copy code from the
+  wiki — read the source.
 - **For humans**: same, but you can also follow the markdown cross-links.
 
 ## How to maintain this wiki
