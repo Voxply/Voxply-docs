@@ -1,4 +1,4 @@
-# Voxply — Documentation
+# Voxply
 
 A decentralized platform where players can hang out, talk, and play
 together. Voice chat, text messaging, federated alliances of hubs, and
@@ -6,19 +6,23 @@ community-built games — all keypair-based identity, no central servers.
 
 ## Repositories
 
-| Repo | Contents |
-|---|---|
-| **voxply-hub** | Hub server (`voxply-hub`), seed server (`voxply-seed`), identity crate (`voxply-identity`) |
-| **voxply-desktop** | Tauri + React desktop client, voice crate (`voxply-voice`) |
-| **voxply-docs** *(this repo)* | Architecture docs, ROADMAP, design decisions |
+| Repo | Local path | Contents |
+|---|---|---|
+| [Voxply](https://github.com/YOUR_ORG/Voxply) *(this repo)* | `docs/` | Architecture docs, ROADMAP, design decisions, API spec |
+| [Voxply-server](https://github.com/YOUR_ORG/Voxply-server) | `hub/` | Hub server, seed server, identity crate |
+| [Voxply-desktop](https://github.com/YOUR_ORG/Voxply-desktop) | `desktop/` | Tauri + React desktop client, voice crate |
+| [Voxply-android](https://github.com/YOUR_ORG/Voxply-android) | `android/` | Tauri Android client |
+| [Voxply-web](https://github.com/YOUR_ORG/Voxply-web) | `web/` | Browser client |
+| [Voxply-discovery](https://github.com/YOUR_ORG/Voxply-discovery) | `discovery/` | Hub discovery web app |
 
 ## Documentation
 
-- [`docs/`](docs/README.md) — architecture, federation, identity,
-  alliances, voice, data model, client structure, decisions, threat
-  model, and glossary. Start at [`docs/README.md`](docs/README.md).
+- [`docs/README.md`](docs/README.md) — architecture, federation, identity,
+  alliances, voice, data model, client structure, decisions, threat model,
+  and glossary.
 - [`ROADMAP.md`](ROADMAP.md) — what's next, known issues, undesigned
   wishlist, and explicit "won't do" decisions.
+- [`hub/openapi.yaml`](https://github.com/YOUR_ORG/Voxply-server/blob/main/openapi.yaml) — full API spec (OpenAPI 3.0). Reference for client implementors.
 
 ## Features
 
@@ -37,8 +41,7 @@ community-built games — all keypair-based identity, no central servers.
   channel ban, voice mute, hub approval queue.
 - **Security lobby** — PoW-gated entry, bot challenge (click + SVG
   puzzle), role questionnaire / onboarding survey.
-- **Bots** — self-service bot creation, slash commands, webhook
-  delivery.
+- **Bots** — self-service bot creation, slash commands, webhook delivery.
 
 ## License
 
