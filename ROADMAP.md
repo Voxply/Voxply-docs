@@ -33,7 +33,7 @@ shipped features, design questions — lives in the wiki at
 
 - **Activities button** — design complete (`docs/gaming.md`). Channel toolbar button
   opens a game picker modal over hub-installed games; feeds the same Tier 1 iframe
-  sandbox. Implement in desktop + web clients.
+  sandbox. Implement in desktop + web + Android clients.
 
 ## 🚧 Blocked
 
@@ -47,7 +47,6 @@ items live in the wiki — see
 [`farm-model.md`](docs/farm-model.md),
 [`gaming.md`](docs/gaming.md).
 
-_(moved to Next up)_
 - **Performance ceiling** — load test WS broadcast, search, voice relay
 - **Accessibility + i18n** — keyboard nav audit, screen-reader, localization
 
