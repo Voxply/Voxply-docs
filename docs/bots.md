@@ -434,3 +434,36 @@ every bot.
   simultaneously is a significant bandwidth multiplier on the relay —
   rate-limit and admin-permission scaffolding needs to be in place
   before enabling this.
+- **Screen-share / video bots** — a bot injecting a video stream into
+  the screen-share feature (watch-party bot, stream announcer, etc.).
+  The existing screen-share design ([screen-share.md](screen-share.md))
+  uses `getDisplayMedia` which is human-only: the client captures a
+  real display surface and sends it as `ScreenShareChunk` WS envelopes.
+  A video bot needs the inverse path: the bot process pushes
+  pre-encoded VP8/Opus WebM chunks over the WebSocket; the hub relays
+  them to channel members exactly as it does for human screen-share.
+  What needs to be added: a `ScreenShareBot` envelope variant that
+  bypasses `getDisplayMedia`, a capability gate (`can_share_screen`) on
+  bot session tokens, and hub-side validation that the pusher is a
+  bot identity (not a client trying to forge a remote display source).
+  The v2 WebRTC path in screen-share.md (P2P via hub SDP/ICE signaling)
+  could accommodate bot video injection without the chunk-relay
+  bandwidth overhead — deferred to the same v2 milestone.
+- **In-chat game bots** — a bot triggering an interactive mini-game
+  panel inline in the channel (similar to how some messaging platforms
+  surface playable HTML5 games from a bot command). The foundation is
+  already in place: the gaming platform ([gaming.md](gaming.md)) ships
+  a Tier 1 iframe sandbox with a `postMessage` SDK, and the game
+  manifest format supports arbitrary `entry_url` values. What's missing
+  is a bot-triggered launch path: today games are installed by hub
+  admins via the game manifest; there is no way for a bot to send a
+  message that the client interprets as "launch this game URL as an
+  inline panel." The design would be a new `BotResponse` field —
+  `game?: { entry_url, name, description?, thumbnail_url? }` — that
+  the client renders as a launchable panel, visually attached to the
+  bot's message. The postMessage SDK already runs in a sandboxed iframe
+  so the security surface is contained; the main addition is a
+  multiplayer-state bridge (game posts scores/moves to the bot via
+  `postMessage`; bot relays over WS so other players see the same
+  state). Deferred until the Tier 2 multiplayer gaming work is designed
+  ([gaming.md](gaming.md) — Tier 2 is currently undesigned).
