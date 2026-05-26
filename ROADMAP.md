@@ -7,7 +7,11 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **External bots** — design complete (`docs/bots.md`). Backend: DB migrations + routes in Voxply-server. Frontend: Hub Settings → Bots tab + slash-command autocomplete + ephemeral message rendering.
+- **External bots — remaining UI** — backend and rendering are shipped. Still needed:
+  - Wire `handleComponentInteract` in desktop + web clients (HTTP call to hub, depends on end-to-end test of component dispatch)
+  - Bot hover/click card — avatar, name, description, commands list, "automated account" notice (design: `docs/bots.md` §10)
+  - Hub Settings → Bots tab: external invite flow (paste pubkey → copy invite token) + per-bot channel scope selector
+  - Hub Settings → Integrations → Incoming Webhooks (create, copy URL, delete)
 
 ## 🚧 Blocked
 
