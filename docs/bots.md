@@ -440,6 +440,7 @@ unsubscribed events are never sent.
 | `message.bulk_deleted` | `channel_id`, `message_ids[]`, `deleted_by_pubkey` | |
 | `message.reaction_added` | `channel_id`, `message_id`, `reactor_pubkey`, `emoji` | |
 | `message.reaction_removed` | same shape | |
+| `message.mention_bot` | `channel_id`, `message_id`, `author_pubkey`, `mention_preview` | Targeted; no capability needed — see below |
 | `message.pinned` | `channel_id`, `message_id`, `pinned_by_pubkey` | |
 | `channel.created` | `channel_id`, `name`, `kind`, `created_by_pubkey` | |
 | `channel.deleted` | `channel_id`, `name` | |
@@ -472,6 +473,16 @@ volume and a privacy concern for bots that don't need full message
 access. All other events are hub-scope by default. The hub enforces
 this at subscription time and silently drops `message.*` subscriptions
 without a channel list.
+
+`message.mention_bot` is the exception: it is **hub-scoped with no
+channel list required**. The hub delivers it only to the bot(s) whose
+name or pubkey appears in the message — it is already targeted, so the
+privacy concern that gates `message.created` does not apply. The
+payload carries a `mention_preview` (first 100 chars of the message
+body), which is enough for a "you were mentioned, go look" handler.
+Bots that need the full message body on mention should combine this
+event with a `message.created` subscription on the relevant channels
+(with `can_read_message_content`).
 
 ### Wire shape
 
@@ -917,6 +928,112 @@ A private channel can be added to a bot's scope, but only by an admin
 
 ---
 
+## 15. Rich embeds
+
+Embeds are structured cards rendered below a message body. They let
+bots post formatted results — build reports, scoreboards, weather
+cards, search results — without cramming everything into markdown text.
+
+### Format
+
+```json
+{
+  "embeds": [
+    {
+      "title":         "Build #42 passed",
+      "url":           "https://ci.example.com/builds/42",
+      "description":   "All 134 tests green. Deploy queued.",
+      "color":         "#22c55e",
+      "fields": [
+        { "name": "Branch",   "value": "main",   "inline": true },
+        { "name": "Duration", "value": "1m 23s", "inline": true }
+      ],
+      "thumbnail_url": "https://example.com/thumb.png",
+      "image_url":     "https://example.com/graph.png",
+      "footer":        { "text": "CI Bot · 14:32 UTC" }
+    }
+  ]
+}
+```
+
+All fields except `title` or `description` (at least one required)
+are optional.
+
+| Field | Limit | Notes |
+|---|---|---|
+| `title` | 256 chars | Becomes a link if `url` is also set |
+| `url` | — | https only; makes `title` clickable |
+| `description` | 2 048 chars | Markdown supported |
+| `color` | — | CSS hex `#rrggbb`; defaults to the theme accent |
+| `fields` | max 25 | Each `name` ≤256, `value` ≤1 024; `inline: true` renders side-by-side |
+| `thumbnail_url` | — | Small image top-right of the card; https only |
+| `image_url` | — | Full-width image at the bottom of the card; https only |
+| `footer.text` | 2 048 chars | |
+
+Max 10 embeds per message. Hub validates URL schemes (https only,
+no private ranges) at write time.
+
+### Where embeds are accepted
+
+- `BotResponse.reply.embeds` — slash-command and component responses.
+- `POST /messages` body `embeds` — proactive bot posts (§16) and
+  direct API calls. Rejected on messages authored by non-bots.
+- Incoming webhook POST body (§9) — the `embeds` field reserved there
+  now uses this format.
+
+Embeds are stored as a JSON column on the `messages` row and
+transmitted as-is in WS message envelopes to clients.
+
+### Wire changes
+
+- `messages` gains `embeds TEXT NULL` (JSON array; null = no embeds).
+- `BotResponse.reply` and `POST /messages` body gain `embeds?: Embed[]`.
+- New `Embed`, `EmbedField`, `EmbedFooter` wire models in
+  `hub/src/routes/bot_models.rs`.
+- Client renders embeds as cards stacked below the message body;
+  `inline: true` fields render in a two-or-three-column grid.
+
+---
+
+## 16. Proactive messaging
+
+A bot can post to any channel in its scope at any time without being
+invoked by a slash command or component interaction. The existing
+`POST /messages` route handles this — no special envelope or separate
+path needed.
+
+### When to use it
+
+| Pattern | How |
+|---|---|
+| Deferred slash response | Bot receives `/remind` command, `defer: true`; posts the actual reply minutes later via `POST /messages` |
+| Scheduled announcements | Bot runs a cron; posts to `#announcements` at the scheduled time |
+| External trigger | Incoming webhook (§9) is read-only inbound; for two-way flows (receive event, then post a follow-up) the bot handles the logic and posts proactively |
+| Status updates | Bot edits a previously posted message (`PATCH /messages/:id`) as state changes — e.g., a live match scoreboard |
+
+### Rate limits
+
+The per-bot-per-hub rate limits from §6 apply to all proactive posts:
+5/sec sustained, 30/minute burst. There is no separate "proactive"
+budget — a bot that also handles slash commands shares the same pool.
+Admins can raise the limit per-bot for bots with a legitimate
+high-volume need (polling-result announcer, bulk notification bot).
+
+### Message editing and deletion
+
+A bot can edit or delete its own messages using the standard routes:
+
+- `PATCH /messages/:id` — edits body, embeds, or components in-place.
+  All channel members see the update.
+- `DELETE /messages/:id` — removes the message. If the bot holds the
+  `manage_messages` permission it can delete any member's messages,
+  same as a human moderator.
+
+No new wire changes. These use existing routes with the bot's session
+token.
+
+---
+
 ## Tradeoffs
 
 **Decision**: external bots are first-class members (`users` row +
@@ -955,6 +1072,17 @@ every bot.
   hub certifications design space ([future-features.md](future-features.md)).
 - **Bot-to-bot interaction** — explicitly not designed; a bot
   receiving another bot's slash output is allowed but not encouraged.
+- **Outgoing webhooks** (no-bot event forwarding) — admin registers an
+  external HTTPS URL; hub POSTs a filtered subset of hub events to it
+  (same shapes as §8) with no reply expected and no bot identity
+  required. Lighter than running a full bot process for pure
+  "pipe events to an external system" uses (monitoring, alerting,
+  archival). Unlike incoming webhooks (§9) which flow inward, this
+  flows hub → external. Unlike event subscriptions (§8), no persistent
+  WS session is needed. Main design question: signing — hub should
+  include `X-Voxply-Signature` so the receiver can verify authenticity
+  (same header as slash dispatch). Deferred until a real use case
+  pressures the design.
 - **Hub-to-hub bot federation** — a bot invited on Hub A is *not*
   automatically known to Hub B in an alliance. The bot operator
   invites it per hub. Federated bot identity is a possible v2 if it
