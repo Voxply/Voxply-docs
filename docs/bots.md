@@ -61,8 +61,30 @@ shape. The flag is what `future-features.md` already anticipates and
 what internal service accounts already use.
 
 **Token lifetime**: bot tokens are long-lived but not eternal. Default
-30 days; renewal is a fresh challenge-response. Revocation is
-admin-removes-bot (section 2).
+30 days. Revocation is admin-removes-bot (section 2).
+
+**Token renewal without a service gap**: the bot renews proactively
+while its current session is still live — no disconnect required.
+
+1. Bot calls `GET /auth/challenge` and signs the nonce as usual.
+2. Bot calls `POST /auth/renew` (same shape as `/auth/verify` but
+   requires a valid `Authorization: Bearer <current_token>` header).
+3. Hub verifies the current token is not revoked, verifies the
+   signature, and returns a new token with a fresh 30-day window.
+4. Bot stores the new token and uses it on the next reconnect. The
+   old token remains valid until its original expiry — the running
+   WS session is unaffected.
+
+The hub sends a `token_expiring_soon` push over the bot's WS 72 hours
+before expiry so the bot can renew without polling the expiry date:
+
+```json
+{ "type": "token_expiring_soon", "expires_at": 1748822400 }
+```
+
+If the bot ignores the warning and the token expires, the hub closes
+the session with reason `token_expired` (section 2) and the bot must
+do a full re-auth.
 
 ## 2. Invite flow (invite-by-pubkey)
 
