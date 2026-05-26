@@ -371,6 +371,243 @@ unless otherwise noted.
 platform-specific work needed beyond the directory UI parity. Voice-
 specific exclusions for bots don't apply to either client.
 
+## 8. Event subscriptions
+
+Bots receive hub events over their existing WebSocket connection — the
+same session opened in section 1. A bot declares which event types it
+wants at auth time (in `bot_meta`) or updates at any time via
+`PUT /bots/me/subscriptions`. The hub delivers only subscribed events;
+unsubscribed events are never sent.
+
+### Available events
+
+| Event | Key payload fields | Notes |
+|---|---|---|
+| `member.joined` | `pubkey`, `display_name`, `invited_by?` | Hub join |
+| `member.left` | `pubkey` | Voluntary leave |
+| `member.kicked` | `pubkey`, `by_pubkey`, `reason?` | Admin action |
+| `member.banned` | `pubkey`, `by_pubkey`, `reason?` | |
+| `member.unbanned` | `pubkey`, `by_pubkey` | |
+| `member.role_changed` | `pubkey`, `role_id`, `action: 'added'|'removed'`, `by_pubkey` | |
+| `member.invite_created` | `inviter_pubkey`, `invite_code`, `max_uses?`, `expires_at?` | |
+| `member.invite_used` | `invitee_pubkey`, `invite_code`, `inviter_pubkey` | |
+| `voice.joined` | `pubkey`, `channel_id` | |
+| `voice.left` | `pubkey`, `channel_id` | |
+| `voice.moved` | `pubkey`, `from_channel_id`, `to_channel_id` | |
+| `voice.server_muted` | `pubkey`, `by_pubkey`, `muted: bool` | Admin mute/unmute |
+| `voice.server_deafened` | `pubkey`, `by_pubkey`, `deafened: bool` | |
+| `message.created` | `channel_id`, `message_id`, `author_pubkey`, `content_preview?` | High-volume; channel scope required — see below |
+| `message.edited` | `channel_id`, `message_id`, `author_pubkey` | |
+| `message.deleted` | `channel_id`, `message_id`, `deleted_by_pubkey` | |
+| `message.bulk_deleted` | `channel_id`, `message_ids[]`, `deleted_by_pubkey` | |
+| `message.reaction_added` | `channel_id`, `message_id`, `reactor_pubkey`, `emoji` | |
+| `message.reaction_removed` | same shape | |
+| `message.pinned` | `channel_id`, `message_id`, `pinned_by_pubkey` | |
+| `channel.created` | `channel_id`, `name`, `kind`, `created_by_pubkey` | |
+| `channel.deleted` | `channel_id`, `name` | |
+| `channel.updated` | `channel_id`, `changed_fields[]`, `by_pubkey` | |
+| `hub.settings_changed` | `changed_fields[]`, `by_pubkey` | |
+| `hub.invite_created` | `invite_code`, `by_pubkey` | |
+| `moderation.timeout` | `pubkey`, `until`, `by_pubkey` | When timeout feature ships |
+| `bot.added` | `bot_pubkey` | |
+| `bot.removed` | `bot_pubkey` | |
+
+### Subscription scope
+
+Subscriptions are declared per event type with an optional channel
+filter:
+
+```json
+{
+  "subscriptions": [
+    { "event": "member.joined" },
+    { "event": "member.banned" },
+    { "event": "voice.joined" },
+    { "event": "message.created", "channels": ["general", "announcements"] }
+  ]
+}
+```
+
+`message.created` (and `message.edited`, `message.deleted`) **require**
+an explicit `channels` list — a hub-wide message firehose is too high
+volume and a privacy concern for bots that don't need full message
+access. All other events are hub-scope by default. The hub enforces
+this at subscription time and silently drops `message.*` subscriptions
+without a channel list.
+
+### Wire shape
+
+Events arrive over the bot's WebSocket as a `hub_event` envelope:
+
+```json
+{ "type": "hub_event",
+  "event": "member.joined",
+  "hub_url": "https://...",
+  "at": 1748217600,
+  "payload": { "pubkey": "...", "display_name": "player42", "invited_by": "..." } }
+```
+
+Payload shapes per event type are defined in
+`hub/src/routes/bot_models.rs` alongside the other bot wire types.
+
+### Native audit log
+
+The same event stream feeds a **native audit log** — a hub-admin-only
+view in Hub Settings that records the last N days of key events (joins,
+kicks, bans, role changes, bulk deletes, settings changes) with no bot
+required. It is the minimum viable moderation tool for hubs that don't
+run bots.
+
+Advanced logging — message content archival, pattern matching,
+cross-referencing, alerting — is left to the bot ecosystem. Voxply
+provides the event stream; bots provide the tooling on top of it. This
+matches the gaming philosophy: we build the platform primitive, not
+the application.
+
+### Wire changes
+
+- `bot_subscriptions(pubkey, event_type, channel_id NULL)` — one row
+  per bot × event type × optional channel. Replaced atomically on
+  `PUT /bots/me/subscriptions`.
+- `PUT /bots/me/subscriptions` — replaces the full subscription set for
+  the authenticated bot.
+- Hub event dispatcher: `hub/src/routes/ws.rs` broadcast path extended
+  to fan out `hub_event` envelopes to subscribed bots. New module
+  `hub/src/bots/events.rs` owns subscription matching and push.
+- `hub_audit_log(id, event_type, at, actor_pubkey, target_pubkey,
+  channel_id, payload_json)` — append-only, retention configurable
+  (default 90 days). Written by the same event dispatcher.
+- `GET /admin/audit-log` — cursor-paginated, filterable by event type
+  and date range. Admin-only.
+
+---
+
+## 9. Incoming webhooks
+
+Incoming webhooks are a lighter primitive than external bots: a secret
+URL the hub admin generates; a third-party service POSTs a message to
+it; the hub publishes the message to a target channel. No Ed25519
+keypair, no WebSocket session, no slash commands — just HTTP POST.
+
+Typical use: CI/CD build results, uptime alerts, game score
+announcements, any "push a message into a channel from an external
+system" need that doesn't require two-way interaction.
+
+### How it works
+
+1. Hub admin opens Hub Settings → Integrations → Incoming Webhooks,
+   picks a target channel, optionally sets a display name and avatar.
+   Hub generates:
+   ```
+   POST https://{hub}/webhooks/{webhook_id}/{secret_token}
+   ```
+2. Admin copies the URL and configures the external service with it.
+3. External service POSTs:
+
+```json
+{ "content": "Build #42 passed.",
+  "username": "CI Bot",
+  "avatar_url": "https://example.com/cibot.png",
+  "embeds": [] }
+```
+
+4. Hub publishes the message to the target channel, authored by a
+   webhook identity row (`is_bot=1`, `is_webhook=1`) using the webhook's
+   name and avatar. The message gets an `APP` badge (see section 10).
+
+`content` is required. `username` and `avatar_url` override the
+webhook's stored name/avatar for that message. `embeds` is reserved
+for a future rich-embed format; ignored today.
+
+### What incoming webhooks are not
+
+- They cannot read messages, receive events, or respond to commands.
+- One webhook = one target channel. Cannot post to multiple channels.
+- They don't hold a WS session and never appear in the member list.
+- The secret URL is their only credential — there is no keypair.
+
+### Security
+
+- The secret token in the URL is the sole credential. Rotate if
+  exposed: admin regenerates from the settings UI; the old token is
+  invalidated immediately.
+- Hub rejects webhook targets that resolve to private/loopback ranges
+  (same rule as external bot `webhook_url` validation).
+- Rate limit: 5 messages/minute per webhook, configurable by admin.
+- Optional HMAC verification: the sender may include
+  `X-Voxply-Signature: <HMAC-SHA256 of body, keyed by the secret token>`.
+  When present, the hub verifies it and rejects mismatches. Not
+  required but recommended for sensitive channels.
+
+### Wire changes
+
+- `users` gains `is_webhook INTEGER DEFAULT 0` (analogous to `is_bot`).
+- `webhooks(id, channel_id, secret_token_hash, display_name,
+  avatar_url, created_by_pubkey, rate_limit, active)` table.
+- `POST /webhooks/:id/:token` — public (no auth header), verifies token
+  by constant-time hash comparison, publishes message to channel.
+- `POST /admin/webhooks` — admin creates a webhook; returns the full
+  URL including the raw token (only time the raw token is returned).
+- `DELETE /admin/webhooks/:id` — deletes. `PATCH /admin/webhooks/:id`
+  to regenerate the token or update name/avatar/rate-limit.
+
+---
+
+## 10. Visual identity
+
+The client must make clear to every user whether a message came from a
+human, an interactive bot, or an incoming webhook integration.
+
+### BOT and APP badges
+
+| Row type | Badge | Where it appears |
+|---|---|---|
+| `is_bot=1` | **BOT** | Message author line, member list, mention autocomplete, hover card |
+| `is_webhook=1` | **APP** | Message author line only (webhooks have no session, no member list entry) |
+
+The badge is small, uses the accent color, and is non-interactive. It
+appears immediately after the display name in every context where the
+name is shown. The distinction between BOT and APP signals: BOT means
+"an interactive process you can talk to"; APP means "a one-way
+integration posting notifications."
+
+### Member list
+
+Bots are grouped in a **Bots** subsection at the bottom of the member
+list, below all human member sections, collapsed by default. The
+section shows the bot count when collapsed (`Bots — 3`). Webhook
+identities do not appear in the member list.
+
+### Hover / click card
+
+Clicking a bot's name or avatar opens a card showing:
+
+- Display name + BOT badge.
+- Avatar.
+- Description (from `bot_profiles.description`).
+- Declared slash commands (name + one-line description each).
+- "This is an automated account" notice.
+- No webhook URL, no private metadata, no operator pubkey fingerprint
+  (that's admin-only, visible only in Hub Settings → Bots).
+
+### Mention autocomplete
+
+When a user types `@` in the composer, bots appear in the autocomplete
+list with their BOT badge inline so the user can distinguish them from
+human members at a glance.
+
+### Ephemeral messages
+
+Slash-command replies with `ephemeral=true` render with:
+
+- A visually distinct background (slightly inset, lower opacity).
+- The label **"Only you can see this"** beneath the message body.
+- No persistent storage — the hub delivers them only to the invoker's
+  active WS session. They disappear on reload. Other members never
+  receive them.
+
+---
+
 ## Tradeoffs
 
 **Decision**: external bots are first-class members (`users` row +
@@ -409,11 +646,6 @@ every bot.
   hub certifications design space ([future-features.md](future-features.md)).
 - **Bot-to-bot interaction** — explicitly not designed; a bot
   receiving another bot's slash output is allowed but not encouraged.
-- **Async event subscriptions over webhook** (e.g., "POST me every
-  channel message"). Bots get events over their WebSocket like users
-  do; a webhook firehose would be a denial-of-service magnet against
-  the bot operator. The webhook is for synchronous slash dispatch
-  only in v1.
 - **Hub-to-hub bot federation** — a bot invited on Hub A is *not*
   automatically known to Hub B in an alliance. The bot operator
   invites it per hub. Federated bot identity is a possible v2 if it
