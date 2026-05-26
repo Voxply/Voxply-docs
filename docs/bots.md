@@ -468,3 +468,9 @@ every bot.
   over WS so other channel members see the same state). Deferred until
   the Tier 2 multiplayer gaming work is designed ([gaming.md](gaming.md)
   — Tier 2 is currently undesigned).
+
+  Note: the primary no-bot game launch surface is the **Activities
+  button** in the channel toolbar — a picker over hub-installed games
+  that opens the same modal, no command or bot required. The bot launch
+  card is an additive path on top of that. See
+  [gaming.md — Activities button](gaming.md).

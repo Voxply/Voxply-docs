@@ -48,7 +48,34 @@ When the SDK ships, it will expose:
   per-user / per-hub persistence
 - **Game registry** — central vs hub-operated still open
 - **Hub admin UI** — browse, install, enable/disable per hub
-- **User UI** — launch from a channel or a dedicated game tab
+- **User UI** — launch via the Activities button (see below) or a
+  dedicated game tab
+
+## Activities button
+
+A dedicated button in the channel toolbar — next to voice/camera
+controls — that opens a compact picker showing every game installed on
+the hub. Clicking a game opens it in a full modal overlay (keyboard,
+mouse, and gamepad all work naturally inside the modal). No chat
+command required; no bot needed.
+
+This is the primary launch surface for hub-installed games. It lives at
+the channel level rather than a global sidebar so the context is clear:
+you're launching a game *here*, for the people in *this channel*. The
+modal keeps chat accessible in the background; closing it drops the user
+back into the channel.
+
+Two entry points feed into the same modal runtime:
+
+| Source | How it's triggered |
+|---|---|
+| Activities button | User clicks the toolbar button, picks from the hub game list |
+| Bot launch card | Bot message contains a `game` payload; user clicks Play on the card |
+
+Both render the same Tier 1 iframe sandbox. The Activities button path
+needs no bots and works today once the UI is wired; the bot launch card
+path is deferred to when the bot `game` response field is designed
+([bots.md](bots.md) — What's deferred).
 
 ## What we explicitly DO NOT build
 
