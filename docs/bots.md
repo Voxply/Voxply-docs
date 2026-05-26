@@ -84,8 +84,22 @@ DM), the admin pastes it.
    signature, flips `approval_status` to `'approved'`, merges
    `bot_meta`, and the bot can now authenticate normally (section 1).
 5. **Removal**: admin clicks Remove. The user row's `is_bot_removed=1`
-   flag is set; the hub rejects subsequent auth attempts and tears
-   down any active session. The row is kept (not deleted) so existing
+   flag is set. Before tearing down the active WS session, the hub
+   sends a disconnect signal so the bot process can handle it cleanly:
+   ```json
+   { "type": "bot_removed", "reason": "admin_revoked", "hub_url": "..." }
+   ```
+   The hub then closes the WS with a standard close frame. Other
+   disconnect reasons the bot may receive:
+   - `token_expired` — session token reached its 30-day lifetime.
+   - `server_shutdown` — hub is restarting.
+   - `rate_limit_escalated` — repeated rate-limit violations.
+
+   On receiving `bot_removed / admin_revoked` the bot process should
+   stop reconnection attempts for that hub; all other reasons are
+   transient and the bot should reconnect with normal backoff.
+
+   The user row is kept (not deleted) so existing
    `messages.author_pubkey` references stay valid.
 
 Why a token rather than just whitelisting the pubkey: it proves the
@@ -135,6 +149,10 @@ commands of the same name — the hub strips them before dispatch.
    message is stored as a regular message (slash text isn't magic).
 3. Hub does **not** persist the slash invocation as a message by
    default. The bot decides what to echo.
+3b. If `command.privileged = true` and the invoking user does not hold
+   the `manage_messages` permission (or higher), the hub posts an
+   ephemeral **"You don't have permission to use this command."** to the
+   invoker and stops. The webhook is never called; the bot sees nothing.
 4. Hub POSTs to the bot's `webhook_url` with a signed envelope:
 
 ```
@@ -299,6 +317,26 @@ endpoints. Defaults:
 The limits are per-bot-per-hub, enforced in the existing rate-limit
 middleware. Admins can override per-bot via the directory UI when a
 bot genuinely needs to spray (e.g., a polling-result announcer).
+
+### Per-user command cooldowns
+
+Independent of the per-bot limits above, each slash command carries a
+**per-user cooldown** that the hub enforces before dispatching.
+Default: 3 seconds. Bots set it per-command at registration time:
+
+```json
+{ "name": "roll", "description": "...", "cooldown_seconds": 5 }
+```
+
+If a user invokes `/roll` again before the cooldown expires, the hub
+posts an ephemeral **"⏱ You can use /roll again in N seconds."** and
+does not call the webhook. The bot never sees the spam; no webhook
+budget is consumed.
+
+The cooldown is tracked in an in-memory store keyed by
+`(bot_pubkey, command_name, invoker_pubkey)` — same infrastructure
+as the existing rate limiter. `bot_commands` gains a
+`cooldown_seconds INTEGER DEFAULT 3` column.
 
 ## 7. Wire changes — scope for the backend engineer
 
@@ -605,6 +643,277 @@ Slash-command replies with `ephemeral=true` render with:
 - No persistent storage — the hub delivers them only to the invoker's
   active WS session. They disappear on reload. Other members never
   receive them.
+
+---
+
+## 11. Message components
+
+Components are interactive elements attached to a bot message —
+buttons and select menus that let users respond without typing a slash
+command. Useful for confirmation flows, polls, role pickers, paginated
+results, and any multi-step interaction.
+
+### Component types (v1)
+
+**Button**:
+```json
+{ "type": "button",
+  "custom_id": "confirm_ban_abc123",
+  "label": "Confirm",
+  "style": "danger",
+  "disabled": false }
+```
+`style`: `primary` (accent color), `secondary` (neutral), `danger`
+(red). `disabled: true` greys the button without removing it.
+
+**Select menu**:
+```json
+{ "type": "select",
+  "custom_id": "pick_role",
+  "placeholder": "Choose a role…",
+  "min_values": 1,
+  "max_values": 1,
+  "options": [
+    { "label": "Raider", "value": "raider", "description": "PvE content" },
+    { "label": "Casual",  "value": "casual"  }
+  ] }
+```
+
+Components are grouped into **rows** (max 5 components per row, max 5
+rows per message = 25 total). Layout:
+
+```json
+"components": [
+  { "type": "row", "components": [ ...buttons... ] },
+  { "type": "row", "components": [ { select } ] }
+]
+```
+
+### Attaching components to messages
+
+- In a `BotResponse`: add a `components` field alongside `reply`.
+- Via `POST /messages` directly: include `components` in the body.
+  The hub rejects `components` on messages authored by non-bots.
+
+### Interaction dispatch
+
+1. User clicks a button or submits a select. Client sends over WS:
+   ```json
+   { "type": "component_interaction",
+     "message_id": "...",
+     "custom_id": "confirm_ban_abc123",
+     "values": [] }
+   ```
+2. Hub resolves the message's author (the bot) and POSTs to its
+   `webhook_url` with the same signing envelope as slash dispatch:
+   ```json
+   { "type": "component_interaction",
+     "hub_url": "...", "channel_id": "...", "message_id": "...",
+     "custom_id": "confirm_ban_abc123",
+     "values": [],
+     "user": { "pubkey": "...", "display_name": "..." } }
+   ```
+3. Bot responds within ~5s with a `ComponentResponse`:
+   ```json
+   { "update"?:          { "body"?: "...", "components"?: [...] },
+     "ephemeral_reply"?: { "body": "Done." },
+     "defer"?:           true }
+   ```
+   - `update` edits the original message in-place (body and/or
+     components — e.g., disable the button after use, clear the select).
+   - `ephemeral_reply` sends a reply visible only to the interacting user.
+   - `defer` works the same as for slash commands (section 3).
+
+4. Hub applies the update and fans out the changed message to channel
+   members; ephemeral reply goes only to the interacting user.
+
+Per-component anti-spam: hub rate-limits to **1 interaction per user
+per component per 3 seconds**. Excess attempts are silently dropped
+client-side without hitting the webhook.
+
+### Component lifetime
+
+Components expire after a configurable TTL (default 24 hours, set via
+`expires_at` on the component row). After expiry the hub rejects
+further interactions and the client renders them as disabled. A bot
+can also explicitly clear components by updating the message with
+`components: []`.
+
+### Wire changes
+
+- `message_components(id, message_id, row_idx, component_idx, type,
+  config_json, expires_at)` table.
+- `POST /messages` body gains `components?: Row[]` for bot authors.
+- New client → hub WS envelope `component_interaction`.
+- `hub/src/bots/dispatch.rs` handles `component_interaction` dispatch
+  (same signing + timeout logic as slash commands).
+- New `ComponentResponse` wire model in `hub/src/routes/bot_models.rs`.
+- `PATCH /messages/:id/components` — internal route for applying an
+  `update` response; not publicly documented.
+
+---
+
+## 12. Event replay on reconnect
+
+When a bot's WS drops and reconnects, it can request a replay of
+events it missed. This closes the audit-gap window for logging and
+moderation bots.
+
+### Sequence numbers
+
+Every event written to `hub_audit_log` gets a **monotonic sequence
+number** (`seq`) scoped to the hub. The hub includes the current `seq`
+in the WS welcome envelope:
+
+```json
+{ "type": "hello", "hub_url": "...", "live_seq": 8471 }
+```
+
+### Resuming after a disconnect
+
+On reconnect, the bot sends a `resume` message immediately after auth:
+
+```json
+{ "type": "resume", "since_seq": 8450 }
+```
+
+Hub replays audit log entries from `seq 8451` onward, filtered to the
+bot's subscriptions, as `hub_event` envelopes with `"replayed": true`.
+Live events are buffered during replay to avoid interleaving.
+
+Replay complete:
+
+```json
+{ "type": "replay_complete", "replayed": 21, "live_from_seq": 8472 }
+```
+
+After this the bot is fully caught up and live delivery resumes.
+
+### Limits
+
+| Condition | Hub response |
+|---|---|
+| Within replay window (default 72 h) | Normal replay |
+| Beyond window | `{ "type": "replay_unavailable", "earliest_seq": N, "earliest_at": T }` |
+| Very large replay | Batched at 2 000 events/s; bot must consume before next batch |
+
+When `replay_unavailable`, the bot must decide whether to resync from
+scratch (e.g., re-read member list, re-audit pinned messages) or
+accept the gap. The hub does not decide this on the bot's behalf.
+
+### Wire changes
+
+- `hub_audit_log` gains `seq INTEGER PRIMARY KEY AUTOINCREMENT`
+  (SQLite auto-increment; Postgres equivalent: `BIGSERIAL`).
+- WS welcome envelope `hello` gains `live_seq`.
+- New client → hub envelope `resume: { since_seq }`.
+- New hub → bot envelopes `replay_complete` and `replay_unavailable`.
+- `hub_event` envelopes gain optional `"replayed": true`.
+
+---
+
+## 13. Message content access
+
+By default, `message.created` and `message.edited` events deliver only
+a `content_preview` — the first 100 characters of the body, with
+attachments omitted. Full content requires the
+`can_read_message_content` capability.
+
+### Tiers
+
+| Field | Default | With `can_read_message_content` |
+|---|---|---|
+| `content_preview` (≤100 chars) | ✓ | ✓ |
+| Full `content` | — | ✓ |
+| `attachments[]` | — | ✓ |
+| `reply_to` (quoted message id) | — | ✓ |
+| `before` / `after` on `message.edited` | — | ✓ |
+
+### Declaring capabilities
+
+A bot declares required capabilities in `bot_meta.capabilities` at
+auth time:
+
+```json
+{ "capabilities": ["can_read_message_content"] }
+```
+
+The hub stores this in `bot_profiles`. The admin invite UI surfaces
+a warning before generating the invite token:
+
+> **⚠ This bot requests access to full message content.**
+> It will be able to read every message in its subscribed channels.
+
+This is a speed bump, not a hard block — the admin proceeds with full
+knowledge. No bot gains full message access silently.
+
+### Capability registry
+
+Capabilities are a general mechanism. All currently defined values:
+
+| Capability | What it unlocks |
+|---|---|
+| `can_read_message_content` | Full body + attachments in `message.*` events |
+| `can_speak_voice` | Bot audio injection into voice relay (deferred) |
+| `can_share_screen` | Bot video stream injection into screen-share (deferred) |
+
+The hub rejects unknown capability strings at auth time so capability
+strings can be validated without a catch-all.
+
+### Wire changes
+
+- `bot_profiles` gains `capabilities TEXT` (JSON array, default `'[]'`).
+- `hub/src/bots/events.rs` checks `can_read_message_content` before
+  populating `content`, `attachments`, `reply_to` on message event
+  payloads.
+- Invite UI renders capability warnings before generating the token.
+
+---
+
+## 14. Channel scope
+
+A bot is invited to a hub but can be restricted to a subset of
+channels. This limits what events it receives and where it can post.
+
+### Default
+
+Hub-wide access to all **public** channels — matching human member
+behavior. Private channels are excluded unless explicitly granted.
+
+### Restricting scope
+
+Hub Settings → Bots → [bot name] → Channel Access: switch from "All
+public channels" to a checklist. Only listed channels are in scope.
+
+What "in scope" enforces:
+
+- Hub delivers only events whose `channel_id` is in scope (including
+  `message.*` events, `channel.updated`, voice events, etc.).
+- `POST /messages` returns `403 channel_out_of_scope` if the target
+  is outside scope.
+- Slash commands from users in out-of-scope channels are not dispatched.
+- Client autocomplete only shows the bot's commands in channels where
+  the bot is in scope.
+- Component interactions from out-of-scope channels are dropped.
+
+Channel scope is **additive with** event subscriptions: both filters
+must pass for an event to be delivered.
+
+### Private channels
+
+A private channel can be added to a bot's scope, but only by an admin
+(same gate as admitting a human member to a private channel).
+`can_read_message_content` applies as normal within private channels.
+
+### Wire changes
+
+- `bot_channel_scope(bot_pubkey, channel_id, PRIMARY KEY (bot_pubkey,
+  channel_id))` — empty = hub-wide (default); populated = restricted.
+- `PUT /admin/bots/:pubkey/channels` — replaces scope list atomically.
+  Empty body resets to hub-wide.
+- `hub/src/bots/events.rs` and the `POST /messages` middleware both
+  check scope before acting.
+- Client command-autocomplete filters by scope at query time.
 
 ---
 
