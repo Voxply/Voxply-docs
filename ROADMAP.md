@@ -23,9 +23,10 @@ shipped features, design questions — lives in the wiki at
   ExternalBotSection with invite token + channel scope selector, WebhooksSection,
   Integrations tab in HubAdminPage (desktop + web).
 
-- **Android client — bots rendering parity** — BOT/APP badges, ephemeral message
-  styling, `MessageEmbeds`, `MessageComponents`, and updated member list not yet
-  ported to Android (`C:\repo\Voxply\android`). Same changes as web client.
+- **Android client — bots rendering parity** — shipped. BOT/APP badges, ephemeral
+  message styling, `MessageEmbeds`, `MessageComponents`, and Bots subsection in
+  member list all ported. Component interaction dispatch is a no-op on Android
+  pending the hub HTTP interaction endpoint.
 
 - **Activities button** — design complete (`docs/gaming.md`). Channel toolbar button
   opens a game picker modal over hub-installed games; feeds the same Tier 1 iframe
