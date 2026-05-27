@@ -18,14 +18,10 @@ shipped features, design questions — lives in the wiki at
     envelopes (design: `docs/bots.md` §12)
   - `token_expiring_soon` WS push 72 h before session expiry (design: `docs/bots.md` §1)
 
-- **External bots — remaining UI** — backend and rendering are shipped. Still needed:
-  - Wire `handleComponentInteract` in desktop + web clients once component dispatch lands
-  - Bot hover/click card — avatar, name, description, commands list, "automated account"
-    notice (design: `docs/bots.md` §10)
-  - Hub Settings → Bots tab: external invite flow (paste pubkey → copy invite token)
-    + per-bot channel scope selector (desktop + web)
-  - Hub Settings → Integrations → Incoming Webhooks (create, copy URL, delete;
-    desktop + web)
+- **External bots — remaining UI** — shipped. No remaining frontend items.
+  Completed: component interaction WS send with optimistic disable, BotCard popover,
+  ExternalBotSection with invite token + channel scope selector, WebhooksSection,
+  Integrations tab in HubAdminPage (desktop + web).
 
 - **Android client — bots rendering parity** — BOT/APP badges, ephemeral message
   styling, `MessageEmbeds`, `MessageComponents`, and updated member list not yet
@@ -49,6 +45,14 @@ items live in the wiki — see
 
 - **Performance ceiling** — load test WS broadcast, search, voice relay
 - **Accessibility + i18n** — keyboard nav audit, screen-reader, localization
+
+## 🧭 Designed, not started
+
+- **Farm model — Phase 1 (farm-level auth) + Phase 2 (hub multi-tenancy)** —
+  detailed design in [`farm-impl.md`](docs/farm-impl.md). New `farm/` crate
+  in Voxply-server, signed token shape, hub-side verification with cached
+  farm pubkey, three-step migration (dual-issue → stand up farm → hubs return
+  410 for old tokens), `POST /farm/hubs` with per-creator quota.
 
 ## ⚠️ Known issues
 
