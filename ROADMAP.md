@@ -7,13 +7,12 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **Farm Phase 1 — client integration** — hub now accepts farm tokens and
-  advertises `farm_url` in `GET /info`; clients need to branch on `farm_url` and
-  route `/auth/*` calls to the farm. Follow-up: desktop Tauri command for
-  farm auth flow.
-- **Android component interaction dispatch** — component buttons on Android are
-  render-only; need a platform HTTP/WS command wired up once the hub interaction
-  endpoint stabilises.
+- **Farm Phase 1 — client integration** — hub advertises `farm_url` in `GET /info`;
+  clients need to branch on it and route `/auth/*` calls to the farm URL instead of
+  the hub. Desktop, web, and Android. No new UI — transparent to the user.
+- **Farm Phase 3 (admin panel)** — creation policy (`open`/`admin_only`/`disabled`),
+  `PATCH /farm/settings`, hub suspend/delete admin UI, user index. Detailed design
+  in [`farm-impl.md`](docs/farm-impl.md).
 
 ## 🚧 Blocked
 
@@ -32,9 +31,7 @@ items live in the wiki — see
 
 ## 🧭 Designed, not started
 
-- **Farm Phase 2 (hub multi-tenancy) + Phase 3 (admin panel)** — detailed
-  design in [`farm-impl.md`](docs/farm-impl.md). Proxy layer, `hubs` table,
-  `POST /farm/hubs` with per-creator quota, admin settings surface.
+_(Farm Phase 2 shipped — see commit history)_
 
 ## ⚠️ Known issues
 
