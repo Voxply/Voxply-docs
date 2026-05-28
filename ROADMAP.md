@@ -7,6 +7,10 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
+- **Farm Phase 1 — client integration** — hub now accepts farm tokens and
+  advertises `farm_url` in `GET /info`; clients need to branch on `farm_url` and
+  route `/auth/*` calls to the farm. Follow-up: desktop Tauri command for
+  farm auth flow.
 - **Android component interaction dispatch** — component buttons on Android are
   render-only; need a platform HTTP/WS command wired up once the hub interaction
   endpoint stabilises.
@@ -28,11 +32,9 @@ items live in the wiki — see
 
 ## 🧭 Designed, not started
 
-- **Farm model — Phase 1 (farm-level auth) + Phase 2 (hub multi-tenancy)** —
-  detailed design in [`farm-impl.md`](docs/farm-impl.md). New `farm/` crate
-  in Voxply-server, signed token shape, hub-side verification with cached
-  farm pubkey, three-step migration (dual-issue → stand up farm → hubs return
-  410 for old tokens), `POST /farm/hubs` with per-creator quota.
+- **Farm Phase 2 (hub multi-tenancy) + Phase 3 (admin panel)** — detailed
+  design in [`farm-impl.md`](docs/farm-impl.md). Proxy layer, `hubs` table,
+  `POST /farm/hubs` with per-creator quota, admin settings surface.
 
 ## ⚠️ Known issues
 
