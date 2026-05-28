@@ -7,7 +7,8 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-_(nothing — see wishlist for upcoming work)_
+- **Performance ceiling** — voice relay O(1) lookup, FTS5 search, WS pre-serialization. See [`docs/performance.md`](docs/performance.md)
+- **Accessibility + i18n** — keyboard nav + focus trap (in progress), ARIA/screen-reader (next), i18n Phase 3 (library + catalogs + provider) done — string extraction is next. See [`docs/accessibility.md`](docs/accessibility.md)
 
 ## 🚧 Blocked
 
@@ -21,12 +22,11 @@ items live in the wiki — see
 [`farm-model.md`](docs/farm-model.md),
 [`gaming.md`](docs/gaming.md).
 
-- **Performance ceiling** — load test WS broadcast, search, voice relay
-- **Accessibility + i18n** — keyboard nav audit, screen-reader, localization
+_(nothing — see "Designed, not started" for upcoming work)_
 
 ## 🧭 Designed, not started
 
-_(nothing — all designed items are either in progress or shipped)_
+_(nothing)_
 
 ## ⚠️ Known issues
 
