@@ -23,6 +23,20 @@ minor bumps signal breaking wire-protocol changes; patch bumps are compatible.
 - In-hub games via iframe manifests
 - Hub alliances for cross-hub channel sharing
 
+### Known limitations
+
+- **Windows SmartScreen warning**: The Windows installer (`.exe`) is currently unsigned
+  because an Authenticode code-signing certificate has not yet been procured. When you run
+  the installer, Windows may show a "Windows protected your PC" SmartScreen dialog.
+
+  **Workaround**: click **More info**, then **Run anyway**. The installer is safe; it is only
+  unsigned because Authenticode signing is still pending. This limitation will be resolved
+  when certificate procurement completes (see [ROADMAP.md](ROADMAP.md) — "Windows
+  Authenticode code signing").
+
+  The auto-updater payload signature (Ed25519, separate key) is unaffected — updates
+  downloaded in-app are cryptographically verified regardless of the installer signature.
+
 ## [0.1.0] - 2026-05-01
 
 Initial development build. Core hub+client architecture established.

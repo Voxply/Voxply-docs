@@ -7,18 +7,9 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-**Pre-launch blockers (P0):**
-- **Group DMs plaintext warning** — group DMs are not E2E encrypted; users must be clearly told before entering one
-- **Windows SmartScreen** — document the unsigned installer workaround in CHANGELOG.md and README.md
-
 **Pre-launch blockers (P1):**
-- **Multi-device Tauri commands** — verify/wire `subkey_issue`, `prefs_sync_push/pull`, `pairing_offer_create`, `pairing_poll`, `device_list`, `device_revoke` on the `src-tauri/` side
 - **Demo hub** — deploy a Voxply-operated instance and flip `DEMO_HUB_URL` from `null`
-- **Observability** — structured JSON logging, optional Sentry DSN, request-id middleware, basic `/metrics` endpoint
-
-**Pre-launch polish (P2):**
-- **Cert bootstrap caveat** — ensure `cert_mode` defaults to `'none'`; add admin warning about day-1 lockout
-- **Recovery contact flow docs** — in-app step-by-step guide for the out-of-band rotation request flow
+- **Observability: Sentry DSN** — optional Sentry error reporting via `VOXPLY_SENTRY_DSN` env var (structured JSON logging ✓, request-id middleware ✓, `/metrics` endpoint ✓ already landed)
 
 ## 🚧 Blocked
 
@@ -42,8 +33,8 @@ _(nothing)_
 
 ## ⚠️ Known issues
 
-- **Group DMs are plaintext** — hub operator can read group DM content; 1:1 DMs are E2E encrypted. Warning UI pending (Task #29)
-- **Windows installer unsigned** — users see SmartScreen "Unknown publisher" warning; documentation pending (Task #30)
+- **Group DMs are plaintext** — hub operator can read group DM content; 1:1 DMs are E2E encrypted. Warning shown before entering group DMs. E2E group DMs (sender-key scheme) are in the wishlist.
+- **Windows installer unsigned** — users see SmartScreen "Windows protected your PC" warning; workaround documented in CHANGELOG.md (`More info → Run anyway`). Permanent fix requires Authenticode cert procurement (see Wishlist).
 
 ## 💤 Won't do
 
