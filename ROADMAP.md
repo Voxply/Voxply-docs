@@ -7,13 +7,11 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-**Pre-launch blockers (P1):**
-- **Demo hub** — deploy a Voxply-operated instance and flip `DEMO_HUB_URL` from `null`
-- **Observability: Sentry DSN** — optional Sentry error reporting via `VOXPLY_SENTRY_DSN` env var (structured JSON logging ✓, request-id middleware ✓, `/metrics` endpoint ✓ already landed)
+_(nothing — all pre-launch blockers are resolved)_
 
 ## 🚧 Blocked
 
-_(nothing blocked)_
+- **Demo hub** — code is ready (`DEMO_HUB_URL` constant + conditional button). Blocked on ops: a Voxply-operated hub instance needs to be deployed and the constant flipped to its URL before the "Try a demo hub" button goes live.
 
 ## 📌 Wishlist (undesigned)
 
