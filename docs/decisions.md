@@ -4,6 +4,61 @@ Why Voxply is shaped the way it is. Each entry: the decision, the
 alternative we considered, and why we chose this. New decisions go at
 the top.
 
+## Monetization: missions + donations + farm hosting, no subscriptions/premium tiers
+
+**Decision**: Voxply funds itself through (1) a cosmetic-only
+**missions** system where sponsors pay the project per attested,
+user-initiated action and users earn cosmetic-only "sparks"; (2) plain
+donations; and (3) managed **farm hosting** plans that sell operations,
+not software features. No subscriptions, no premium tiers, no
+capability ever locked behind money. Money flows sponsor → project (and
+donor → project, hosting customer → operator); the user is never
+charged and never loses access for having a zero balance. Full design
+in [`monetization.md`](monetization.md).
+
+**Alternatives considered**:
+
+- **Subscriptions / premium tiers (a "Nitro"-style paid upgrade).**
+  Rejected. It splits the user base into paying and non-paying, which
+  only works by making the free product deliberately worse — directly
+  contradicting "free for everyone, forever." It is also structurally
+  unenforceable on a federated network the project does not own: a
+  community hub the project doesn't operate can't be made to gate
+  features on a Voxply payment, and a fork strips the check trivially.
+  The whole model assumes a central authority over the user's
+  experience that Voxply's sovereignty pillar refuses to have.
+- **Advertising in chat/voice surfaces.** Rejected on the same
+  no-surveillance posture as [`threat-model.md`](threat-model.md) and
+  the channel-as-place model — the conversation surface stays ad-free.
+- **Selling telemetry / user data.** Rejected on sovereignty grounds,
+  consistent with the rejected central identity service.
+- **Missions as the sole funding line.** Rejected as a *sole* line:
+  forks can disable the Missions panel, so missions are upside, not the
+  base. Donations + farm hosting are the durable floor.
+
+**Tradeoff**: the cosmetic-only rule is a permanent constraint that
+will be tempting to violate (a "supporter" cosmetic that quietly grants
+priority or larger uploads is the subscription model in disguise). We
+accept holding that line forever because the alternative collapses the
+free-product promise. Mission attestation without surveilling users is
+genuinely hard and invites spark-farming fraud; PoW gating on
+redemption plus per-pubkey limits are the first defense and a full
+anti-fraud design is deferred.
+
+**What changes on the implementation side**: a new project-operated
+**mission service** (likely a sibling repo to `Voxply-discovery`),
+cosmetic entitlements carried client-side as master-signed blobs (same
+shape as [`home-hub.md`](home-hub.md) personal-axis state), a Missions
+panel and cosmetics rendering in the official clients gated behind a
+client constant (disablable in forks), and a billing layer on the farm
+operator's side for managed hosting. No community hub ever holds a
+balance, bills, or calls a money service — spark balance is
+personal-axis, not community-axis.
+
+**What's deferred**: anti-fraud design for attestation, the spark→
+cosmetic catalog, who operates the mission service, and paid-placement
+ranking rules in the gaming catalog.
+
 ## Farm model phase 3: creation policy on the farm row, farm-admin pubkey, per-farm discovery probe — no central registry
 
 **Decision**: Phase 3 of the farm model adds (a) a three-valued

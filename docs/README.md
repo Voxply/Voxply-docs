@@ -43,7 +43,8 @@ If you're new, read in this order:
 19. [install-android.md](install-android.md) — end-user guide: enable unknown sources, download APK, Play Protect warning
 20. [brand.md](brand.md) — motto, one-liner, logo brief and asset checklist
 21. [bots.md](bots.md) — external bot ecosystem: invite-by-pubkey, slash commands, webhook dispatch, per-hub directory
-22. [accessibility.md](accessibility.md) — keyboard navigation, ARIA / screen-reader support, i18n strategy across desktop / web / Android
+22. [monetization.md](monetization.md) — self-funding without subscriptions: cosmetic-only missions, donations, farm hosting plans
+23. [accessibility.md](accessibility.md) — keyboard navigation, ARIA / screen-reader support, i18n strategy across desktop / web / Android
 
 ## Find by feature
 
