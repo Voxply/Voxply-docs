@@ -33,11 +33,12 @@ If you're new, read in this order:
 
 11. [farm-model.md](farm-model.md) — multi-hub server layer + 5-layer architecture
     - [farm-impl.md](farm-impl.md) — Phase 1 + 2 + 3 implementation design (auth move, multi-tenancy, creation policy + admin panel)
-12. [gaming.md](gaming.md) — game distribution platform + tier progression
+12. [gaming.md](gaming.md) — game distribution platform: tiers, registry, hub admin install + permissions, six-call SDK, farm-level games
 13. [home-hub.md](home-hub.md) — personal-axis state: home hub list, replication, DM canonicalization
 14. [multi-device.md](multi-device.md) — master+subkey identity, QR pairing protocol
 15. [e2e-encryption.md](e2e-encryption.md) — E2E encrypted DMs: X25519 from Ed25519 seed, static ECDH + AES-GCM, signed envelopes
 16. [future-features.md](future-features.md) — anti-spam, moderation, recovery, bots
+    - [server-tags.md](server-tags.md) — self-tags (discovery keywords) + portable signed hub badges
 17. [browser-client.md](browser-client.md) — second client (no Tauri), platform adapter, IndexedDB identity, voice deferred
 18. [android-client.md](android-client.md) — Tauri 2 Android wrapper around the browser platform layer, side-loaded APK
 19. [install-android.md](install-android.md) — end-user guide: enable unknown sources, download APK, Play Protect warning
@@ -45,6 +46,7 @@ If you're new, read in this order:
 21. [bots.md](bots.md) — external bot ecosystem: invite-by-pubkey, slash commands, webhook dispatch, per-hub directory
 22. [monetization.md](monetization.md) — self-funding without subscriptions: cosmetic-only missions, donations, farm hosting plans
 23. [accessibility.md](accessibility.md) — keyboard navigation, ARIA / screen-reader support, i18n strategy across desktop / web / Android
+24. [forum.md](forum.md) — forum channel type: post-list variant, posts + reply threads, `create_posts`/`manage_posts` permissions, FTS search
 
 ## Find by feature
 
@@ -102,12 +104,13 @@ Reading order is for learning the system end-to-end. This section is for
 - **Identity recovery (device linking, recovery contacts)** — [future-features.md](future-features.md)
 - **Bots & integrations** — [bots.md](bots.md), [future-features.md](future-features.md)
 - **Nested channels + max depth hub setting** — [future-features.md](future-features.md)
-- **Forum channel type (post-list variant)** — [future-features.md](future-features.md)
-- **Server tags (federated portable badges)** — [future-features.md](future-features.md)
+- **Forum channel type (post-list variant)** — [forum.md](forum.md)
+- **Server tags (self-tags + federated portable badges)** — [server-tags.md](server-tags.md)
 - **Home hub list (personal-axis state, DM canonicalization)** — [home-hub.md](home-hub.md)
 - **Multi-device pairing (QR, master+subkey)** — [multi-device.md](multi-device.md)
 - **Farm model (multi-hub server, SSO, discovery)** — [farm-model.md](farm-model.md)
 - **Gaming platform (tiers, SDK, sandbox)** — [gaming.md](gaming.md)
+- **Party multiplayer (Tier 2: sessions, hub relay, `game_*` envelopes)** — [gaming.md](gaming.md)
 
 ## How to use this wiki
 

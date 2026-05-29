@@ -4,6 +4,128 @@ Why Voxply is shaped the way it is. Each entry: the decision, the
 alternative we considered, and why we chose this. New decisions go at
 the top.
 
+## Gaming Tier 2: chat-WS envelope family, in-memory state + opt-in snapshot, hub-local scope
+
+**Decision**: Tier 2 party multiplayer (≤20 players) piggybacks the existing chat WebSocket with a `game_*` envelope family rather than opening a dedicated socket per session. Session state is in-memory on the hub by default (matches the 10–30 min ephemeral party-game shape) with an opt-in DB snapshot via `voxply:game:snapshot` for longer matches. Alliance/cross-farm scope is deferred to Tier 3. Full design in [`gaming.md`](gaming.md) — Tier 2 section.
+
+**Alternatives considered**:
+
+- **Dedicated WS per game session** — rejected: re-pays for auth, membership, presence, reconnect, and broadcast that the chat WS already provides. The screen-share WS-relay decision is the precedent; a dedicated multiplexer is the documented escape hatch if mixing causes latency problems.
+- **DB-first session state** — rejected as the default: most party games end in under 30 min and writing every move to SQLite adds I/O for no benefit; in-memory is correct and opt-in snapshot covers the long-game case.
+- **Alliance scope in Tier 2** — deferred: the host/joining-hub relay is the same shape as federated DMs and cross-farm play; deferring to Tier 3 where that infrastructure is designed is the right cut.
+
+**What changes on the implementation side**: in-memory `GameSession` map in hub `AppState`; `game_sessions` and `game_shared_kv` DB tables (opt-in snapshot + shared KV); `game_*` WS envelope family (`game_session_created`, `game_state_update`, `game_player_joined/left`, `game_ended`); 6 new routes in `hub/src/routes/games.rs`; `multiplayer` capability in the admin grant model (Tier 1 pattern extended); Tier 2 SDK additions (`voxply:game:*` postMessage calls); Activities button and bot launch card both feed the same session path.
+
+**What's deferred**: cross-hub/cross-farm sessions (Tier 3), proximity voice (Tier 3), session replay, spectator mode, ranked/persistent leaderboards.
+
+## Forum channel type: posts + reply threads, channel_type discriminant, no voice
+
+**Decision**: add a `channel_type TEXT DEFAULT 'text'` column to `channels`. A `'forum'` channel replaces the continuous message stream with an ordered list of titled posts, each with a nested reply thread. Forum channels are leaves in the channel tree — same schema position as text channels — but carry no voice. The type is fixed at creation (no conversion). Two new permissions: `create_posts` (start threads) and `manage_posts` (moderate); `send_messages` gates replies. Full design in [`forum.md`](forum.md).
+
+**Alternatives considered**:
+
+- **Reuse `send_messages` for post creation** — rejected: the primary use case is channels where only curated members start threads (announcements, patch notes, bug reports); collapsing create-post into send-messages forces admins to either grant full chat or deny forums entirely.
+- **Reuse `manage_games` for post moderation** — rejected: unrelated permission domains. A member managing game installs shouldn't inherit forum moderation, and vice versa.
+- **Allow type conversion (text ↔ forum)** — deferred. Migrating existing `messages` rows into `posts` is non-trivial; fixed-at-creation is safe and conversion can be added later with a migration path.
+- **Per-post read cursors for unread tracking** — deferred. Post-level read state maps naturally onto the existing channel-level unread model; lands when per-post cursors are designed.
+
+**What changes on the implementation side**: new `channel_type` column (additive); `posts`, `post_replies` tables and `posts_fts` FTS5 virtual table; `hub/src/routes/posts.rs` (12 routes); `post_models.rs` wire types; 6 WS envelope variants; `ForumPostList`, `ForumPostDetail`, `ForumComposer` client components across desktop/web/android; `create_posts` and `manage_posts` permissions.
+
+**What's deferred**: federation across alliances, per-post read cursors, post reactions, attachments, type conversion, hub-wide cross-channel search.
+
+## Gaming Tier 1 platform: URL-first registry, admin-granted capabilities, six-call SDK, farm-level install + per-hub enable
+
+**Decision**: the Tier 1 gaming platform is fully specified beyond the
+Activities button. (a) **Registry**: URL-first install is the protocol
+primitive (paste a manifest URL / quick-install by entry URL, always
+works, no central dependency); an optional self-submitted, self-signed
+catalog on `Voxply-discovery` is a convenience browse layer on top,
+reusing the hub/farm signed-listing primitive. No central project-hosted
+catalog gatekeeps installs. (b) **Permissions**: every game starts in
+the minimal read-only sandbox; a hub admin may grant a small closed set
+of capabilities (`post_message`, `read_channel_history`,
+`list_channel_users`), never default-on, always bounded by the launching
+user's own permissions and scoped to the launching channel/session; the
+player sees a one-line disclosure strip when any capability is granted.
+(c) **SDK**: six Tier 1 calls — `getUser`, `getContext`,
+`getChannelUsers`, `postMessage`, `getRecentMessages`,
+`kvGet`/`kvSet` — request/reply only, no live events. The per-user KV is
+keyed `(game_id, user_pubkey)` and is personal-/farm-axis state.
+(d) **Farm progression**: a game is installed once on the farm and each
+hub enables/disables it; the per-user KV lives on the farm so progress
+follows the user across hubs; effective capability = farm grant ∩ hub
+grant. Full design in [`gaming.md`](gaming.md).
+
+**Alternatives considered**:
+
+- **A central project-hosted game catalog as the only install path.**
+  Rejected on the same sovereignty grounds as a central hub registry —
+  it makes the project the arbiter of which games exist on a federated
+  network, and it can't be enforced (URL install always exists; a fork
+  strips the check). URL-first primitive + optional aggregator is the
+  hub/farm discovery pattern applied verbatim.
+- **Per-hub list with no catalog at all** (freeze today's shape).
+  Rejected as the whole answer: no discovery surface. The catalog is
+  additive on top of the URL primitive, not a replacement.
+- **Federated registry (DHT/gossip of manifests).** Rejected — same
+  verdict as DHT hub discovery: complexity without payoff at this scale.
+- **Fixed read-only sandbox forever, no capabilities.** Rejected:
+  reasonable Tier 1 games (trivia, polls) need a scoped write surface;
+  pushing them to Tier 2 over one posted message is the wrong cut line.
+- **Author-declared capabilities that auto-grant on install.** Rejected
+  — lets an author self-escalate by editing their own manifest. The
+  admin grants; the manifest may only request (advisory).
+- **Keep games per-hub even on a farm** (N copies). Rejected — duplicates
+  the manifest and fractures the per-user KV so progress wouldn't follow
+  a user between two hubs on the same farm.
+- **Farm-global auto-enable with no per-hub opt-in.** Rejected — a hub
+  admin must control what appears in their community. Install (farm) and
+  enable (hub) are two distinct actions on two layers.
+- **Live presence/message events pushed to the iframe in Tier 1.**
+  Rejected for Tier 1 — request/reply only keeps the surface small; live
+  event streams are the Tier 2 WS-multiplexer's job.
+
+**Tradeoff**: the capability system adds admin configuration surface and
+a hub-side enforcement path on every gated SDK call (post, history,
+user-list), and the farm grant ∩ hub grant rule is a small but real
+piece of cross-layer logic. We accept it because a strictly read-only
+Tier 1 can't host the games people actually ask for, and because the
+capability set is closed and small (three verbs) rather than an
+open-ended permission language. The catalog being a convenience and not
+the install mechanism means the platform has zero hard dependency on a
+project-operated service — the cost is that discovery is only as good as
+the optional aggregator until ranking is designed.
+
+**What changes on the implementation side**:
+
+- *Hub* (Voxply-server `hub/`): `channel_games` table (channel-scope
+  set), `game_permissions` grant column on the game row,
+  `GET /games` (player view), `GET/POST/DELETE /admin/games`,
+  `PUT /admin/games/:id/channels`, `PUT /admin/games/:id/permissions`,
+  `enabled_games` table (farm-mode enable flag). Hub-side enforcement of
+  the gated SDK calls (post-as-user permission check, history scoping,
+  user-list scoping) and the KV store (un-farmed hubs).
+- *Farm* (Voxply-server `farm/`, when farm games land): `games` table
+  (manifest + grant), `game_kv` table (`(game_id, user_pubkey)`),
+  `POST/DELETE /farm/games`, `GET /farm/games/:id`; farm-admin gating
+  reusing `farms.admin_pubkey`.
+- *Discovery* (Voxply-discovery, deferred with the farm-listing work):
+  `POST/DELETE /games/register`, `GET /games` — signed-listing primitive
+  mirrored from the farm listing extension.
+- *Client* (Voxply-desktop, mirrored web/Android): Hub Settings → Games
+  tab (inventory, install incl. catalog browse, per-channel
+  enable/disable, capability grant UI), the launch-modal capability
+  disclosure strip, and the five new SDK calls wired into the parent
+  `message` handler alongside `voxply:getUser`.
+
+**What's deferred**: Tier 2 (multiplayer instances, live events to the
+iframe, shared/global KV, synthetic game identity, matchmaking,
+cross-farm sessions); Tier 3 (proximity voice, persistent MMO world);
+catalog ranking by install count (anti-gaming design unsolved, shared
+with monetization paid-placement); per-hub capability expansion beyond a
+farm grant; embeds/attachments in `postMessage`; native WASM module
+host.
+
 ## Monetization: missions + donations + farm hosting, no subscriptions/premium tiers
 
 **Decision**: Voxply funds itself through (1) a cosmetic-only

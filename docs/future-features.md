@@ -390,4 +390,10 @@ blocking anything today.
 
 ## Server tags — federated portable badges
 
-**Status**: future design. Tracked as task #98. No design committed yet.
+**Status**: design committed. The canonical doc is
+[server-tags.md](server-tags.md). It splits the feature into self-tags
+(free-form discovery keywords, hub-authoritative via `/info`) and
+badges (portable Ed25519-signed attestations one hub grants another,
+push-to-subject / pull-by-anyone). The badge signer is the same
+primitive this file's "hub certification" section needs for certifying
+users — server-tags.md establishes it for the hub-subject case.
