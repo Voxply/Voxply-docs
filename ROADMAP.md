@@ -7,7 +7,7 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **Android keyboard nav parity** — apply `FocusTrap`, `:focus-visible` ring, and roving tabindex to `android/voxply-desktop/src/` component copies (keyboard shortcuts and cheat-sheet modal excluded — no physical keyboard on Android). See [`docs/accessibility.md`](docs/accessibility.md)
+_(nothing — slate is clear)_
 
 ## 🚧 Blocked
 
