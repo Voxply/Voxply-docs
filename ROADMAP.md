@@ -22,6 +22,7 @@ items live in the wiki — see
 
 - **E2E group DMs** — Signal-style sender-key scheme (v2 of e2e-encryption.md); blocks until 1:1 E2E is proven stable
 - **Windows Authenticode code signing** — needs certificate procurement; unblocks SmartScreen warning permanently
+- **macOS universal binary (arm64 + x86_64)** — blocked by `audiopus_sys v0.1.8` which compiles Opus for the host arch only; current macOS DMG is arm64 (Apple Silicon). Fix requires upgrading the audio stack to a crate that supports fat library compilation.
 - **Missions system** — self-funding via sponsor-attested cosmetic actions; needs operator and anti-fraud design (see monetization.md)
 - **Gaming Tier 3** — MMO + proximity voice; stretch goal
 
