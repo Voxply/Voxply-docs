@@ -395,6 +395,163 @@ blocking anything today.
 
 ---
 
+## Multi-stream overlay, OS picture-in-picture, and decoupled stream viewing
+
+Three related screen-share evolutions that build on each other. None is
+built; all are designed to the level needed to start implementation.
+
+### Multi-stream overlay within a channel
+
+**Problem**: v1 enforces one sharer per channel. Co-op gaming and
+pair-programming sessions want all participants' screens visible
+simultaneously without switching focus.
+
+**Shape**: lift the one-sharer cap (already listed as an open question in
+[screen-share.md](screen-share.md)) and render each active stream as an
+independent floating overlay panel inside the app window. Each panel is:
+
+- Draggable and resizable (same primitives as the single-stream
+  "Floating overlay" layout already designed)
+- Independently hide-able and volume-controlled
+- Composed of the stream's screen video plus optional webcam-over-screen
+  overlay (the v1 webcam-PiP model applied to each stream)
+
+The viewer assembles their own layout by positioning N panels over the
+channel content. No sharer-side change — the hub fan-out model already
+handles multiple subscribers; the only new hub-side constraint is lifting
+the `at-most-one-ActiveShare` enforcement and allocating per-stream
+init-chunk cache entries.
+
+**Permission model**: unchanged — the existing `can_screen_share` flag
+still gates who can start a share; viewers need no new permissions.
+
+**Hub state change**: `ActiveShare` per channel becomes
+`Vec<ActiveShare>` instead of a single optional, with each entry keyed
+by `stream_id`. The hub already uses `stream_id` to distinguish screen
+vs webcam streams for the same sharer; the extension applies the same
+keying across multiple sharers.
+
+---
+
+### Cross-channel stream subscription (decoupled from voice)
+
+**Problem**: today, viewing a screen share in channel X requires being a
+member of channel X and having it selected. This forces a choice: leave
+your current voice context or miss the stream.
+
+**Shape**: a lightweight *stream subscription* relationship — separate
+from voice membership and chat participation. A user in voice in
+`#general` opens a "Streams" panel listing all active shares on the hub,
+picks one from `#gaming`, and sees it as a floating overlay — without
+leaving `#general`'s voice.
+
+**Why this matters**:
+
+- **Co-op / tournament viewing** — a spectator or raid leader watches
+  multiple group feeds from a single hub view without joining each
+  channel's voice.
+- **Cross-team awareness** — a squad leader monitors several sub-group
+  channels while staying in their own voice.
+- **View-only members** — users who can't join a channel's voice (wrong
+  role, full, or choosing not to) can still watch its shared screen.
+
+**Permission model**: reuses the existing `can_view_channel` check — if
+you can see the channel you can subscribe to its active streams. No new
+permission surface. A channel with `private` access blocks subscriptions
+from non-members the same way it blocks chat reads.
+
+**Wire changes** (Voxply-server):
+
+```
+// Client → Hub
+StreamSubscribe {
+  channel_id: String,    // source channel (not the viewer's current channel)
+  stream_id: String,
+}
+StreamUnsubscribe {
+  channel_id: String,
+  stream_id: String,
+}
+
+// Hub → Client (on subscribe: replay init chunk + forward subsequent chunks)
+StreamSubscribed { channel_id, stream_id, sharer_pubkey, mime, has_audio }
+// then the normal ScreenShareChunkOut / ScreenShareStopped flow
+```
+
+The hub validates `StreamSubscribe` against `can_view_channel` for the
+source channel, ignoring voice membership entirely. On approval it adds
+the subscriber to that stream's fan-out set (same map as channel
+subscribers, just sourced differently) and immediately replays the cached
+init chunk so the subscriber's MSE buffer can start decoding.
+
+**Hub state**: `ActiveShare` gains a `cross_channel_subscribers:
+HashSet<ConnectionId>` alongside the existing channel subscriber set. Fan-
+out on each `ScreenShareChunk` covers both sets. On `ScreenShareStop` or
+sharer WS disconnect, all subscribers (both sets) receive `ScreenShareStopped`.
+
+**Client-side**: a "Streams" discovery panel (hub-scoped, not
+channel-scoped) that lists active shares across all channels the user can
+view. Subscribing to a stream from this panel opens it as a floating
+overlay (the multi-stream overlay model above) without changing the user's
+current channel or voice state.
+
+**Decoupling summary**:
+
+| Today | With stream subscription |
+|---|---|
+| View stream → must be in that channel's voice | View stream → subscribe from anywhere on the hub |
+| Leave voice A to watch channel B's stream | Stay in voice A, subscribe to B's stream |
+| Streams are "richer voice" | Streams are first-class hub objects |
+
+**Why deferred**: voice and stream viewing are intentionally coupled today
+(shares ride the chat WS, viewers are channel subscribers). Decoupling
+them is a meaningful authorization and UX change. The foundation —
+`ActiveShare` map, fan-out, per-channel permission check, init-chunk cache
+— is already in place; the extension is the authorization path and the
+streams discovery UI.
+
+---
+
+### OS-level picture-in-picture
+
+**Problem**: the "Floating overlay" layout (designed in
+[screen-share.md](screen-share.md)) pins the viewer inside the app window.
+When the main app is minimized or another application takes focus, the
+stream disappears.
+
+**Shape**: a second Tauri `Window` with `always_on_top: true` and minimal
+or no decorations, launched on demand from the viewer panel. The `<video>`
++ MSE stack from the in-app viewer runs inside this detached window. The
+main app and the PiP window share stream state via Tauri's event/command
+bridge.
+
+**Implementation sketch** (Voxply-desktop, `src-tauri/`):
+
+```rust
+tauri::WindowBuilder::new(
+    app,
+    "screen-share-pip",
+    tauri::WindowUrl::App("pip.html".into()),
+)
+.title("Voxply — stream")
+.inner_size(320.0, 180.0)
+.min_inner_size(160.0, 90.0)
+.always_on_top(true)
+.decorations(false)   // or minimal: .decorations(true) for OS drag handle
+.build()?;
+```
+
+The PiP window communicates with the main window via
+`window.emit("stream-chunk", ...)` / `window.listen(...)` using the same
+chunk data the in-app viewer already receives. No new hub protocol. No
+server changes.
+
+**Scope**: viewer-side UX only. Compatible with both the single-stream and
+multi-stream overlay models — the PiP window can host one stream or a
+compact grid of N streams depending on which model is active.
+
+---
+
 ## Server tags — federated portable badges
 
 **Status**: design committed. The canonical doc is

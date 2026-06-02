@@ -427,3 +427,19 @@ community hub.
 - **PoW or rate-limit on `ScreenShareStart`**. Spamming starts is
   cheap. Probably fine while permissions gate sharing to members,
   revisit if abused.
+- **Multi-stream viewer**. v1 enforces one sharer per channel. A
+  future shape renders N concurrent sharers as independent movable
+  overlays inside the app — each with its own volume, webcam-over-screen
+  toggle, and drag position. Requires lifting the one-sharer cap and
+  a layout management strategy for when streams pile up.
+- **Cross-channel stream subscription**. Today a viewer must be in
+  channel X to see its share. A watch model lets a user in voice in
+  channel A subscribe to a stream in channel B without leaving. Hub-side:
+  a new `StreamSubscribe` envelope validated against `can_view_channel`
+  only (not voice membership), then the subscriber is added to that
+  stream's fan-out set. No new permission surface — reuses the existing
+  channel view check. See future-features.md for the full design.
+- **OS-level picture-in-picture**. The "Floating overlay" layout stays
+  inside the app window. True OS PiP opens a second Tauri window
+  (`always_on_top: true`, minimal decorations) that persists when the
+  main app is minimized. No hub protocol changes; viewer-side only.

@@ -74,3 +74,4 @@ moderation.)
   as it relays them — see [`threat-model.md`](threat-model.md))
 - Cross-hub voice (alliance-wide voice rooms)
 - Per-user gain / spatial audio
+- Multiple audio output device routing (assign different speakers/headsets per participant or per channel; device enumeration is already in `voice/src/devices.rs`)
