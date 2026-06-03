@@ -113,10 +113,13 @@ layers:
    pairing** (see that section below); the DB tables, routes, and QR
    pairing UI are all present.
 3. **Recovery contacts** — designate trusted keypairs that can reclaim
-   your roles or hub ownership if your key is lost. **Partially shipped**:
-   `recovery_settings` and `recovery_contacts` tables exist;
-   `hub/src/routes/recovery.rs` has PUT/GET contacts and key-rotation
-   request endpoints; admin approve/deny routes present. No UI yet.
+   your roles or hub ownership if your key is lost. **Shipped**: DB
+   tables, all server routes (including new `GET /recovery/requests` for
+   user-scoped request listing), `RecoveryContactsSection` UI on desktop
+   (Security tab) and web (Hub Admin → Recovery tab), and five Tauri
+   commands (`list_recovery_contacts`, `add_recovery_contact`,
+   `remove_recovery_contact`, `submit_rotation_request`,
+   `list_rotation_requests`) added to desktop's `src-tauri/src/lib.rs`.
 
 ---
 
@@ -162,17 +165,24 @@ implementation state.
 - **Integration tests** — `hub/tests/bots_flow.rs` (343 lines) covers
   the main flows.
 
-**What's still missing / deferred (per bots.md):**
+**What's shipped (updated):**
 
-- **Slash command autocomplete** — client needs to cache the command
-  registry and show it in the composer; backend is ready.
-- **Ephemeral message rendering** — backend marks messages with
-  `visible_to_pubkey`; client doesn't yet filter or style them.
-- **Message component rendering** — buttons/selects are stored in
-  `message_components` table and wire shapes exist; client doesn't
-  render them yet.
-- **Rich embed rendering** — `embeds` column on messages exists; client
-  doesn't render embeds yet.
+- **Slash command autocomplete** — desktop fully wired (App.tsx caches
+  registry on hub connect, ContentArea.tsx shows dropdown). Web wired:
+  `listBotCommands()` added to `platform/commands/bots.ts`, loaded in
+  `loadHubData`, passed to `ContentArea`.
+- **Ephemeral message rendering** — `visible_to_pubkey` filtering,
+  "Only you can see this" label, and `message-ephemeral` CSS class all
+  present on desktop and web.
+- **Message component rendering** — `MessageComponents.tsx` renders
+  buttons (primary/secondary/danger) and selects with 5-second
+  interaction debounce on desktop and web.
+- **Rich embed rendering** — `MessageEmbeds.tsx` renders title, URL,
+  description, color accent, thumbnail, fields (inline-aware), image,
+  and footer on desktop and web.
+
+**Still deferred:**
+
 - **Token expiry push** — hub should send `token_expiring_soon` 72 h
   before expiry and support `POST /auth/renew`; not wired.
 - **Voice/screen-share injection**, **bot DMs**, **outgoing webhooks**
