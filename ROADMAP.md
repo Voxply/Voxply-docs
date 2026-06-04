@@ -49,12 +49,10 @@ items live in the wiki — see
   per source), auto-moderation webhook (fail-open, circuit-breaker), and
   content reporting (hub-local admin queue). Design in
   [`moderation-enhancements.md`](docs/moderation-enhancements.md).
-- **Client quality-of-life** — global message search (hub FTS5 fan-out),
-  message drafts (localStorage), custom emojis (per-hub inline-base64
-  library), events/calendar (native type + RSVP), polls (hub-tallied,
-  live WS totals), thread collapse/expand + jump-to-thread, and OS
-  notification grouping (per-hub debounce). Design in
-  [`client-qol.md`](docs/client-qol.md).
+- **Client quality-of-life (remaining)** — thread collapse/expand +
+  jump-to-thread. Design in [`client-qol.md`](docs/client-qol.md).
+  Global message search, message drafts, custom emojis, events/calendar,
+  polls, and notification grouping are shipped.
 
 ## 🚀 Recently shipped
 
@@ -73,6 +71,15 @@ items live in the wiki — see
   `GET /api/templates`, `GET/DELETE /api/templates/:id`, and `/templates` browse page
   with tag + text search. Design in [`hub-creation-wizard.md`](docs/hub-creation-wizard.md).
 
+- **Events / calendar** — `hub_events` + `event_rsvps` tables, REST
+  routes (create/list/get/update/delete/rsvp), event card message posted
+  to channel on create, `EventCard`, `EventsPanel`, and Tauri commands
+  `list_events`, `rsvp_event`, `create_event`. Design in
+  [`client-qol.md`](docs/client-qol.md).
+- **Native polls** — `polls` + `poll_votes` tables, REST routes
+  (create/get/vote/delete), live tally broadcast via `poll_vote_updated`
+  WS message, `PollCard` component with animated bars, Tauri command
+  `vote_poll`. Design in [`client-qol.md`](docs/client-qol.md).
 - **Video in voice channels** — WebRTC mesh, active-speaker management
   (top-3, 3s linger), `VideoGrid` (equal grid ≤4, active-speaker+thumbnails
   5+, self-view overlay), `BackgroundProcessor` (MediaPipe none/blur/image),
