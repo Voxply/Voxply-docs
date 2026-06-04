@@ -36,16 +36,14 @@ items live in the wiki — see
 - **Hub admin tooling** — web admin panel at `{hub-url}/admin`, admin CLI
   (`voxply-hub admin ...`), farm console (multi-hub management). Design in
   [`hub-admin-panel.md`](docs/hub-admin-panel.md).
-- **Discovery enhancements** — hub uptime tracking (server-side `/info`
-  probing), farm browsing (separate catalog + `/farms` page), global
-  search (`/api/search` fan-out across catalogs), anonymous aggregate
-  analytics (catalog-only counts, registered vs. active hubs). Design in
-  [`discovery-v2.md`](docs/discovery-v2.md).
-- **Hub creation from discovery** — signed config templates catalog
-  (`/api/templates`, author self-submission), hub first-run bootstrap from
+- **Discovery enhancements (remaining)** — farm browsing (separate catalog + `/farms` page),
+  anonymous aggregate analytics (catalog-only counts, registered vs. active hubs).
+  Hub uptime tracking, global search, and template catalog are shipped.
+  Design in [`discovery-v2.md`](docs/discovery-v2.md).
+- **Hub creation from discovery (remaining)** — hub first-run bootstrap from
   `VOXPLY_TEMPLATE_URL` / bootstrap token, web creation wizard at
-  `discovery.voxply.app/new`. Design in
-  [`hub-creation-wizard.md`](docs/hub-creation-wizard.md).
+  `discovery.voxply.app/new`. Template catalog API is shipped.
+  Design in [`hub-creation-wizard.md`](docs/hub-creation-wizard.md).
 - **Hub moderation enhancements** — federated ban lists (signed, opt-in
   per source), auto-moderation webhook (fail-open, circuit-breaker), and
   content reporting (hub-local admin queue). Design in
@@ -58,6 +56,16 @@ items live in the wiki — see
   [`client-qol.md`](docs/client-qol.md).
 
 ## 🚀 Recently shipped
+
+- **Hub uptime tracking** — server-side `/info` probing via `GET /api/internal/ping-hubs`
+  (CRON\_SECRET-guarded), `hub_pings` table with 30-day prune, 7-day uptime percentage
+  included in hub listings. Design in [`discovery-v2.md`](docs/discovery-v2.md).
+- **Global search** — `GET /api/search?q=` fans out across hubs, bots, and templates
+  (max 5 per type), grouped dropdown on the landing page.
+  Design in [`discovery-v2.md`](docs/discovery-v2.md).
+- **Hub config template catalog** — signed self-submission via `POST /api/templates`,
+  `GET /api/templates`, `GET/DELETE /api/templates/:id`, and `/templates` browse page
+  with tag + text search. Design in [`hub-creation-wizard.md`](docs/hub-creation-wizard.md).
 
 - **Video in voice channels** — WebRTC mesh, active-speaker management
   (top-3, 3s linger), `VideoGrid` (equal grid ≤4, active-speaker+thumbnails
