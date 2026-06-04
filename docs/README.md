@@ -91,6 +91,8 @@ Reading order is for learning the system end-to-end. This section is for
 - **Push-to-talk** — [voice.md](voice.md)
 - **Self-mute / self-deafen** — [voice.md](voice.md)
 - **Voice participant list in sidebar** — [client.md](client.md)
+- **Per-participant volume / proximity voice** — [voice-volume.md](voice-volume.md), [proximity-voice.md](proximity-voice.md)
+- **Whisper (targeted voice to users/channels/roles, designed, not built)** — [whisper.md](whisper.md)
 - **Screen share + webcam (designed, not built)** — [screen-share.md](screen-share.md) (v1 transport), [screen-share-webrtc.md](screen-share-webrtc.md) (v2 WebRTC migration)
 
 ### Federation

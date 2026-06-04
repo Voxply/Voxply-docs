@@ -30,7 +30,11 @@ items live in the wiki — see
 
 ## 🧭 Designed, not started
 
-_(nothing — all designed features are now shipped)_
+- **Whisper** — TeamSpeak-style targeted voice to users/channels/roles
+  across the hub (incl. raid-commander multi-channel callouts).
+  Hub-routed for all sizes, `packet_type` byte in the UDP header, live
+  target re-resolution, whisper-list presets in the prefs blob. Design in
+  [`whisper.md`](docs/whisper.md).
 
 ## 🚀 Recently shipped
 
