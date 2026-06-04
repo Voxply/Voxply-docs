@@ -40,9 +40,10 @@ items live in the wiki — see
   anonymous aggregate analytics (catalog-only counts, registered vs. active hubs).
   Hub uptime tracking, global search, and template catalog are shipped.
   Design in [`discovery-v2.md`](docs/discovery-v2.md).
-- **Hub creation from discovery (remaining)** — hub first-run bootstrap from
-  `VOXPLY_TEMPLATE_URL` / bootstrap token, web creation wizard at
-  `discovery.voxply.app/new`. Template catalog API is shipped.
+- **Hub first-run bootstrap** — hub applies a template/token on empty-DB
+  first launch (`VOXPLY_BOOTSTRAP_TOKEN`, `VOXPLY_TEMPLATE_URL`). Discovery
+  side (wizard + token endpoints) is shipped; hub-side redeem logic in
+  `hub/src/db/migrations.rs` still to build.
   Design in [`hub-creation-wizard.md`](docs/hub-creation-wizard.md).
 - **Hub moderation enhancements** — federated ban lists (signed, opt-in
   per source), auto-moderation webhook (fail-open, circuit-breaker), and
@@ -63,6 +64,11 @@ items live in the wiki — see
 - **Global search** — `GET /api/search?q=` fans out across hubs, bots, and templates
   (max 5 per type), grouped dropdown on the landing page.
   Design in [`discovery-v2.md`](docs/discovery-v2.md).
+- **Hub creation wizard** — 4-step wizard at `/new`: pick template, customise
+  (name/description), choose deployment (Docker/Binary/Managed Farm), deploy
+  instructions. `POST /api/wizard/generate` mints a 24h single-use bootstrap
+  token; `POST /api/bootstrap/redeem` redeems it. Template catalog and farm
+  listings wired in. Design in [`hub-creation-wizard.md`](docs/hub-creation-wizard.md).
 - **Hub config template catalog** — signed self-submission via `POST /api/templates`,
   `GET /api/templates`, `GET/DELETE /api/templates/:id`, and `/templates` browse page
   with tag + text search. Design in [`hub-creation-wizard.md`](docs/hub-creation-wizard.md).
