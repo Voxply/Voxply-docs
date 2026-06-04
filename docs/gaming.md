@@ -33,8 +33,12 @@ lifetime.
 ### Tier 3 — MMO
 
 Persistent shared game state scoped to one hub or alliance. Much bigger
-engineering; real stretch goal. Proximity voice (volume attenuates with
-in-game distance) is the voice integration that makes Tier 3 feel real.
+engineering; real stretch goal. Tier 3 games use proximity voice (volume
+attenuating with in-game distance) to make the world feel real — but
+proximity voice is a **general platform feature** designed separately in
+[`proximity-voice.md`](proximity-voice.md), not owned by the gaming tier.
+Tier 3 calls `voxply:setVoicePosition` each tick and the platform handles
+the attenuation.
 
 **Not built.**
 
@@ -1059,8 +1063,10 @@ plugs into later.
   to avoid writing personal state onto a community hub. (Tier 1's
   per-user KV already covers a *single-player* save that follows the
   user; Tier 3's progression is the multiplayer-history extension.)
-- **Proximity voice** — volume attenuating with in-game distance. Tier 2
-  sessions use normal channel voice unchanged.
+- **Proximity voice** — designed as a general platform primitive in
+  [`proximity-voice.md`](proximity-voice.md). Tier 2 sessions use normal
+  channel voice unchanged; Tier 3 will consume the platform feature via
+  `voxply:setVoicePosition`.
 - **Matchmaking pool** — Tier 2 join is "see a live session in this
   channel and join it." A farm-wide pool across channels/hubs is
   farm-level.

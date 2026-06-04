@@ -64,18 +64,17 @@ entirely and renders no cosmetics. The protocol is unaffected — a client
 with the panel disabled still connects to hubs and sends messages
 normally.
 
-### Anti-fraud (first pass)
+### Anti-fraud
 
-Spark farming (scripted completions) is the primary threat. First-line
-defences:
+Full design in [`missions.md`](missions.md). Summary:
 
-- **PoW gating on redemption**: claiming sparks requires a small
-  proof-of-work, making bulk scripted claiming CPU-expensive.
-- **Per-pubkey rate limits**: the mission service enforces a maximum
-  redemption rate per identity key.
-
-A full anti-fraud design (IP clustering, behavioural signals, sponsor-
-side verification callbacks) is deferred — see below.
+- **PoW on claim** — difficulty scales with `reward_sparks`.
+- **Per-pubkey and per-IP rate limits** — plus a young-account spark
+  discount to drain the throwaway-key incentive.
+- **Sponsor-side callbacks** — optional per-mission; sponsor can veto a
+  completion before sparks are credited.
+- Heavier defences (behavioral signals, ML anomaly detection) deferred
+  until abuse patterns are observed.
 
 ### Revenue flow
 
@@ -186,14 +185,11 @@ the full software; they run their own costs.
 
 ## Open questions and deferred work
 
-- **Who operates the mission service?** Likely a sibling repo to
-  `Voxply-discovery`, but the operator, deployment model, and
-  sponsor-onboarding process are not yet decided.
-- **Anti-fraud design**: PoW + rate limits are the first pass. A
-  full design (IP clustering, sponsor-side callbacks, appeal flow) is
-  deferred until abuse patterns emerge.
-- **Spark → cosmetic catalog**: which items exist, how they are priced
-  in sparks, and how the catalog is updated are not designed yet.
+- **Full missions design**: wire protocol, data model, attestation flow,
+  anti-fraud layers, and the cosmetic catalog are all designed in
+  [`missions.md`](missions.md). The remaining open items are:
+- **Sponsor onboarding process** — v1 is manual/admin; a self-service
+  onboarding UI is not designed.
 - **Paid-placement rules in the gaming catalog**: deferred. Must be
   visibly labelled if ever implemented.
 - **Free tier sustainability threshold**: at what point does the free

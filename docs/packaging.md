@@ -37,14 +37,19 @@ Two tiers: **dev builds** ship unsigned (CI artifact, devs and early
 testers click through OS warnings); **release builds** carry the updater
 payload signature so the auto-updater can verify downloads.
 
-### Windows — unsigned (pre-1.0)
+### Windows — Authenticode (EV certificate)
 
 - **Updater signature**: `TAURI_SIGNING_PRIVATE_KEY` (Ed25519) signs the
-  update payload — this is the only signing we do today.
-- **Authenticode**: deferred. Users see a SmartScreen warning ("More info"
-  → "Run anyway"). Acceptable for a free open-source pre-1.0 project.
-  When the project has revenue, Azure Trusted Signing (~$9/month) is the
-  practical path.
+  update payload — unchanged.
+- **Authenticode**: EV certificate via a cloud HSM (SignPath.io free OSS
+  tier; DigiCert/Sectigo as fallback). EV removes the SmartScreen warning
+  permanently from day 1 — no reputation accumulation period. Signing runs
+  in `release.yml` on the `windows-latest` runner via `signtool.exe`.
+  Full design and procurement steps in [`code-signing.md`](code-signing.md).
+- **Cert rotation**: on renewal, update `WINDOWS_CERT_THUMBPRINT` in
+  GitHub Actions secrets and the `bundle.windows.certificateThumbprint` in
+  `tauri.conf.json`. All prior timestamped releases remain valid — no
+  re-release needed.
 
 ### macOS — deferred
 
@@ -137,9 +142,10 @@ live in Voxply-desktop.
 |---|---|---|
 | `TAURI_SIGNING_PRIVATE_KEY` | Windows + Linux | Updater payload signature |
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Windows + Linux | Updater key passphrase (omit if key has no password) |
+| `WINDOWS_CERT_THUMBPRINT` | Windows | EV Authenticode cert SHA-1 thumbprint |
+| `SIGNING_HSM_CREDENTIALS` | Windows | Cloud HSM / SignPath auth material for the CSP/KSP |
 
-macOS and Windows Authenticode secrets are not used today. Add them if
-and when the project has a budget for signing certs.
+macOS notarization secrets are not used today.
 
 ---
 

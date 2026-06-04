@@ -21,11 +21,8 @@ items live in the wiki — see
 [`gaming.md`](docs/gaming.md).
 
 - **E2E group DMs** — Signal-style sender-key scheme (v2 of e2e-encryption.md); blocks until 1:1 E2E is proven stable
-- **Windows Authenticode code signing** — needs certificate procurement; unblocks SmartScreen warning permanently
 - **macOS universal binary (arm64 + x86_64)** — blocked by `audiopus_sys v0.1.8` which compiles Opus for the host arch only; current macOS DMG is arm64 (Apple Silicon). Fix requires upgrading the audio stack to a crate that supports fat library compilation.
-- **Missions system** — self-funding via sponsor-attested cosmetic actions; needs operator and anti-fraud design (see monetization.md)
-- **Gaming Tier 3** — MMO + proximity voice; stretch goal
-- **Per-participant voice volume control** — per-speaker gain in the voice channel UI; requires splitting the receive ring buffer by sender pubkey (protocol change needed)
+- **Gaming Tier 3** — MMO + persistent shared world; stretch goal. Proximity voice (attenuating by in-game distance) is a general platform feature now designed separately below.
 
 ## 🧭 Designed, not started
 
@@ -34,6 +31,23 @@ items live in the wiki — see
   client postMessage SDK additions (`voxply:game:ready/send/start/end/
   sharedKvGet/sharedKvSet/snapshot/setJoinPolicy` + incoming events) and
   the Activities-button live-session badge. Design in `gaming.md §Tier 2`.
+- **Windows Authenticode code signing** — EV certificate via SignPath.io
+  cloud HSM; CI signing in `release.yml`; removes SmartScreen warning
+  permanently. Design in [`code-signing.md`](docs/code-signing.md).
+- **Missions system** — sponsor-attested voluntary actions that earn
+  cosmetic-only sparks; anti-fraud via PoW + rate limits + sponsor
+  callbacks; `Voxply-missions` service (new repo). Design in
+  [`missions.md`](docs/missions.md).
+- **Per-participant voice volume control** — per-speaker gain slider in the
+  voice channel UI; adds `sender_id` to fan-out UDP packets and splits the
+  receive pipeline by sender. Design in
+  [`voice-volume.md`](docs/voice-volume.md).
+- **Proximity voice** — general platform primitive: voice zones with
+  pluggable attenuation models, position protocol over the chat WS,
+  client-side gain computation. Available to games (Tier 3 SDK),
+  hub admins, and any future spatial feature. Requires per-participant
+  volume control first. Design in
+  [`proximity-voice.md`](docs/proximity-voice.md).
 
 ## ⚠️ Known issues
 

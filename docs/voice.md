@@ -73,5 +73,11 @@ moderation.)
 - E2E encryption between voice participants (today the hub sees frames
   as it relays them — see [`threat-model.md`](threat-model.md))
 - Cross-hub voice (alliance-wide voice rooms)
-- Per-user gain / spatial audio
-- Multiple audio output device routing (assign different speakers/headsets per participant or per channel; device enumeration is already in `voice/src/devices.rs`)
+- **Per-user gain** — designed in [`voice-volume.md`](voice-volume.md);
+  requires adding `sender_id` to fan-out packets and splitting the receive
+  pipeline by sender
+- **Proximity / spatial attenuation** — designed in
+  [`proximity-voice.md`](proximity-voice.md); requires per-user gain first
+- Multiple audio output device routing (assign different speakers/headsets
+  per participant or per channel; device enumeration is already in
+  `voice/src/devices.rs`)
