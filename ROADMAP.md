@@ -23,6 +23,17 @@ items live in the wiki — see
 - **E2E group DMs** — Signal-style sender-key scheme (v2 of e2e-encryption.md); blocks until 1:1 E2E is proven stable
 - **Gaming Tier 3** — MMO + persistent shared world; stretch goal. Proximity voice (attenuating by in-game distance) is a general platform feature now designed separately below.
 
+## 🧭 Designed, not started
+
+- **Video in voice channels** — WebRTC mesh + active speaker management;
+  background effects (MediaPipe); camera toggle in voice bar; VideoGrid
+  component. SFU hook designed-in for large events; mesh ships first.
+  Design in [`video-voice.md`](docs/video-voice.md).
+- **Voice advanced settings** — Standard / Music / Custom audio quality
+  profiles; exposes Opus bitrate, application mode, noise suppression,
+  VAD, stereo, frame size, complexity. Design in
+  [`voice-advanced-settings.md`](docs/voice-advanced-settings.md).
+
 ## 🚀 Recently shipped
 
 - **Windows Authenticode signing** — CI signing wired in `release.yml`;
