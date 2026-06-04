@@ -39,10 +39,10 @@ items live in the wiki — see
   `manage_voice` permission), client-side attenuation (4 models), game SDK
   calls (`voxply:createVoiceZone`, `voxply:setVoicePosition`). Design in
   [`proximity-voice.md`](docs/proximity-voice.md).
-
-## 🧭 Designed, not started
-
-- **Activities-button live-session badge** — `GET /games/sessions?channel_id=` live badge for multiplayer games in the Activities picker. Design in `gaming.md §Tier 2`.
+- **Gaming Tier 2 client SDK** — `voxply:game:ready/start/send/end/
+  snapshot/sharedKvGet|Set/setJoinPolicy` postMessage calls, incoming
+  event delivery to iframe, Activities live-session badge, session
+  create/join/leave Tauri commands. Full Tier 2 now complete.
 
 ## ⚠️ Known issues
 
