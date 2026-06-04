@@ -630,6 +630,8 @@ to recipient hub's `/federation/badge-offer`. `HubBadgesSection.tsx`
 (desktop) and `ServerTagsSection.tsx` + `hubAdmin.ts` (web) are the
 UI and API layers.
 
-**Still deferred**: issuer revoke-check endpoint
+**Shipped**: `DELETE /admin/badges/issued/:id` soft-revokes a badge;
+`GET /federation/badge-revocations?since=<iso>` lets external hubs poll
+incrementally for revocations.
 (`/federation/badge-revocations`); user-configurable trust roots (v1
 uses existing hub relationships); badge transitivity.
