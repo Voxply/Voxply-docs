@@ -14,8 +14,9 @@ removed.
 
 ## Mission service
 
-A new project-operated service in a new repo **Voxply-missions**, sibling
-to `Voxply-discovery`. Like a hub it has its own **Ed25519 signing
+Part of **Voxply-discovery** (`discovery/`) — missions API routes live
+alongside the hub and bot discovery endpoints. No separate deployment
+needed. Like a hub it has its own **Ed25519 signing
 keypair**; the public half is published at `GET /pubkey` (the same
 publish-your-key pattern hubs use at `/info`). Clients pin and cache that
 pubkey and verify every signed artifact (mission list, entitlement blobs)
@@ -218,7 +219,7 @@ Layer 2 without storing addresses in the clear.
 
 | Piece | Repo |
 |---|---|
-| Mission service, all REST routes, signing key, DB, anti-fraud | Voxply-missions (new) |
+| Mission service, all REST routes, signing key, DB, anti-fraud | Voxply-discovery (`src/app/api/missions/`, `src/lib/missions-*.ts`) |
 | PoW primitive reused for Layer 1 | `identity/src/pow.rs` in Voxply-server |
 | Missions panel, system-browser launch, claim + PoW, balance merge | Voxply-desktop / Voxply-web / Voxply-android |
 | `MISSIONS_ENABLED` flag + flair rendering | client repos |
