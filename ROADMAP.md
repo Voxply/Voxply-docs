@@ -25,13 +25,17 @@ items live in the wiki — see
 
 ## 🧭 Designed, not started
 
-- **Video in voice channels** — WebRTC mesh + active speaker management;
-  background effects (MediaPipe); camera toggle in voice bar; VideoGrid
-  component. SFU hook designed-in for large events; mesh ships first.
-  Design in [`video-voice.md`](docs/video-voice.md).
+_(nothing pending)_
 
 ## 🚀 Recently shipped
 
+- **Video in voice channels** — `useVideo` hook (RTCPeerConnection mesh,
+  active-speaker top-3 with 3s linger, lex-order offer initiation),
+  `VideoGrid` component (equal grid ≤4, active-speaker+thumbnails 5+,
+  self-view overlay), `BackgroundProcessor` (MediaPipe selfie_segmentation,
+  none/blur/image modes via canvas compositing). Hub signaling (Rust side)
+  already landed. Camera toggle and background picker UI are next.
+  Design in [`video-voice.md`](docs/video-voice.md).
 - **Voice advanced settings** — Standard / Music / Custom audio quality
   profiles. `EffectiveVoiceConfig` resolved at pipeline start; Denoiser
   bypass; VAD gate per-profile; custom Opus bitrate, app mode, channels,
