@@ -443,8 +443,8 @@ on posts.
 
 ## Multi-stream overlay, OS picture-in-picture, and decoupled stream viewing
 
-Three related screen-share evolutions. Multi-stream overlay and
-cross-channel subscriptions are shipped; OS PiP is not yet built.
+Three related screen-share evolutions. All three are shipped: multi-stream
+overlay, cross-channel subscriptions, and OS PiP.
 
 ### Multi-stream overlay within a channel
 
