@@ -20,58 +20,6 @@ items live in the wiki — see
 [`future-features.md`](docs/future-features.md),
 [`gaming.md`](docs/gaming.md).
 
-### Hub / server operations
-
-- **Hub backup & restore** — `voxply-hub backup` exports DB + identity +
-  settings to a portable archive; `restore` replays on a new machine.
-  Essential for self-hosters migrating or recovering hardware.
-- **Data retention policy** — per-channel setting to auto-delete messages
-  older than N days. Nightly SQLite job; no protocol change.
-- **Prometheus `/metrics` endpoint** — online users, messages/min, voice
-  sessions, federation lag, storage used. Stub already hinted in codebase.
-- **Hub key rotation** — signed rotation ceremony: old key signs new key +
-  a transition period so federation trust is preserved across the change.
-
-### Hub moderation & safety
-
-- **Federated ban lists** — hub admins subscribe to a shared blocklist
-  from a trusted hub or curated source. Opt-in, signed with the same
-  Ed25519 primitive as badges.
-- **Auto-moderation webhook** — hub POSTs each message to an external URL
-  before storing; service returns allow/block. Same dispatch shape as bot
-  slash commands.
-- **Content reporting** — `POST /messages/:id/report` → lands in an admin
-  moderation queue; reporter and reason stored; admin reviews and acts.
-
-### Admin tooling
-
-- **Hub web admin panel** — standalone page at `{hub-url}/admin` gated by
-  admin token (no keypair needed). Real-time stats, user management table,
-  channel manager, audit log viewer, bot/webhook management, federation
-  status, backup/restore triggers. Usable without the desktop client.
-- **Hub admin CLI** — subcommands on the existing binary:
-  `voxply-hub admin stats | users | channels | backup | restore | tokens`.
-  Operates directly on the local DB for server operators.
-- **Farm console** — single pane of glass across all hubs on a farm:
-  aggregate member counts, cross-hub ban propagation, resource allocation
-  per hub, global audit log.
-
-### Hub creation from discovery
-
-- **Hub config templates** — signed JSON blobs in Voxply-discovery
-  (`GET /templates`, author self-submission). Template specifies initial
-  channels, roles, settings, welcome message, suggested bots. Same
-  signed-listing primitive as games and bots.
-- **Hub first-run bootstrap** — on first launch with no DB, hub reads
-  `VOXPLY_TEMPLATE_URL` env var, fetches + validates the template, applies
-  it, then auto-registers with discovery. Zero extra commands for the
-  operator.
-- **Hub creation wizard on discovery** — multi-step flow at
-  `discovery.voxply.app/new`: pick template → customise → deploy via
-  managed farm (one click), Docker (pre-filled command), or binary.
-  Generates a signed 24-hour bootstrap token the hub redeems on first
-  launch.
-
 ### Discovery enhancements
 
 - **Hub uptime tracking** — discovery pings registered hubs periodically
@@ -111,7 +59,16 @@ items live in the wiki — see
 
 ## 🧭 Designed, not started
 
-_(nothing pending)_
+- **Hub server operations** — backup & restore, data retention policy,
+  Prometheus `/metrics` endpoint, hub key rotation ceremony. Design in
+  [`hub-operations.md`](docs/hub-operations.md).
+- **Hub admin tooling** — web admin panel at `{hub-url}/admin`, admin CLI
+  (`voxply-hub admin ...`), farm console (multi-hub management). Design in
+  [`hub-admin-panel.md`](docs/hub-admin-panel.md).
+- **Hub moderation enhancements** — federated ban lists (signed, opt-in
+  per source), auto-moderation webhook (fail-open, circuit-breaker), and
+  content reporting (hub-local admin queue). Design in
+  [`moderation-enhancements.md`](docs/moderation-enhancements.md).
 
 ## 🚀 Recently shipped
 
