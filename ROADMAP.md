@@ -7,7 +7,7 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-(Nothing blocking — see wishlist below)
+_(nothing queued — see Wishlist for candidates)_
 
 ## 🚢 Pre-launch checklist
 
