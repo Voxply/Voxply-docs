@@ -7,6 +7,74 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
+## 🚢 Pre-launch checklist
+
+Work through these in order before shipping. Goal: reach a state where the
+only remaining work is polish and responding to user feedback.
+
+### Blockers (must fix before any public release)
+
+- [ ] **Windows code-signing** — procure EV cert via SignPath.io OSS tier;
+  wire `WINDOWS_CERT_THUMBPRINT` secret into `release.yml` CI. Without this,
+  every Windows user hits a SmartScreen "Windows protected your PC" wall.
+  See [`code-signing.md`](docs/code-signing.md).
+
+- [ ] **Fix server panics in games.rs** — replace ~10 bare `.unwrap()` calls
+  on `Mutex::lock()` and `serde_json::to_string()` (lines 114, 248, 317, 394,
+  404, 506, 569, 594, 602, 707 in `hub/hub/src/routes/games.rs`).
+  A poisoned mutex or bad serialization crashes the whole hub process.
+
+- [ ] **Deploy the demo hub** — flip `DEMO_HUB_URL` constant so "Try a demo
+  hub" works. New users downloading the desktop app currently have no quick
+  way to experience Voxply without also running a server themselves.
+
+### Server
+
+- [ ] **Health-check endpoint** — `GET /health` returning version, uptime, and
+  DB status. Required for any ops monitoring and load balancer probes.
+
+- [ ] **Rate-limit auth endpoints** — brute-force protection on
+  `POST /auth/login` and `/auth/challenge` before public exposure.
+
+- [ ] **Document game permissions gap** — `set_game_permissions` is currently
+  a no-op (hub has no backing route). Either implement capability grants for
+  games or add a clear notice in the admin UI so operators know it has no
+  effect yet.
+
+### Client
+
+- [ ] **Hub join error messages** — "Join hub by URL" shows raw error strings
+  on failure (unreachable server, wrong URL, auth error). Replace with
+  user-readable messages.
+
+- [ ] **First-run experience** — new users land with no guidance: create
+  identity → join or create a hub → basic tooltips/welcome flow.
+
+- [ ] **Discovery dead-end** — hubs can set tags (`set_discovery_tags`) but
+  there is no public hub directory yet, so tagging has no effect from a user's
+  perspective. Either hide discovery settings until the index exists, or show
+  an explicit "coming soon" note in the admin panel.
+
+### Discovery
+
+- [ ] **Public hub directory (minimal)** — even a simple static listing of
+  opt-in hubs would let self-hosters be found. Full dynamic suite
+  (uptime tracking, global search, farm catalog) is Wishlist — but some
+  form of directory is needed for self-hosting to have network value.
+
+### Documentation
+
+- [ ] **User-facing README / getting-started guide** — what is Voxply,
+  download link, how to join a hub, key concepts (identity, certifications,
+  badges). Currently `docs/` is architecture reference only.
+
+- [ ] **Hub operator guide** — env vars, first-run bootstrap, backup/restore,
+  upgrade path, basic hardening checklist.
+
+- [ ] **Games SDK reference** — postMessage API surface, event types,
+  shared-KV, voice zones. Needed for third-party game developers to build on
+  the platform.
+
 ## 🚧 Blocked
 
 - **Demo hub** — code is ready (`DEMO_HUB_URL` constant + conditional button). Blocked on ops: a Voxply-operated hub instance needs to be deployed and the constant flipped to its URL before the "Try a demo hub" button goes live.
