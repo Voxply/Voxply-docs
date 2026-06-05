@@ -7,14 +7,6 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **Missing Tauri command implementations** — forum, certifications/badges, game management,
-  and discovery-tags commands are called from the UI but not yet wired into lib.rs. Forum
-  commands (`forum_list_posts`, `forum_get_post`, `forum_create_post`, `forum_create_reply`,
-  `forum_pin_post`, `forum_lock_post`) were added. Still missing: cert/badge commands
-  (`issue_cert`, `list_badges`, `accept_badge`, `grant_badge`, etc.), game management
-  (`install_game`, `uninstall_game`, `list_admin_games`), and discovery tags
-  (`get_discovery_settings`, `set_discovery_tags`).
-
 ## 🚧 Blocked
 
 - **Demo hub** — code is ready (`DEMO_HUB_URL` constant + conditional button). Blocked on ops: a Voxply-operated hub instance needs to be deployed and the constant flipped to its URL before the "Try a demo hub" button goes live.
@@ -34,6 +26,15 @@ items live in the wiki — see
 
 ## 🚀 Recently shipped
 
+- **Cert/badge, game management, discovery Tauri commands** — all remaining
+  missing commands wired: `get_cert_settings`, `list_issued_certs`, `save_cert_settings`,
+  `issue_cert`, `revoke_cert`, `fetch_my_certs`, `list_badges`, `list_pending_badges`,
+  `accept_badge`, `decline_badge`, `remove_badge`, `grant_badge`, `list_admin_games`,
+  `fetch_game_manifest`, `install_game`, `uninstall_game`, `set_game_permissions`,
+  `set_game_channels`, `game_list_channel_users`, `game_post_message`,
+  `game_get_recent_messages`, `game_kv_get`, `game_kv_set`, `get_discovery_settings`,
+  `set_discovery_tags`. Hub also gained `GET /admin/settings/certs` and nsfw support
+  on `GET/PATCH /admin/settings/tags`.
 - **Forum channels** — `forum_list_posts`, `forum_get_post`, `forum_create_post`,
   `forum_create_reply`, `forum_get_post_replies`, `forum_pin_post`, `forum_lock_post`
   Tauri commands wired; hub routes and UI components (`ForumPostList`, `ForumPostDetail`,
