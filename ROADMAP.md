@@ -10,7 +10,7 @@ shipped features, design questions — lives in the wiki at
 ### Code quality
 - **Split App.tsx (remaining)** — extract `useMessages`, `useChannels` hooks; App.tsx becomes composition root
 - **Shared hub test helper** — `tests/common.rs` with one `setup()` shared across all 34 test files
-- **Typed Tauri errors** — replace `Result<T, String>` with `Result<T, AppError>` where `AppError` is a serializable enum; frontend gets typed `{code, message}` instead of raw strings
+- **Typed Tauri errors (remaining)** — migrate remaining commands from `Result<T, String>` to `Result<T, AppError>`; high-call-frequency commands already migrated
 - **Remove remaining `unwrap()` in hub/src** — replace with `?`, `ok_or(...)`, or explicit error handling; no panics in production paths
 
 ## 🚢 Pre-launch checklist
@@ -89,7 +89,7 @@ items live in the wiki — see
 
 ## 🚀 Recently shipped
 
-- **Web client: markdown rendering, link preview cards, keyboard shortcuts, hook extraction** — `MessageContent` now uses `marked` + `DOMPurify` with allow-listed tags/attrs; `LinkPreviewCard` + `LinkPreviewInMessage` fetch `GET /preview?url=` lazily per message; `@` mention autocomplete dropdown in composer; `Alt+↑/↓` jumps to next unread channel first; `Escape` dismisses topmost open panel; `useUnreadCounts`, `useNotificationPrefs`, `useTypingIndicators`, `useHubConnection` extracted from `App.tsx`.
+- **Markdown rendering, link previews, keyboard shortcuts, hook extraction, typed errors** — `MessageContent` migrated to `marked` + `DOMPurify` (allow-listed tags, `rel=noopener noreferrer` on all links); `LinkPreviewCard` + lazy `fetch_link_preview` Tauri command; `@` mention autocomplete in channel composer; `Alt+↑/↓` jumps to next/prev unread channel; `Escape` dismisses context menu / palette / reply target; `useNotificationPrefs`, `useUnreadCounts`, `useTypingIndicators`, `useHubConnections` extracted from App.tsx (tsc clean after each); `AppError` enum added to lib.rs, `send_message`, `edit_message`, `delete_message`, `add_reaction`, `remove_reaction`, `get_messages` migrated to `Result<T, AppError>`.
 
 - **File uploads, message pinning, user profiles, polls, events, notification prefs** — full stack: `POST /channels/:id/upload` multipart endpoint + `RemoteAttachment` wire type; `POST/DELETE /channels/:id/pins` + pinned-message broadcast; `GET /users/:pubkey/profile` server route; poll and event REST endpoints (`polls`, `poll_votes`, `hub_events`, `event_rsvps` tables); per-hub notification preference storage. Desktop and web clients wired end-to-end: `uploadFile` Tauri command, `PinnedMessagesModal`, `UserProfileCard`, `PollCard`/`PollComposer`, `EventCard`/`EventsPanel`/`EventComposer`, `getNotifPref`/`setNotifPref`. WS handler extended for `message_pinned`, `message_unpinned`, `poll_created`, `poll_updated`, `poll_deleted`.
 
