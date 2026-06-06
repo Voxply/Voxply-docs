@@ -58,6 +58,7 @@ If you're new, read in this order:
 27. [discovery-v2.md](discovery-v2.md) — Voxply-discovery enhancements: hub uptime tracking, farm browsing, global search, anonymous aggregate analytics
 28. [client-qol.md](client-qol.md) — client quality-of-life: global search, drafts, custom emojis, events, polls, thread collapse, notification grouping
 29. [store-trait-design.md](store-trait-design.md) — database abstraction: trait-based store, crate split (voxply-store / voxply-store-sqlite / voxply-store-postgres), migration path
+30. [custom-themes.md](custom-themes.md) — user-created skins: CSS token system, .voxplyskin file format, export/import, persistence
 
 ## Find by feature
 
@@ -109,6 +110,7 @@ Reading order is for learning the system end-to-end. This section is for
 - **System tray + OS notifications + sound** — [client.md](client.md)
 - **Window title unread count** — [client.md](client.md)
 - **Themes (Calm / Classic / Linear / Light)** — [client.md](client.md)
+- **Custom user skins (designed, not built)** — [custom-themes.md](custom-themes.md)
 - **Quick channel switcher (Ctrl+K)** — [client.md](client.md)
 - **Hub drag-drop reorder, /info preview, clear local data** — [client.md](client.md)
 

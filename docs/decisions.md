@@ -4,6 +4,51 @@ Why Voxply is shaped the way it is. Each entry: the decision, the
 alternative we considered, and why we chose this. New decisions go at
 the top.
 
+## Custom themes: CSS design tokens, not CSS injection; personal-axis, file-portable
+
+**Decision**: user-created skins expose a curated set of CSS custom properties
+(surfaces, text, accent, status, borders, effects, shadows, one radius scale knob)
+as a JSON `.voxplyskin` file with a `base` fallback theme and a `tokens` override
+map. The active skin is applied via `element.style.setProperty()` on
+`document.documentElement`; a `[data-theme="custom"]` block in `styles.css` holds
+the base fallback. The skin is stored in `~/.voxply/appearance.json` (desktop/android)
+or `localStorage` (web) using the same `#[serde(default)]` pattern as `voice.json`.
+The existing four-theme picker gains a fifth "Custom" card that shows the skin name
+and three swatches when a skin is active. Full design in
+[`custom-themes.md`](custom-themes.md).
+
+**Alternatives considered**:
+
+- **Arbitrary CSS injection** (a raw textarea the user types CSS into). Rejected:
+  a shared `.voxplyskin` file becomes an attack vector (`url()` for external
+  fetches, `;`/`}` to break out of declarations, `expression()` in older engines).
+  Even locally, an accidental layout breakage is unrecoverable without a "reset all."
+  A validated token allowlist is the correct blast radius.
+- **Full CSS custom property surface** (every `--r-*`, `--space-*`, `--text-*` token
+  exposed). Rejected: spacing and type-scale tokens are load-bearing for layout and
+  are not theme-specific — the built-in themes don't touch them. Exposing them means
+  a skin can overflow text, collapse panels, or break grid math. Only the tokens the
+  built-in themes actually override are skinnable.
+- **Theme stored entirely in the profile file** (alongside the theme selection today).
+  Rejected: the profile is the identity/hub-membership document, not a settings bag.
+  The `voice.json` sidecar pattern is the established precedent for audio settings;
+  `appearance.json` follows the same shape and will migrate cleanly into the personal
+  prefs blob when home hubs land.
+- **Hub-level themes as the first skin feature.** Rejected for v1: community-axis
+  operator branding is a separate design problem — it requires hub DB storage,
+  federation of the token blob, operator permissions, and a "user opt-out" story.
+  Personal skins have none of those dependencies and deliver user value sooner.
+
+**Tradeoff**: the `base` + sparse overrides model means a skin file is tiny and
+forward-compatible (new tokens just inherit from `base`), but it means a skin and its
+base theme are coupled — if the base theme's values change in a future release, the
+skin's unset tokens change with them. We accept that because the alternative
+(snapshotting all token values into every skin file) makes files verbose, breaks when
+token names change, and loses the benefit of upstream theme improvements. The skin
+author sets only what they want to differ; the theme maintainer owns the rest.
+
+---
+
 ## Database abstraction: trait-based store crate split, not inline raw SQLx
 
 **Decision**: the hub's data layer will move from a bare `sqlx::SqlitePool` embedded directly in `AppState` and raw `sqlx::query*` calls scattered across every route handler, to a set of domain-split traits (`AuthStore`, `UserStore`, `ChannelStore`, `MessageStore`, `RoleStore`, `InviteStore`, `ModerationStore`, `SettingsStore`, and more) collected into a `HubStore` super-trait, implemented by `voxply-store-sqlite` (the current code, moved) and eventually `voxply-store-postgres` (community contribution). `AppState.db: SqlitePool` becomes `AppState.store: Arc<dyn HubStore>`. A `StoreError` enum (`NotFound`, `Conflict`, `PermissionDenied`, `Internal`) replaces per-route ad-hoc `.map_err()` and `"UNIQUE"` string-sniffing. `#[async_trait]` is the dispatch mechanism. Transaction scope is managed by a `with_transaction<F, T>` closure. Migration contract: each backend owns its schema via a `Migrate` trait; the hub calls `store.run_migrations()` on startup. Full design in [`store-trait-design.md`](store-trait-design.md).

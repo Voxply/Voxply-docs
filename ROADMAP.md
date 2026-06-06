@@ -79,6 +79,11 @@ items live in the wiki — see
 
 ### Carry-over
 
+- **Custom user skins** — CSS token-based `.voxplyskin` files; fifth "Custom"
+  slot in the theme picker; export/import; persisted in `appearance.json`.
+  Personal-axis: follows the user, not the hub. Design in
+  [`custom-themes.md`](docs/custom-themes.md).
+
 - **Database abstraction layer** — trait-based `voxply-store` crate split so
   the hub is agnostic to its database backend. SQLite stays the default;
   Postgres becomes a community-contribution drop-in. Four-step migration path
