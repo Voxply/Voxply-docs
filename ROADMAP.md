@@ -7,7 +7,11 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-_(nothing queued — see Wishlist for candidates)_
+### Code quality
+- **Split App.tsx (remaining)** — extract `useMessages`, `useChannels` hooks; App.tsx becomes composition root
+- **Shared hub test helper** — `tests/common.rs` with one `setup()` shared across all 34 test files
+- **Typed Tauri errors** — replace `Result<T, String>` with `Result<T, AppError>` where `AppError` is a serializable enum; frontend gets typed `{code, message}` instead of raw strings
+- **Remove remaining `unwrap()` in hub/src** — replace with `?`, `ok_or(...)`, or explicit error handling; no panics in production paths
 
 ## 🚢 Pre-launch checklist
 
@@ -84,6 +88,8 @@ items live in the wiki — see
   persistent-world layer is undesigned.
 
 ## 🚀 Recently shipped
+
+- **Web client: markdown rendering, link preview cards, keyboard shortcuts, hook extraction** — `MessageContent` now uses `marked` + `DOMPurify` with allow-listed tags/attrs; `LinkPreviewCard` + `LinkPreviewInMessage` fetch `GET /preview?url=` lazily per message; `@` mention autocomplete dropdown in composer; `Alt+↑/↓` jumps to next unread channel first; `Escape` dismisses topmost open panel; `useUnreadCounts`, `useNotificationPrefs`, `useTypingIndicators`, `useHubConnection` extracted from `App.tsx`.
 
 - **File uploads, message pinning, user profiles, polls, events, notification prefs** — full stack: `POST /channels/:id/upload` multipart endpoint + `RemoteAttachment` wire type; `POST/DELETE /channels/:id/pins` + pinned-message broadcast; `GET /users/:pubkey/profile` server route; poll and event REST endpoints (`polls`, `poll_votes`, `hub_events`, `event_rsvps` tables); per-hub notification preference storage. Desktop and web clients wired end-to-end: `uploadFile` Tauri command, `PinnedMessagesModal`, `UserProfileCard`, `PollCard`/`PollComposer`, `EventCard`/`EventsPanel`/`EventComposer`, `getNotifPref`/`setNotifPref`. WS handler extended for `message_pinned`, `message_unpinned`, `poll_created`, `poll_updated`, `poll_deleted`.
 
