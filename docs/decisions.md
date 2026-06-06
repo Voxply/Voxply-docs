@@ -4,6 +4,24 @@ Why Voxply is shaped the way it is. Each entry: the decision, the
 alternative we considered, and why we chose this. New decisions go at
 the top.
 
+## Database abstraction: trait-based store crate split, not inline raw SQLx
+
+**Decision**: the hub's data layer will move from a bare `sqlx::SqlitePool` embedded directly in `AppState` and raw `sqlx::query*` calls scattered across every route handler, to a set of domain-split traits (`AuthStore`, `UserStore`, `ChannelStore`, `MessageStore`, `RoleStore`, `InviteStore`, `ModerationStore`, `SettingsStore`, and more) collected into a `HubStore` super-trait, implemented by `voxply-store-sqlite` (the current code, moved) and eventually `voxply-store-postgres` (community contribution). `AppState.db: SqlitePool` becomes `AppState.store: Arc<dyn HubStore>`. A `StoreError` enum (`NotFound`, `Conflict`, `PermissionDenied`, `Internal`) replaces per-route ad-hoc `.map_err()` and `"UNIQUE"` string-sniffing. `#[async_trait]` is the dispatch mechanism. Transaction scope is managed by a `with_transaction<F, T>` closure. Migration contract: each backend owns its schema via a `Migrate` trait; the hub calls `store.run_migrations()` on startup. Full design in [`store-trait-design.md`](store-trait-design.md).
+
+**Alternatives considered**:
+
+- **Keep the current raw-SQLx approach indefinitely.** Rejected: it makes every handler a database-backend coupling point. Swapping the database means touching every route file, and error normalization requires ad-hoc per-handler decisions. The current design accidentally bakes SQLite's FTS5 and UNIQUE-conflict message text into the application layer.
+- **One God trait `HubStore` with all methods.** Rejected: a single 100-method trait is unimplementable in pieces — the compiler demands all methods at once, so a backend author can't work domain by domain. Domain-split traits with a blanket super-trait impl give a seam per domain.
+- **An explicit `Transaction<'conn>` object** (begin/commit/rollback). Rejected: the lifetime of a SQLite transaction handle (`&mut Connection`) differs from Postgres's pooled `Transaction<'c>`, so abstracting it leaks backend types. The closure form (`with_transaction<F, T>`) keeps the transaction type private to each backend.
+- **Feature-flag the backend at compile time** (one `Cargo.toml` feature, conditional impls). Rejected: forces recompilation to switch backends and cannot support runtime selection (an operator editing `hub.toml` without recompiling). `Arc<dyn HubStore>` supports runtime selection by `database_url` prefix.
+- **Move to `sea-orm` or `diesel` with their own abstraction layers.** Rejected: both introduce significant LoC overhead and ORM conventions that fight the existing `sqlx` query patterns. The trait layer is thinner and lets each backend stay idiomatic to its own engine.
+
+**Tradeoff**: `Arc<dyn HubStore>` with `#[async_trait]` adds one heap allocation (a boxed `Pin<Box<dyn Future>>`) per database call — negligible against any real IO round-trip. The `with_transaction` closure pattern is awkward when callers need to branch on intermediate results inside a transaction; those flows must be written as linear closures. Both costs are accepted: allocation is noise; transaction shape discipline is necessary regardless of the abstraction.
+
+**What's deferred**: the actual refactor — create `voxply-store`, move the current SQLx bodies to `voxply-store-sqlite`, update the hub to use `Arc<dyn HubStore>`, add `voxply-store-postgres` as a community contribution. This decision records the intent and the design; implementation starts when prioritized.
+
+---
+
 ## Discovery v2: server-side uptime probing, separate farm catalog, fan-out search, catalog-only analytics
 
 **Decision**: four Voxply-discovery enhancements, all extending the

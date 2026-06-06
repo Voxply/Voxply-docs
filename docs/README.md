@@ -57,6 +57,7 @@ If you're new, read in this order:
 26. [block-mute-ignore.md](block-mute-ignore.md) — user-level block / ignore / quiet-hours (DND): personal-axis prefs-blob state, client-side filtering, server-enforced DM block
 27. [discovery-v2.md](discovery-v2.md) — Voxply-discovery enhancements: hub uptime tracking, farm browsing, global search, anonymous aggregate analytics
 28. [client-qol.md](client-qol.md) — client quality-of-life: global search, drafts, custom emojis, events, polls, thread collapse, notification grouping
+29. [store-trait-design.md](store-trait-design.md) — database abstraction: trait-based store, crate split (voxply-store / voxply-store-sqlite / voxply-store-postgres), migration path
 
 ## Find by feature
 
@@ -112,6 +113,7 @@ Reading order is for learning the system end-to-end. This section is for
 - **Hub drag-drop reorder, /info preview, clear local data** — [client.md](client.md)
 
 ### Future direction (designed, not built)
+- **Database abstraction layer (trait-based store)** — [store-trait-design.md](store-trait-design.md)
 - **Anti-spam (PoW + hub certifications)** — [future-features.md](future-features.md), [hub-certifications.md](hub-certifications.md)
 - **Channel ban, voice mute, talk power** — [future-features.md](future-features.md)
 - **Identity recovery (backup export, recovery contacts, device linking)** — [identity-recovery.md](identity-recovery.md), [future-features.md](future-features.md)

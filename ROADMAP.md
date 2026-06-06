@@ -79,6 +79,11 @@ items live in the wiki — see
 
 ### Carry-over
 
+- **Database abstraction layer** — trait-based `voxply-store` crate split so
+  the hub is agnostic to its database backend. SQLite stays the default;
+  Postgres becomes a community-contribution drop-in. Four-step migration path
+  (no flag day). Design in [`store-trait-design.md`](docs/store-trait-design.md).
+
 - **Gaming Tier 3** — MMO + persistent shared world; stretch goal.
   Proximity voice is already a general platform primitive; only the
   persistent-world layer is undesigned.
