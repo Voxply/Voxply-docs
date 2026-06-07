@@ -4,6 +4,50 @@ Why Voxply is shaped the way it is. Each entry: the decision, the
 alternative we considered, and why we chose this. New decisions go at
 the top.
 
+## Hub admin panel removed — hub management moves to desktop client
+
+**Decision**: the web-based hub admin panel (`/admin/panel`) is removed
+entirely. Hub management — banning users, managing roles, channels, and
+reports — belongs in the desktop client, not a separate web UI. Hub ownership
+is set at hub-creation time through the client wizard, so there is no
+bootstrapping problem to solve.
+
+**Why**: the hub panel duplicated what the desktop client already does or
+should do. Adding a full Ed25519+TOTP web auth system to a panel that manages
+things the client already handles is the wrong abstraction. One entry point for
+hub management.
+
+**What we ruled out**:
+
+- **Web panel with static token auth** — already existed; removed for security.
+- **Web panel with Ed25519+TOTP auth** — designed and built, then reverted
+  because the underlying use case was wrong. Supersedes the entry below
+  ("Admin panel auth: desktop-app signing + TOTP"); see
+  [`admin-panel-auth.md`](admin-panel-auth.md) (now archived).
+
+---
+
+## Architecture: Farm → Server → Hub; standalone hub binary deprecated
+
+**Decision**: the canonical deployment unit is Farm (control plane, manages
+multiple servers) → Server (compute node, runs hub processes) → Hub (community
+space, the product users experience). A hub is never run directly — it is
+always started and managed by a server agent connected to a farm. Standalone
+`voxply-hub` binary usage is deprecated.
+
+**Why**: the original "hub = server" assumption no longer holds. The farm needs
+to manage geographically distributed servers. A standalone hub creates a
+separate bootstrapping and management problem that complicates both the client
+wizard and the farm's control surface.
+
+**What we ruled out**:
+
+- **Standalone hub with web-panel bootstrap** — the original approach; removed.
+- **Hub binary as a first-class deployment target** — superseded by the
+  server-agent-managed model.
+
+---
+
 ## OAuth account linking — rejected as an auth mechanism; deferred as a social badge
 
 **Decision**: OAuth login (Google, Steam, GitHub, etc.) will not be used as an
