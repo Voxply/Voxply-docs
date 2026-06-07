@@ -25,6 +25,12 @@ console is a **farm-axis** tool — it manages the hosting layer
 
 ## Feature 1: Hub web admin panel
 
+> **Superseded (auth only)**: the `web_admin_token` bearer login below is
+> replaced by desktop-app Ed25519 signing + TOTP 2FA in
+> [`admin-panel-auth.md`](admin-panel-auth.md). The panel sections and
+> data endpoints in this Feature stay; only the auth wrapper changes. The
+> token and `check_admin_token` are removed when that ships.
+
 A standalone page served at `{hub-url}/admin`, gated by an admin token
 rather than a user keypair. For operators who want to run their hub from
 a browser without an active user session.

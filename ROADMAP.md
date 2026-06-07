@@ -7,11 +7,7 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- **Admin panel auth — desktop signing + TOTP (desktop + farm sides)** — hub
-  server side is complete (8 endpoints, TOTP enrollment/verify, session cookies,
-  role-gate, new login HTML). Remaining: Tauri `sign_admin_challenge` deep-link
-  handler in Voxply-desktop, and mirror endpoints in the farm crate. Design in
-  [`admin-panel-auth.md`](docs/admin-panel-auth.md).
+(empty — all blocked or in progress)
 
 ## 🚢 Pre-launch checklist
 
@@ -102,22 +98,16 @@ items live in the wiki — see
 
 ## 🚀 Recently shipped
 
-- **Farm server agent management + TOTP 2FA (desktop)** — `FarmSettingsPage`
-  gains two new tabs: Servers (list agents with connected status/last-seen,
-  register form that generates a one-time bearer token) and Security (TOTP
-  setup via manual secret entry + 6-digit confirm, disable flow). Five new
-  Tauri commands wired: `get_farm_servers`, `generate_farm_server_token`,
-  `farm_totp_setup`, `farm_totp_confirm`, `farm_totp_disable`.
-  `FarmAdminTab` type extended with `"servers" | "security"`.
-
-- **Admin panel auth — hub server side** — `web_admin_token` bearer flow removed.
-  Eight new endpoints (`/admin/auth/*`): Ed25519 challenge-sign, poll, TOTP
-  enrollment, TOTP verify (with replay guard), logout, me, and token-login stub.
-  Three new DB tables (`admin_totp`, `admin_panel_sessions`,
-  `admin_pending_challenge`). Session cookie (`vxadm_session`, HttpOnly,
-  SameSite=Strict, 12h). New login HTML with 5-state JS flow. All panel data
-  endpoints switched to session-cookie guard. Design in
-  [`admin-panel-auth.md`](docs/admin-panel-auth.md).
+- **Admin panel auth — desktop + farm complete** — Farm crate now has
+  `POST /farm/admin/totp/setup`, `/confirm`, `/disable` endpoints plus TOTP
+  verification on admin login. Server agent binary (voxply-server crate)
+  reverse-connects via WebSocket to farm, manages hub processes on remote nodes.
+  Farm hub routing delegates `create_hub` to connected agent if available,
+  else local spawn. Desktop FarmSettingsPage gains two tabs: Servers (register
+  form, one-time token display, agent list with status/last-seen) and Security
+  (TOTP setup/confirm/disable). Hub server side (from prior session) already had
+  8 endpoints, 3 new DB tables, session cookies, role-gating, and login HTML.
+  Design in [`admin-panel-auth.md`](docs/admin-panel-auth.md).
 
 - **TOML config files for hub and farm** — `hub.toml` / `farm.toml` next to the binary replace scattered env vars. Load order: defaults → config file → `VOXPLY_*` env vars (highest priority). `hub.toml.example` and `farm.toml.example` document every option. Hub operator guide updated.
 

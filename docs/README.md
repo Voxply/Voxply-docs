@@ -35,6 +35,7 @@ If you're new, read in this order:
 11. [farm-model.md](farm-model.md) — multi-hub server layer + 5-layer architecture
     - [farm-impl.md](farm-impl.md) — Phase 1 + 2 + 3 implementation design (auth move, multi-tenancy, creation policy + admin panel)
     - [hub-admin-panel.md](hub-admin-panel.md) — operator admin tooling: web admin panel, admin CLI, farm console
+    - [admin-panel-auth.md](admin-panel-auth.md) — role-aware web panel auth: desktop-app Ed25519 signing + TOTP 2FA, server-side sessions (supersedes the web_admin_token flow)
     - [hub-creation-wizard.md](hub-creation-wizard.md) — signed config templates, hub first-run bootstrap, web creation wizard at `/new`
 12. [gaming.md](gaming.md) — game distribution platform: tiers, registry, hub admin install + permissions, six-call SDK, farm-level games
 13. [home-hub.md](home-hub.md) — personal-axis state: home hub list, replication, DM canonicalization
@@ -69,6 +70,7 @@ Reading order is for learning the system end-to-end. This section is for
 - **Keypair, recovery phrase, auth** — [identity.md](identity.md)
 - **Roles & permissions** — [data-model.md](data-model.md), [decisions.md](decisions.md)
 - **Moderation (ban / mute / timeout / kick, approval queue)** — [data-model.md](data-model.md)
+- **Web admin panel login (desktop-signing + TOTP 2FA, role-aware)** — [admin-panel-auth.md](admin-panel-auth.md)
 - **Block / ignore / quiet-hours (DND)** — [block-mute-ignore.md](block-mute-ignore.md); legacy per-device store in [client.md](client.md)
 
 ### Messaging
