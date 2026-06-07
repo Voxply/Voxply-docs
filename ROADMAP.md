@@ -7,7 +7,11 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-_(nothing queued — see Wishlist for candidates)_
+- **Admin panel auth — desktop signing + TOTP (desktop + farm sides)** — hub
+  server side is complete (8 endpoints, TOTP enrollment/verify, session cookies,
+  role-gate, new login HTML). Remaining: Tauri `sign_admin_challenge` deep-link
+  handler in Voxply-desktop, and mirror endpoints in the farm crate. Design in
+  [`admin-panel-auth.md`](docs/admin-panel-auth.md).
 
 ## 🚢 Pre-launch checklist
 
@@ -97,6 +101,15 @@ items live in the wiki — see
   persistent-world layer is undesigned.
 
 ## 🚀 Recently shipped
+
+- **Admin panel auth — hub server side** — `web_admin_token` bearer flow removed.
+  Eight new endpoints (`/admin/auth/*`): Ed25519 challenge-sign, poll, TOTP
+  enrollment, TOTP verify (with replay guard), logout, me, and token-login stub.
+  Three new DB tables (`admin_totp`, `admin_panel_sessions`,
+  `admin_pending_challenge`). Session cookie (`vxadm_session`, HttpOnly,
+  SameSite=Strict, 12h). New login HTML with 5-state JS flow. All panel data
+  endpoints switched to session-cookie guard. Design in
+  [`admin-panel-auth.md`](docs/admin-panel-auth.md).
 
 - **TOML config files for hub and farm** — `hub.toml` / `farm.toml` next to the binary replace scattered env vars. Load order: defaults → config file → `VOXPLY_*` env vars (highest priority). `hub.toml.example` and `farm.toml.example` document every option. Hub operator guide updated.
 
