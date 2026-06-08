@@ -92,7 +92,9 @@ items live in the wiki — see
 
 ## 🚀 Recently shipped
 
-- **Custom user skins (android/voxply-web)** — `skinValidation.ts` ported verbatim from the desktop client; `SkinEditor` component copied; `SettingsPage` gains a "Custom" slot that reveals the token editor; `App.tsx` persists/restores appearance via `localStorage` key `voxply:appearance` and applies CSS custom-property overrides via `applySkinTokens`/`clearSkinTokens`. Completes the custom-themes feature across all clients.
+- **Custom user skins (android/voxply-desktop)** — `skinValidation.ts` and `SkinEditor.tsx` ported from the desktop client; `ThemePicker` gains a "Custom" card; `SettingsPage` reveals the token editor when Custom is selected; `App.tsx` loads/persists appearance via `load_appearance`/`save_appearance` Tauri commands (backed by `~/.voxply/appearance.json`); two Rust commands added to `lib.rs` and registered in the invoke handler.
+
+- **Custom user skins (android/voxply-web)** — `skinValidation.ts` ported verbatim from the desktop client; `SkinEditor` component copied; `SettingsPage` gains a "Custom" slot that reveals the token editor; `App.tsx` persists/restores appearance via `localStorage` key `voxply:appearance` and applies CSS custom-property overrides via `applySkinTokens`/`clearSkinTokens`.
 
 - **Block/ignore settings panel + DM-block server sync** — `BlockIgnoreSection` wired into all 4 clients (desktop, web, android/voxply-web, android/voxply-desktop); `toggleBlockUser` calls `PUT /identity/dm-blocks` on the active hub in all 4 clients so the server enforces DM blocking. Design in [`block-mute-ignore.md`](docs/block-mute-ignore.md).
 
