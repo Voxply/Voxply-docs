@@ -36,8 +36,7 @@ only remaining work is polish and responding to user feedback.
 - [x] **Rate-limit auth endpoints** — brute-force protection on
   `POST /auth/login` and `/auth/challenge` live.
 
-- [x] **Document game permissions gap** — notice added to admin UI; operators
-  now know `set_game_permissions` has no effect yet.
+- [x] **Gaming Tier 1 capabilities enforcement** — hub `PUT /admin/games/:id/permissions` stores and returns capability grants; `GET /admin/games` includes them; all four admin UIs (desktop, web, android/desktop, android/web) read and save live grants; `GameModal` gates Tier 1 API calls behind `hasCapability()`.
 
 ### Client
 
@@ -100,6 +99,8 @@ items live in the wiki — see
 - **E2E v2 — Double Ratchet** — forward secrecy / Signal-style ratchet upgrade from the shipped static-ECDH (Phase 1) and sender-key (Phase 2) schemes. Not yet designed beyond the concept. See [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **Gaming Tier 1 capabilities enforcement** — hub `PUT /admin/games/:id/permissions` stores capability grants; `GET /admin/games` returns them; desktop `list_admin_games` and `set_game_permissions` Tauri commands wired end-to-end; admin UI in all four clients shows live capability toggles and explains their effect; `GameModal` enforces grants via `hasCapability()` before calling `game_post_message`, `game_get_recent_messages`, or `game_list_channel_users`.
 
 - **Android multi-device pairing UI** — full device-pairing flow for android/voxply-web: `identity/master.ts` (HKDF-SHA256 master key derivation matching the Rust crate), `identity/wire.ts` (wire format helpers byte-identical to Rust signing_bytes), `platform/commands/pairing.ts` (all eight pairing commands — getPairedIdentity, startPairingOffer, pollPairingStatus, completePairing, fingerprintPubkey, parsePairingOffer, claimPairingOffer, savePairedIdentity), `PairingSection.tsx` (E-side and N-side flows), `SettingsPage.tsx` full-screen overlay (Profile / Account / Appearance / Devices tabs). Gear button in ChannelSidebar now opens settings.
 
