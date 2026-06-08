@@ -98,6 +98,14 @@ items live in the wiki — see
 
 ## 🚀 Recently shipped
 
+- **Unified screen-share modal (desktop)** — `ScreenSharePicker` replaced by `ScreenShareModal`; new `list_capture_sources` Tauri command (xcap + image + base64) enumerates monitors and application windows with 160×90 PNG thumbnails; modal shows Screens/Windows tab strip, thumbnail grid with selection ring, and audio/webcam settings section; `useScreenShare` passes `chromeMediaSourceId` to `getDisplayMedia` to bypass the OS picker entirely. Design in [`screen-share-modal.md`](docs/screen-share-modal.md).
+
+- **Banner channel upload seamless flow** — `POST /channels/:channel_id/upload` now returns `{"id": ...}` in the response; new `patch_channel_banner_file` Tauri command PATCHes `banner_file_id` onto the channel; `CreateChannelModal` accepts a `File` prop and `App.tsx` orchestrates the 3-step flow (create channel → upload file → patch banner_file_id) without any extra steps from the user.
+
+- **Farm hub_spawned tracking fix** — farm's `handle_agent_socket` now parses `hub_spawned` messages from connected server agents and writes `process_port` + `server_id` to the `hubs` table; clears both on `hub_stopped`. `ServerEntry` includes `running_hub_count` so the fleet console shows live hub counts per server.
+
+- **Android client QoL — global search, drafts, thread view, custom emoji picker** — `SearchBar` component (Ctrl+K shortcut) wired into android/voxply-web `App.tsx`; `drafts.ts` utility ported and connected (load on channel switch, save on input change, clear on send); `EmojiPicker` loads hub custom emojis via `hubFetch("/emojis")`; `ContentArea` gains `expandedThreads`/`threadReplies` with localStorage persistence and inline reply rendering; `SortableChannelItem` renders draft badge; `reply_count` added to `Message` type.
+
 - **Web client: message drafts, thread view, custom emoji picker** — `drafts.ts` utility ported verbatim from desktop; web `App.tsx` loads draft on channel switch, saves on input change, clears on send; `SortableChannelItem` gains `activeHubId` prop and renders the `channel-draft-badge`; `ContentArea` gains `expandedThreads`/`threadReplies` state with per-channel localStorage persistence, `toggleThread` fetches replies via `hubFetch`; `EmojiPicker` component created loading hub emojis from `hubFetch("/emojis")`, wired into the channel composer toolbar; `reply_count` added to `Message` type.
 
 - **Admin panel auth — desktop + farm complete** — Farm crate now has
@@ -274,6 +282,11 @@ items live in the wiki — see
 ## ⚠️ Known issues
 
 - **Windows installer unsigned** — users see SmartScreen "Windows protected your PC" warning; workaround: "More info → Run anyway". Permanent fix once EV cert is procured (see code-signing.md).
+- **Cross-farm cert relay** — hub certifications work per-hub; revocations don't propagate across farms. Design in [`hub-certifications.md`](docs/hub-certifications.md).
+- **Per-hub subkey revocation propagation** — revoking a multi-device subkey on one hub isn't automatically known to other hubs the user has joined. Design in [`multi-device.md`](docs/multi-device.md).
+- **Bot deferred scope** — voice/screen-share injection, bot DMs, outgoing webhooks, and bot-launched game modals have no implementation timeline. Design in [`future-features.md`](docs/future-features.md).
+- **Forum per-post read cursors** — forum channels use channel-level unread tracking only; per-post read cursors deferred. Design in [`forum.md`](docs/forum.md).
+- **Forum: reactions + attachments on posts** — not yet supported. Design in [`forum.md`](docs/forum.md).
 
 ## 💤 Won't do
 
