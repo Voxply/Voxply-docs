@@ -80,6 +80,10 @@ items live in the wiki — see
 
 - **Pre-push CI validation tooling** — a committed `scripts/check.sh` (or Makefile target) that mirrors what CI checks locally: `cargo metadata` workspace validation, Tauri npm/Rust minor-version parity check, `tsc --noEmit`. Wired to a `make install-hooks` pre-push hook so mismatches are caught before they break the remote build.
 
+- **Changelog pipeline** — a defined process for generating and publishing per-release changelogs. Options to evaluate: conventional commits + `git-cliff` to auto-generate from commit history; a `CHANGELOG.md` in each repo updated per release; or a single human-curated file in Voxply (the docs repo) that editors update before tagging. Needs a decision on audience (end users vs. hub operators vs. contributors) and where it lives (GitHub Releases body, in-app "What's new" panel, docs site).
+
+- **Desktop and server update mechanism** — hub operators currently update by pulling and restarting manually; desktop users re-download the installer. Design an operator-facing update path (e.g. `voxply-hub update` CLI command that fetches the latest binary from GitHub Releases and hot-swaps with graceful restart) and a desktop auto-updater (Tauri's built-in updater via `tauri-plugin-updater`, pointing at a JSON update manifest hosted on Voxply-discovery or a CDN). Android gets updates via the Play Store / sideload APK; that flow is already handled by CI.
+
 - **Gaming Tier 3** — MMO + persistent shared world; stretch goal.
   Proximity voice is already a general platform primitive; only the
   persistent-world layer is undesigned.
