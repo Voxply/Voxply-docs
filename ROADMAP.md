@@ -98,6 +98,8 @@ items live in the wiki — see
 
 ## 🚀 Recently shipped
 
+- **Web client: message drafts, thread view, custom emoji picker** — `drafts.ts` utility ported verbatim from desktop; web `App.tsx` loads draft on channel switch, saves on input change, clears on send; `SortableChannelItem` gains `activeHubId` prop and renders the `channel-draft-badge`; `ContentArea` gains `expandedThreads`/`threadReplies` state with per-channel localStorage persistence, `toggleThread` fetches replies via `hubFetch`; `EmojiPicker` component created loading hub emojis from `hubFetch("/emojis")`, wired into the channel composer toolbar; `reply_count` added to `Message` type.
+
 - **Admin panel auth — desktop + farm complete** — Farm crate now has
   `POST /farm/admin/totp/setup`, `/confirm`, `/disable` endpoints plus TOTP
   verification on admin login. Server agent binary (voxply-server crate)
