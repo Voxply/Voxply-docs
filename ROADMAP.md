@@ -92,9 +92,7 @@ items live in the wiki — see
 
 ## 🚀 Recently shipped
 
-- **Custom user skins (android/voxply-desktop)** — `skinValidation.ts` and `SkinEditor.tsx` ported from the desktop client; `ThemePicker` gains a "Custom" card; `SettingsPage` reveals the token editor when Custom is selected; `App.tsx` loads/persists appearance via `load_appearance`/`save_appearance` Tauri commands (backed by `~/.voxply/appearance.json`); two Rust commands added to `lib.rs` and registered in the invoke handler.
-
-- **Custom user skins (android/voxply-web)** — `skinValidation.ts` ported verbatim from the desktop client; `SkinEditor` component copied; `SettingsPage` gains a "Custom" slot that reveals the token editor; `App.tsx` persists/restores appearance via `localStorage` key `voxply:appearance` and applies CSS custom-property overrides via `applySkinTokens`/`clearSkinTokens`.
+- **Custom user skins (all 4 clients)** — Fifth "Custom" slot in the theme picker. `skinValidation.ts` (token allow-list, forbidden-substring guard, `validateSkin`, `applySkinTokens/clearSkinTokens`, export/import helpers) shared across all clients. `SkinEditor` component: name field, base-theme selector, token groups (Surfaces / Text / Accent / Status / Border & Effects / Shadows / Radius), live preview via `setProperty`, per-token reset, Reset all, Export `.voxplyskin`, Import with validation. Desktop and android/voxply-desktop persist via `load_appearance`/`save_appearance` Tauri commands (`~/.voxply/appearance.json`); web and android/voxply-web via `localStorage` key `voxply:appearance`. Design in [`custom-themes.md`](docs/custom-themes.md).
 
 - **Block/ignore settings panel + DM-block server sync** — `BlockIgnoreSection` wired into all 4 clients (desktop, web, android/voxply-web, android/voxply-desktop); `toggleBlockUser` calls `PUT /identity/dm-blocks` on the active hub in all 4 clients so the server enforces DM blocking. Design in [`block-mute-ignore.md`](docs/block-mute-ignore.md).
 
