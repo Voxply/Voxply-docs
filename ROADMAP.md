@@ -7,6 +7,10 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
+- **Custom skins discovery gallery** — `skins` table + register/browse/delete endpoints in Voxply-discovery; Browse tab in Settings → Appearance on all 4 clients. Design in [`custom-themes.md`](docs/custom-themes.md) §11.
+- **Database abstraction layer** — `voxply-store` trait crate + `voxply-store-sqlite` impl; hub `AppState.db: SqlitePool` → `AppState.store: Arc<dyn HubStore>`; all route handlers rewritten to call store methods. Design in [`store-trait-design.md`](docs/store-trait-design.md).
+- **Forum per-post read cursors** — `post_reads` table, `POST /channels/:cid/posts/:id/read` endpoint, `unread_reply_count` on post list; client UI shows unread dot/count per thread in all 4 clients. Design in [`forum.md`](docs/forum.md).
+
 ## 🚢 Pre-launch checklist
 
 Work through these in order before shipping. Goal: reach a state where the
