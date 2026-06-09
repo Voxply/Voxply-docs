@@ -7,19 +7,15 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
-- [ ] **Remove Demo Hub code** — delete `DEMO_HUB_URL` from
-  `desktop/src/constants.ts`, remove the conditional "Try a demo hub"
-  button from `WelcomeScreen.tsx` and the `openDemoHub` function +
-  `onJoinDemo` prop from `App.tsx` in Voxply-desktop.
-  See [decisions.md](docs/decisions.md).
+- [x] **Remove Demo Hub code** — `DEMO_HUB_URL` constant, Try demo hub
+  button in `WelcomeScreen`, and `openDemoHub` function in `App.tsx`
+  deleted from Voxply-desktop.
 
-- [ ] **Remove Missions / Sparks code** — delete `MissionsSection.tsx`,
-  `CosmeticsSection.tsx`, `missionsClient.ts`, `cosmeticsState.ts`, the
-  Missions tab from `SettingsPage.tsx`, and `MISSIONS_SERVICE_URL` /
-  `MISSIONS_ENABLED` from `constants.ts` in Voxply-desktop. Delete all
-  missions/catalog/account API routes and `missions-db.ts`,
-  `missions-key.ts`, `missions-auth.ts`, `pow.ts` from Voxply-discovery.
-  See [decisions.md](docs/decisions.md).
+- [x] **Remove Missions / Sparks code** — `MissionsSection`, `CosmeticsSection`,
+  `missionsClient`, `cosmeticsState`, missions tab from `SettingsPage`,
+  and `MISSIONS_SERVICE_URL`/`MISSIONS_ENABLED` constants deleted from
+  Voxply-desktop. All missions/catalog/account/sponsors API routes and lib
+  files deleted from Voxply-discovery. DB schema cleaned up.
 
 ## 🚢 Pre-launch checklist
 
