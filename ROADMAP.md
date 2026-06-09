@@ -85,7 +85,7 @@ items live in the wiki — see
 
 - [x] **Pre-push CI validation tooling** — `scripts/check.sh` in desktop, hub, and discovery mirrors CI (tsc, vitest, cargo check, Tauri npm/Rust minor-version parity). `scripts/install-hooks.sh` / `.ps1` wire it as a pre-push hook per clone.
 
-- **Changelog pipeline** — a defined process for generating and publishing per-release changelogs. Options to evaluate: conventional commits + `git-cliff` to auto-generate from commit history; a `CHANGELOG.md` in each repo updated per release; or a single human-curated file in Voxply (the docs repo) that editors update before tagging. Needs a decision on audience (end users vs. hub operators vs. contributors) and where it lives (GitHub Releases body, in-app "What's new" panel, docs site).
+- [x] **Changelog pipeline** — `git-cliff` with `cliff.toml` in all five product repos. `scripts/release.sh` updates `CHANGELOG.md` and tags in one step. Desktop and hub `release.yml` auto-populate the GitHub Release body via `orhun/git-cliff-action`. Android, web, and discovery have `cliff.toml` ready; release CI wires in when those repos get release workflows.
 
 - **Desktop and server update mechanism** — hub operators currently update by pulling and restarting manually; desktop users re-download the installer. Design an operator-facing update path (e.g. `voxply-hub update` CLI command that fetches the latest binary from GitHub Releases and hot-swaps with graceful restart) and a desktop auto-updater (Tauri's built-in updater via `tauri-plugin-updater`, pointing at a JSON update manifest hosted on Voxply-discovery or a CDN). Android gets updates via the Play Store / sideload APK; that flow is already handled by CI.
 
