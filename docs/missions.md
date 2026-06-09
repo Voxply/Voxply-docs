@@ -1,4 +1,14 @@
-# Missions
+# Missions (removed)
+
+> **This feature has been removed.** The missions system, spark balance,
+> cosmetic catalog, and all related code in Voxply-desktop and
+> Voxply-discovery have been deleted. See the decision in
+> [`decisions.md`](decisions.md) — "Missions, sparks, and cosmetic catalog
+> removed". This document is kept as a historical record only.
+
+---
+
+# Original design (archived)
 
 Full design for the Missions system. `monetization.md` has the high-level
 sketch and the constraints that bind this design: **cosmetics-only**,

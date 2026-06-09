@@ -4,6 +4,68 @@ Why Voxply is shaped the way it is. Each entry: the decision, the
 alternative we considered, and why we chose this. New decisions go at
 the top.
 
+## Demo Hub removed — discovery is the entry point for new users
+
+**Decision**: the "Try a demo hub" button and `DEMO_HUB_URL` constant are
+removed from all clients. There is no Voxply-operated demo hub. New users
+find entry points through the discovery site; communities that want to be
+newcomer-friendly can tag themselves accordingly there.
+
+**Why**: a Voxply-operated hub is a service relationship — the project
+would run infrastructure, make uptime commitments, and own a community
+space. That directly contradicts the "we publish software, not services"
+posture. The code was always a single constant and one conditional button;
+a dead code path with no operational backing is worse than no path at all.
+
+**What we ruled out**:
+
+- **A community-volunteer "official demo hub"** — possible, but gives one
+  community a privileged label the project can't sustain or control. A
+  "newcomer-friendly" tag in discovery is the right shape.
+- **Keeping the constant as `null`** — the feature was already half-dead.
+  Removing the code removes the implication that someone will fill it in.
+
+---
+
+## Missions, sparks, and cosmetic catalog removed — Voxply operates no monetization infrastructure
+
+**Decision**: the missions system (sponsor-funded spark rewards), spark
+balance, cosmetic catalog, and entitlement blobs are removed entirely from
+all clients and from Voxply-discovery. `MISSIONS_ENABLED`,
+`MISSIONS_SERVICE_URL`, `MissionsSection`, `CosmeticsSection`, and all
+related discovery API routes are deleted. Voxply ships software only; it
+operates no monetization service. Sustainability is an open question
+handled by donations and community support, without building a revenue
+mechanism into the protocol.
+
+**Why**: missions required the project to permanently run a central service
+— handling sponsor relationships, anti-fraud, PoW on claims, entitlement
+signing. That is infrastructure debt that grows with adoption and assumes
+the project always operates it. More importantly, it puts a sponsor
+relationship structurally inside the software, even when well-scoped. The
+sovereignty pitch is cleaner and more honest without it: Voxply publishes
+software, anyone can run it, no part of the software phones home to a
+project-operated service.
+
+**What we ruled out**:
+
+- **Keeping missions behind `MISSIONS_ENABLED = false`** — dead code with
+  a constant implies future intent. If the intent is gone, so is the code.
+- **Farm hosting as a Voxply revenue line** — anyone can operate a farm;
+  the project publishing farm software is not the same as the project
+  running a farm for money. If someone at Voxply wants to run a commercial
+  farm later, that is an independent business decision, not something baked
+  into the software design.
+- **A "supporter flair" cosmetic tied to donations** — tying any cosmetic
+  to money reintroduces missions complexity at a smaller scale. Donations
+  remain a simple link with no in-software perks.
+
+**What's still open**: how the project sustains itself long-term. Donations
+are the current answer. Other approaches (grants, commercial support,
+community funding) can be explored without adding any code to the protocol.
+
+---
+
 ## Observability: operator-scoped infrastructure metrics only — no PII in spans or metrics
 
 **Decision**: Voxply ships two observability surfaces for hub operators:

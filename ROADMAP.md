@@ -7,6 +7,20 @@ shipped features, design questions — lives in the wiki at
 
 ## 🔨 Next up
 
+- [ ] **Remove Demo Hub code** — delete `DEMO_HUB_URL` from
+  `desktop/src/constants.ts`, remove the conditional "Try a demo hub"
+  button from `WelcomeScreen.tsx` and the `openDemoHub` function +
+  `onJoinDemo` prop from `App.tsx` in Voxply-desktop.
+  See [decisions.md](docs/decisions.md).
+
+- [ ] **Remove Missions / Sparks code** — delete `MissionsSection.tsx`,
+  `CosmeticsSection.tsx`, `missionsClient.ts`, `cosmeticsState.ts`, the
+  Missions tab from `SettingsPage.tsx`, and `MISSIONS_SERVICE_URL` /
+  `MISSIONS_ENABLED` from `constants.ts` in Voxply-desktop. Delete all
+  missions/catalog/account API routes and `missions-db.ts`,
+  `missions-key.ts`, `missions-auth.ts`, `pow.ts` from Voxply-discovery.
+  See [decisions.md](docs/decisions.md).
+
 ## 🚢 Pre-launch checklist
 
 Work through these in order before shipping. Goal: reach a state where the
@@ -21,10 +35,6 @@ only remaining work is polish and responding to user feedback.
 - [x] **Fix server panics in games.rs** — replaced ~10 bare `.unwrap()` calls
   on `Mutex::lock()` and `serde_json::to_string()`.
   A poisoned mutex or bad serialization no longer crashes the hub process.
-
-- [ ] **Deploy the demo hub** — flip `DEMO_HUB_URL` constant so "Try a demo
-  hub" works. New users downloading the desktop app currently have no quick
-  way to experience Voxply without also running a server themselves.
 
 ### Server
 
@@ -65,7 +75,6 @@ only remaining work is polish and responding to user feedback.
 
 ## 🚧 Blocked
 
-- **Demo hub** — code is ready (`DEMO_HUB_URL` constant + conditional button). Blocked on ops: a Voxply-operated hub instance needs to be deployed and the constant flipped to its URL before the "Try a demo hub" button goes live.
 - **Android client icons** — placeholder solid-color PNGs in place. Waiting on the final logo asset. Run `cargo tauri icon <1024x1024.png>` once the brand logo is ready. See [`brand.md`](docs/brand.md).
 
 ## 📌 Wishlist (undesigned)
@@ -280,9 +289,6 @@ items live in the wiki — see
 - **Windows Authenticode signing** — CI signing wired in `release.yml`;
   activates once `WINDOWS_CERT_THUMBPRINT` secret is set (cert
   procurement via SignPath.io OSS tier still pending).
-- **Missions system** — API routes in Voxply-discovery, Missions panel +
-  PoW claim flow in desktop, spark balance + cosmetic catalog with
-  entitlement blobs. Design in [`missions.md`](docs/missions.md).
 - **Per-participant voice volume** — `sender_id` in UDP fan-out,
   per-sender gain pipeline, volume slider in channel sidebar, persistence
   to `voice_gains.json`. Design in [`voice-volume.md`](docs/voice-volume.md).
