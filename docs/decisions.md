@@ -4,6 +4,58 @@ Why Voxply is shaped the way it is. Each entry: the decision, the
 alternative we considered, and why we chose this. New decisions go at
 the top.
 
+## Observability: operator-scoped infrastructure metrics only — no PII in spans or metrics
+
+**Decision**: Voxply ships two observability surfaces for hub operators:
+a Prometheus-compatible `GET /metrics` endpoint (aggregate counters —
+uptime, DB size, active connections, message throughput) and optional
+OTLP trace export via `VOXPLY_OTLP_ENDPOINT`. Both are **infrastructure
+observability tools for the hub operator**, not user analytics. The
+hard rule: **no personally-identifiable information may appear in any
+span, metric label, or structured log field**. Permitted: HTTP
+method/route, status code, query latency, error type, aggregate counts.
+Forbidden: user IDs, pubkeys, display names, channel names, message
+content, DM participants, social graph edges, or any value that
+identifies a specific user, conversation, or relationship.
+
+**Why**: the metrics endpoint and OTLP export are opt-in, operator-run
+surfaces — the hub admin points them at their own Grafana, Jaeger, or
+Prometheus instance. But "operator-only" is not a sufficient privacy
+guarantee on its own, because operators differ in trust level depending
+on the hub, and the data shape matters regardless of who receives it.
+An attribute like `user_id=<pubkey>` or `channel=general` appearing in
+a span means a leaked trace file or a compromised monitoring stack
+becomes a surveillance artifact. Keeping spans strictly technical
+eliminates that class of risk entirely, with no loss of operational
+value — latency, error rates, and throughput do not require identity.
+
+**What we ruled out**:
+
+- **Per-user request tracing** (attaching `user_pubkey` to spans for
+  debugging auth flows). Rejected: the debug value can be achieved in
+  a dev environment with a local trace sink and a test account; shipping
+  it in the production path permanently associates identity with traffic
+  patterns in the operator's monitoring store.
+- **Message-count metrics labelled by channel** (`voxply_messages_total{channel="general"}`).
+  Rejected: channel names are community content, not infrastructure. The
+  existing aggregate `voxply_messages_total` counter carries no label.
+- **Opt-in "detailed mode"** that unlocks PII labels when the operator
+  enables it. Rejected: any opt-in expands the surface and the rule
+  becomes "PII is ok in some deployments," which is the wrong invariant
+  to hold over time. The technical spans are sufficient; detailed mode
+  offers no observability benefit that can't be met without identity.
+
+**Tradeoff**: a stripped span for a failed auth request contains the
+error type but not the pubkey that failed. Debugging an auth bug in
+production requires correlating with server logs, not just the trace.
+We accept that because structured logs are the right tool for
+per-request debugging and traces are the right tool for latency
+profiling — the two should stay separate. Nothing in this decision
+prevents operators from adding a non-PII correlation ID (a random
+request ID) to both.
+
+---
+
 ## Hub admin panel removed — hub management moves to desktop client
 
 **Decision**: the web-based hub admin panel (`/admin/panel`) is removed
