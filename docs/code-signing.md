@@ -114,52 +114,93 @@ timestamping:
 
 ## What to do (procurement → CI)
 
-1. **Confirm OSS eligibility** with SignPath.io and apply for the free
-   open-source tier. All Voxply repos are public under the Voxply GitHub
-   org, which is the qualifying condition. If ineligible, buy an EV cert
-   from DigiCert or Sectigo with a cloud HSM / KeyLocker option.
-2. **Complete EV vetting** — the issuer verifies the legal/organisational
-   identity behind the project. This is the slow step (days to weeks);
-   start it early.
-3. **Provision the cloud HSM** — the key is generated in and never leaves
-   the HSM. Record the certificate thumbprint and the HSM/KSP credentials.
-4. **Store CI secrets** in Voxply-desktop's GitHub Actions (secrets matrix
-   below).
-5. **Wire signing into `release.yml`** on the `windows-latest` runner. Sign
-   inner binaries before bundling, build, then sign the installer and MSI.
-   Use `signtool verify /pa /v voxply-setup.exe` as a post-step.
-6. **Smoke test** the first signed release on a clean Windows VM to confirm
-   SmartScreen shows no warning.
+### Step 1 — Apply to SignPath Foundation (OSS tier)
 
-### Signing call shape
+Go to **signpath.io** → "Free for Open Source" and submit an application.
+You will need:
 
-For the common local-cert case, Tauri's `bundle.windows` config drives
-signtool directly:
+- The **Voxply GitHub organisation URL** (`github.com/Voxply`)
+- A short description of the project (self-hosted voice/chat, open source, MIT/Apache licence)
+- Contact email — use the project maintainer's address
+- Confirmation that the project has no commercial gating (free, no paid tiers)
 
-```jsonc
-// Voxply-desktop tauri.conf.json
-"bundle": {
-  "windows": {
-    "certificateThumbprint": "<EV cert thumbprint>",
-    "digestAlgorithm": "sha256",
-    "timestampUrl": "http://timestamp.sectigo.com"
-  }
-}
-```
+All Voxply repos are public and the project is free software, so it meets
+the eligibility criteria. Approval typically takes a few days to a week.
 
-For a **cloud HSM / KSP provider**, the signature goes through the
-provider's CSP, so the sign command is an explicit `signtool.exe`
-invocation outside Tauri's bundler:
+### Step 2 — Set up the SignPath portal after approval
 
-```
-signtool sign /fd sha256 /tr http://timestamp.sectigo.com /td sha256 ^
-  /csp "<provider KSP name>" /kc "<key container>" ^
-  /sha1 <thumbprint> voxply.exe
-```
+Once approved, SignPath creates an organisation for you. Log in and do the
+following in order:
 
-The engineer implementing this decides whether to let Tauri's config handle
-signing (thumbprint case) or to run an explicit `/csp` step after
-bundling — the latter is the likely shape for SignPath's KSP.
+1. **Create a Project**: name it `voxply-desktop`, slug `voxply-desktop`.
+2. **Create an Artifact Configuration** (slug: `nsis-installer`). This tells
+   SignPath which files inside your submitted zip to sign and how. Set it up
+   to deep-sign the NSIS installer:
+   ```xml
+   <artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+     <pe-binary>
+       <authenticode-sign/>
+     </pe-binary>
+   </artifact-configuration>
+   ```
+   SignPath's NSIS deep-signing support will also sign the inner `voxply.exe`
+   PE binary that the installer wraps. Confirm this in their docs for your
+   exact SignPath tier.
+3. **Create a Signing Policy** (slug: `release-signing`):
+   - Certificate: select the EV cert SignPath provisioned for you
+   - Allowed signers: GitHub Actions CI user (see next step)
+   - Optionally require a manual approval step for release tags
+4. **Create a CI User** with the role "Submitter" scoped to the
+   `voxply-desktop` project. Generate an API token for it.
+5. **Link the GitHub repository** (`Voxply/Voxply-desktop`) to the project
+   so SignPath can read artifacts from GitHub Actions runs.
+
+### Step 3 — Store secrets in GitHub Actions
+
+Go to **Voxply-desktop** → Settings → Secrets → Actions and add:
+
+| Secret | Value |
+|---|---|
+| `SIGNPATH_API_TOKEN` | The API token from the CI user you created |
+| `SIGNPATH_ORGANIZATION_ID` | Your org ID from the SignPath portal URL |
+
+### Step 4 — Complete EV vetting
+
+SignPath Foundation coordinates EV vetting with their CA partner (GlobalSign).
+They will contact you to verify the project's legal identity. This is the
+slow step — days to a couple of weeks. Start it immediately after step 1
+approval.
+
+### Step 5 — Smoke test
+
+After the first signed release tag (`git tag v0.x.y && git push --tags`):
+
+1. Download the `.exe` installer on a **clean Windows 11 VM** (one that has
+   never seen Voxply before, to avoid cached reputation).
+2. Double-click it. If SmartScreen is gone — done. If it still shows, run:
+   ```
+   signtool verify /pa /v voxply-setup.exe
+   ```
+   and check the output for the certificate chain.
+
+### How the CI signing works
+
+SignPath does **not** expose the private key or act as a CSP/KSP that
+`signtool` can address directly. Instead it is a **signing service**: you
+submit an unsigned binary, their HSM signs it, and you get the signed binary
+back. The `release.yml` workflow reflects this:
+
+1. Tauri builds the unsigned NSIS installer.
+2. The installer is uploaded as a GitHub Actions artifact.
+3. `signpath/github-action-submit-signing-request` sends the artifact to the
+   SignPath API. SignPath deep-signs both the inner `voxply.exe` and the NSIS
+   wrapper.
+4. The action downloads the signed artifact, which is then swapped into the
+   bundle directory and verified with `signtool verify`.
+
+`tauri.conf.json` intentionally has no `certificateThumbprint` — Tauri's
+bundler is not in the signing path; SignPath handles it entirely after the
+build.
 
 ---
 
@@ -176,11 +217,14 @@ bundling — the latter is the likely shape for SignPath's KSP.
 
 | Secret | Purpose |
 |---|---|
-| `WINDOWS_CERT_THUMBPRINT` | EV cert SHA-1 thumbprint |
-| `SIGNING_HSM_CREDENTIALS` | Cloud HSM / SignPath auth material the CSP/KSP needs |
+| `SIGNPATH_API_TOKEN` | Bearer token generated in the SignPath portal for the CI user |
+| `SIGNPATH_ORGANIZATION_ID` | Your SignPath organisation ID (shown in the portal URL and settings) |
 
 These sit alongside the existing updater secrets (`TAURI_SIGNING_PRIVATE_KEY`,
 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`), which are unchanged.
+
+Both secrets are optional at build time — signing is skipped when `SIGNPATH_API_TOKEN`
+is absent (normal for feature branches). Only release tags need them set.
 
 ---
 
