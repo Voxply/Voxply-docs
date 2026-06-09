@@ -83,7 +83,7 @@ items live in the wiki — see
 ### Carry-over
 
 
-- **Pre-push CI validation tooling** — a committed `scripts/check.sh` (or Makefile target) that mirrors what CI checks locally: `cargo metadata` workspace validation, Tauri npm/Rust minor-version parity check, `tsc --noEmit`. Wired to a `make install-hooks` pre-push hook so mismatches are caught before they break the remote build.
+- [x] **Pre-push CI validation tooling** — `scripts/check.sh` in desktop, hub, and discovery mirrors CI (tsc, vitest, cargo check, Tauri npm/Rust minor-version parity). `scripts/install-hooks.sh` / `.ps1` wire it as a pre-push hook per clone.
 
 - **Changelog pipeline** — a defined process for generating and publishing per-release changelogs. Options to evaluate: conventional commits + `git-cliff` to auto-generate from commit history; a `CHANGELOG.md` in each repo updated per release; or a single human-curated file in Voxply (the docs repo) that editors update before tagging. Needs a decision on audience (end users vs. hub operators vs. contributors) and where it lives (GitHub Releases body, in-app "What's new" panel, docs site).
 
