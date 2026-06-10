@@ -49,14 +49,17 @@ The full history of shipped work lives in
   All with integration tests; openapi.yaml and ws-protocol.md updated to match.
 
 - **Full CI test coverage across all repos (2026-06-10)** — vitest suites now
-  gated in CI for web (6 tests), android/voxply-web (14 tests), and desktop
-  (71 tests); web gains i18n coverage check via tsx; android gains
-  `cargo fmt --check` and `cargo clippy -D warnings` gates (scoped to
-  `voxply-desktop` crate, which is all that compiles without the Android NDK);
-  5 pre-existing clippy warnings in android/voxply-desktop fixed outright (1
-  redundant import removed, 2 needless borrows, 1 useless conversion, 1
-  `#[allow(dead_code)]` on a planned-but-unused struct); hub cargo test was
-  already present; discovery has no test files.
+  gated in CI for web (6 tests), android/voxply-web (14 tests), desktop
+  (71 tests), and discovery (28 tests); web gains i18n coverage check via tsx;
+  android gains `cargo fmt --check` and `cargo clippy -D warnings` gates
+  (scoped to `voxply-desktop` crate, which is all that compiles without the
+  Android NDK); 5 pre-existing clippy warnings in android/voxply-desktop fixed
+  outright (1 redundant import removed, 2 needless borrows, 1 useless
+  conversion, 1 `#[allow(dead_code)]` on a planned-but-unused struct); hub
+  cargo test was already present. Discovery vitest suite covers `listHubs`
+  (tag filter, pagination, combined filters), `verifySignature`, and
+  `buildCanonicalPayload`/`currentNonce`; a bug was fixed in `verify.ts`
+  (`ed.verify` → `ed.verifyAsync` for the @noble/ed25519 v3 async API).
 
 - **WebSocket protocol documented (2026-06-10)** — the protocol contract now
   covers the WS side: connect/auth and framing in `openapi.yaml` (plus a `/ws`
