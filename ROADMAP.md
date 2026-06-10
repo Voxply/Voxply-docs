@@ -30,11 +30,6 @@ The full history of shipped work lives in
 - **Project visibility push** — README polish with screenshots, a hosted demo
   hub, `docker compose` quick-start, directory listings, launch post. Needed
   both for adoption and for the code-signing re-application.
-- **Rate-limit `GET /preview` globally** — per-request SSRF checks exist;
-  no global throttle yet.
-- **Search admin flush endpoint** — operator-driven reindex without restart.
-- **Honour `federated_bans` in outbound messages** — enforced on inbound auth
-  only today.
 - **Tie UDP voice relay session lifetime to the validated WS session.**
 - **Gaming Tier 3** — MMO + persistent shared world; stretch goal. Proximity
   voice is already a platform primitive; only the persistent-world layer is
@@ -44,6 +39,12 @@ The full history of shipped work lives in
   [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **Hub wishlist quick wins (2026-06-10)** — `GET /preview` rate-limited
+  (10/min per user), `POST /admin/search/reindex` for operator-driven index
+  rebuilds without restart, `federated_bans` now enforced on outbound messages
+  and DMs (not just inbound auth), dead `game_session_left` WS variant removed.
+  All with integration tests; openapi.yaml and ws-protocol.md updated to match.
 
 - **Full CI test coverage across all repos (2026-06-10)** — vitest suites now
   gated in CI for web (6 tests), android/voxply-web (14 tests), and desktop

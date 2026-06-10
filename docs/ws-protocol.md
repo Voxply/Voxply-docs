@@ -868,11 +868,6 @@ A relayed game move/event (from `game_send`), or a status change (from
 | `reason` | string | omitted when absent; observed values: `"ended"`, `"abandoned"`, `"force_ended"`, `"timeout"` |
 | `result` | any JSON value | omitted when absent; host-supplied final result |
 
-> **Dead variant — deliberately undocumented as a real message:** the hub
-> source defines a `game_session_left` server message, but no code path ever
-> sends it (player departures are signalled with `game_player_left`). Clients
-> do not need to handle it.
-
 ### Bot-only messages
 
 These are pushed only to connections authenticated with a bot token.

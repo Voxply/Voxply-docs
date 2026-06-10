@@ -1697,6 +1697,53 @@ paths:
       summary: Sign a directory entry for the hub discovery service
       tags: [Federation]
 
+  /preview:
+    get:
+      summary: Fetch a link preview (title/description/image) for a URL
+      description: >-
+        Server-side fetch with SSRF protection (private/loopback/link-local
+        targets rejected, DNS result pinned for the fetch). Responses are
+        cached per URL. Rate-limited to 10 requests per 60 seconds per user;
+        excess returns 429.
+      tags: [Messages]
+      parameters:
+        - name: url
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+                  title: { type: string, nullable: true }
+                  description: { type: string, nullable: true }
+                  image_url: { type: string, nullable: true }
+        "429":
+          description: Per-user rate limit exceeded
+
+  /admin/search/reindex:
+    post:
+      summary: Rebuild the full-text search index from the messages table (admin)
+      description: >-
+        Starts an asynchronous reindex and returns immediately. A second call
+        while a reindex is running returns `{"status":"already_running"}`
+        instead of starting a duplicate job.
+      tags: [Moderation]
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [started, already_running] }
+        "401": { description: Missing/invalid token }
+        "403": { description: Caller lacks admin permission }
+
 tags:
   - name: Health
   - name: Auth
