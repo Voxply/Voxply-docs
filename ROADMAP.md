@@ -8,9 +8,34 @@ The full history of shipped work lives in
 
 ## 🔨 Next up
 
+- [ ] **Hub route module splits wave 2** — behavior-preserving directory-module
+  conversions for `dms.rs`, `bots.rs`, `alliances.rs`, `moderation.rs`; no file
+  over ~800 lines; zero route-path or public-API changes. *(in progress)*
 - [ ] **Validate the aarch64 hub binary** — release CI now builds
   `voxply-hub-linux-aarch64` (musl); untested until the next release runs and
   someone boots it on real ARM hardware.
+- [ ] **openapi coverage checker as a CI gate** — the spec now documents all
+  201 hub routes and `docs/scripts/check-openapi-coverage.mjs` verifies it;
+  wire the script into CI (docs repo workflow with a sparse hub checkout, or
+  a hub-repo workflow with a sparse docs checkout) so new routes can't ship
+  undocumented.
+- [ ] **ContentArea.tsx splits** — desktop (1,383 lines), web (1,157), android
+  (979). Split desktop's canonical copy into subcomponents first, then port
+  the same shape to the forks to avoid divergence.
+- [ ] **Remaining App.tsx decomposition** — desktop (~3,460 lines) and android
+  (~3,040) still hold the message/DM/WS wiring. The DM/conversation cluster is
+  entangled with the WS handler memo and typing-indicator refs — needs an
+  interface redesign before it can move into a hook.
+- [ ] **`ws/connection.rs` dispatch loop** — 1,910 lines left after the ws.rs
+  module split; the `tokio::select!` loop's shared per-connection locals can't
+  cross module boundaries without redesign (e.g. a per-connection state struct
+  passed to per-message handler fns). Design before splitting further.
+
+## 🤔 Design questions
+
+- **Farm agent WS token in URL query string** — registration tokens appear in
+  `/ws/agent?token=…` and therefore in access logs. Moving to a header or a
+  first-message auth frame requires a coordinated server/agent protocol change.
 
 ## 🚧 Blocked
 
@@ -38,6 +63,15 @@ The full history of shipped work lives in
   [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **Big-file refactor wave 1 + complete API spec (2026-06-11)** — behavior-
+  preserving module splits: hub `routes/ws.rs` (2,101 → 4 files) and
+  `routes/games.rs` (1,617 → 6 files), android Tauri `lib.rs` (5,332 → 559
+  + 14 domain modules), web `App.tsx` (1,402 → 1,255 via `useHubAdmin`/
+  `useSettingsProfile`/`useFarmAdmin` hooks); all CI gates green per repo.
+  `openapi.yaml` now documents **all 201 hub routes** (103 were missing —
+  badges, certs, events, polls, forum, games, recovery, webhooks, etc.),
+  verified by the new `docs/scripts/check-openapi-coverage.mjs`.
 
 - **App.tsx decomposition batch 2 (2026-06-11)** — extracted `useHubAdmin`,
   `useFriends`, and `useSettingsProfile` from App.tsx into
