@@ -32,7 +32,6 @@ The full history of shipped work lives in
   Needed both for adoption and for the code-signing re-application.
   *(2026-06-10: all six READMEs rewritten as landing pages with badges,
   cross-links, and a `docker compose` quick-start.)*
-- **Tie UDP voice relay session lifetime to the validated WS session.**
 - **Gaming Tier 3** — MMO + persistent shared world; stretch goal. Proximity
   voice is already a platform primitive; only the persistent-world layer is
   undesigned.
@@ -41,6 +40,14 @@ The full history of shipped work lives in
   [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **UDP voice relay tied to WS session (2026-06-10)** — added
+  `voice_relay_active` set to `AppState`; `VoiceJoin` inserts, `leave_voice`
+  removes; the UDP receive loop rejects packets whose sender pubkey is absent
+  from the set before any fan-out work, closing the gap where a stale source
+  address from a closed WS session could still relay traffic. Five integration
+  tests in `hub/tests/voice_relay_flow.rs` cover join/leave, WS close without
+  explicit leave, and rejoin.
 
 - **Farm/seed/server/voice security sweep (2026-06-10)** — WS agent channel
   made bounded (was unbounded, OOM risk); DB error during token lookup now
