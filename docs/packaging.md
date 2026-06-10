@@ -41,11 +41,11 @@ payload signature so the auto-updater can verify downloads.
 
 - **Updater signature**: `TAURI_SIGNING_PRIVATE_KEY` (Ed25519) signs the
   update payload — unchanged.
-- **Authenticode**: EV certificate via a cloud HSM (SignPath.io free OSS
-  tier; DigiCert/Sectigo as fallback). EV removes the SmartScreen warning
-  permanently from day 1 — no reputation accumulation period. Signing runs
-  in `release.yml` on the `windows-latest` runner via `signtool.exe`.
-  Full design and procurement steps in [`code-signing.md`](code-signing.md).
+- **Authenticode**: deferred — blocked until the project has meaningful
+  popularity. When it lands: EV certificate via a CI-friendly cloud signing
+  service. EV removes the SmartScreen warning permanently from day 1 — no
+  reputation accumulation period.
+  Full design and status in [`code-signing.md`](code-signing.md).
 - **Cert rotation**: on renewal, update `WINDOWS_CERT_THUMBPRINT` in
   GitHub Actions secrets and the `bundle.windows.certificateThumbprint` in
   `tauri.conf.json`. All prior timestamped releases remain valid — no
@@ -143,7 +143,7 @@ live in Voxply-desktop.
 | `TAURI_SIGNING_PRIVATE_KEY` | Windows + Linux | Updater payload signature |
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Windows + Linux | Updater key passphrase (omit if key has no password) |
 | `WINDOWS_CERT_THUMBPRINT` | Windows | EV Authenticode cert SHA-1 thumbprint |
-| `SIGNING_HSM_CREDENTIALS` | Windows | Cloud HSM / SignPath auth material for the CSP/KSP |
+| `SIGNING_HSM_CREDENTIALS` | Windows | Cloud HSM auth material for the CSP/KSP (unused until signing lands) |
 
 macOS notarization secrets are not used today.
 

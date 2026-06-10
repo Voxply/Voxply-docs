@@ -198,8 +198,8 @@ the roadmap; design rationale lives in [decisions.md](decisions.md).
   frame size, complexity. Settings persisted to `voice.json`.
   Design in [`voice-advanced-settings.md`](voice-advanced-settings.md).
 - **Windows Authenticode signing** — CI signing wired in `release.yml`;
-  activates once `WINDOWS_CERT_THUMBPRINT` secret is set (cert
-  procurement via SignPath.io OSS tier still pending).
+  activates once `WINDOWS_CERT_THUMBPRINT` secret is set (cert procurement
+  never completed; signing has since been deferred — see code-signing.md).
 - **Per-participant voice volume** — `sender_id` in UDP fan-out,
   per-sender gain pipeline, volume slider in channel sidebar, persistence
   to `voice_gains.json`. Design in [`voice-volume.md`](voice-volume.md).

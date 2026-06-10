@@ -12,15 +12,13 @@ The full history of shipped work lives in
   `voxply-hub-linux-aarch64` (musl); untested until the next release runs and
   someone boots it on real ARM hardware.
 
-## 🚢 Pre-launch blockers
-
-- [ ] **Windows code-signing** — SignPath OSS application was refused
-  (June 2026, insufficient project popularity). Options: Azure Trusted Signing,
-  ship unsigned and re-apply once the project has traction. CI signing hooks
-  remain wired. See [`code-signing.md`](docs/code-signing.md).
-
 ## 🚧 Blocked
 
+- **Windows code-signing** — blocked until the project reaches meaningful
+  popularity (the free OSS signing route requires it; paying for signing
+  before there are users isn't worth it). Ship unsigned with the documented
+  SmartScreen workaround meanwhile; all signing-service steps removed from CI.
+  Options and design in [`code-signing.md`](docs/code-signing.md).
 - **Android client icons** — placeholder solid-color PNGs in place. Waiting on
   the final logo asset. Run `cargo tauri icon <1024x1024.png>` once the brand
   logo is ready. See [`brand.md`](docs/brand.md).
