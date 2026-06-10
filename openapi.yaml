@@ -277,6 +277,114 @@ components:
         created_by: { type: string }
         created_at: { type: integer }
 
+    BadgePayload:
+      type: object
+      description: Canonical badge payload signed by the issuing hub.
+      properties:
+        issuer_pubkey: { type: string }
+        issuer_url: { type: string }
+        subject_pubkey: { type: string }
+        label: { type: string }
+        issued_at: { type: string, description: "ISO-8601 timestamp" }
+        expires_at: { type: string, nullable: true }
+
+    CertPayload:
+      type: object
+      description: Canonical certification payload signed by the issuing hub.
+      properties:
+        subject_kind: { type: string, description: "Always 'user'" }
+        issuer_pubkey: { type: string }
+        issuer_url: { type: string }
+        subject_pubkey: { type: string }
+        member_since: { type: integer }
+        standing: { type: string, enum: [good, revoked] }
+        pow_level: { type: integer, nullable: true }
+        issued_at: { type: integer }
+        expires_at: { type: integer }
+        capabilities: { type: array, items: { type: string } }
+
+    Certification:
+      type: object
+      description: Certification envelope (payload + hex Ed25519 hub signature).
+      properties:
+        payload: { $ref: '#/components/schemas/CertPayload' }
+        signature: { type: string }
+
+    PostSummary:
+      type: object
+      properties:
+        id: { type: string }
+        channel_id: { type: string }
+        author_pubkey: { type: string, nullable: true, description: "Null on tombstoned posts for non-moderators" }
+        title: { type: string, nullable: true }
+        created_at: { type: integer }
+        edited_at: { type: integer, description: "Omitted when never edited" }
+        is_pinned: { type: boolean }
+        is_locked: { type: boolean }
+        reply_count: { type: integer }
+        last_activity_at: { type: integer }
+        is_deleted: { type: boolean }
+        unread_reply_count:
+          type: integer
+          description: Replies after the viewer's read cursor. Omitted when unauthenticated.
+
+    PostDetail:
+      allOf:
+        - $ref: '#/components/schemas/PostSummary'
+        - type: object
+          properties:
+            body: { type: string, nullable: true }
+            replies:
+              type: array
+              items: { $ref: '#/components/schemas/ReplyView' }
+            reply_cursor: { type: string, description: "Omitted when there are no more replies" }
+
+    ReplyView:
+      type: object
+      properties:
+        id: { type: string }
+        post_id: { type: string }
+        author_pubkey: { type: string, nullable: true }
+        body: { type: string, nullable: true, description: "Null on tombstoned replies" }
+        created_at: { type: integer }
+        edited_at: { type: integer, description: "Omitted when never edited" }
+        reply_to_id: { type: string, description: "Omitted on top-level replies" }
+        is_deleted: { type: boolean }
+
+    GameSessionV2:
+      type: object
+      properties:
+        session_id: { type: string }
+        game_id: { type: string }
+        channel_id: { type: string }
+        host_pubkey: { type: string }
+        status: { type: string, description: "e.g. lobby, active, ended, abandoned" }
+        players:
+          type: array
+          items:
+            type: object
+            properties:
+              pubkey: { type: string }
+              display_name: { type: string, nullable: true }
+              joined_at: { type: integer }
+              connected: { type: boolean }
+        max_players: { type: integer, nullable: true }
+        created_at: { type: integer }
+        last_event_at: { type: integer }
+
+    GameSessionV1:
+      type: object
+      description: Legacy channel-scoped session shape.
+      properties:
+        id: { type: string }
+        channel_id: { type: string }
+        game_id: { type: string }
+        host_pubkey: { type: string }
+        players: { type: array, items: { type: string } }
+        state_json: { type: object }
+        created_at: { type: string }
+        ended_at: { type: string, nullable: true }
+
     Error:
       type: object
       properties:
@@ -1744,6 +1852,2560 @@ paths:
         "401": { description: Missing/invalid token }
         "403": { description: Caller lacks admin permission }
 
+  # ── Auth (session renewal) ────────────────────────────────────────────────
+
+  /auth/renew:
+    post:
+      summary: Renew the current session token
+      description: |
+        Issues a fresh 30-day token while the current one is still live
+        (intended for bots renewing long-lived tokens proactively). Requires
+        both a valid Bearer token and a fresh challenge-response — same body
+        as `POST /auth/verify`; the pubkey must match the authenticated
+        identity. The old token is NOT invalidated.
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [public_key, challenge, signature]
+              properties:
+                public_key: { type: string }
+                challenge: { type: string }
+                signature: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  expires_at: { type: integer, description: "Unix timestamp" }
+
+  # ── Operational ───────────────────────────────────────────────────────────
+
+  /metrics:
+    get:
+      summary: Prometheus metrics (text exposition format)
+      security: []
+      tags: [Health]
+      responses:
+        "200":
+          description: "`text/plain` gauges/counters: online users, voice participants, game sessions, video channels, messages total, uptime, DB size."
+
+  /key-rotation:
+    get:
+      summary: Get the signed hub key-rotation payload
+      description: Serves `hub_rotation.json` if the hub has rotated its keypair, so federation peers can follow the rotation. 204 when no rotation exists.
+      security: []
+      tags: [Federation]
+      responses:
+        "200":
+          description: Signed rotation payload (JSON)
+        "204":
+          description: No rotation on record
+
+  # ── Admin settings ────────────────────────────────────────────────────────
+
+  /admin/settings/pow:
+    get:
+      summary: Get the minimum PoW level setting (admin)
+      tags: [Hub]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  min_pow_level: { type: integer }
+    patch:
+      summary: Update the minimum PoW level (admin)
+      tags: [Hub]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [min_pow_level]
+              properties:
+                min_pow_level: { type: integer }
+
+  /admin/settings/channel-depth:
+    get:
+      summary: Get the maximum channel nesting depth (admin)
+      tags: [Hub]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  max_channel_depth: { type: integer }
+    patch:
+      summary: Update the maximum channel nesting depth (admin)
+      tags: [Hub]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [max_channel_depth]
+              properties:
+                max_channel_depth: { type: integer }
+
+  /admin/settings/moderation:
+    patch:
+      summary: Set the auto-moderation webhook URL and HMAC secret (admin)
+      tags: [Hub]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                webhook_url: { type: string }
+                webhook_secret: { type: string }
+
+  /admin/settings/listing:
+    patch:
+      summary: Toggle whether the hub is listed for discovery (admin)
+      tags: [Hub]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [listed]
+              properties:
+                listed: { type: boolean }
+
+  /admin/settings/tags:
+    get:
+      summary: Get hub self-tags and NSFW flag (admin)
+      tags: [Hub]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tags: { type: array, items: { type: string } }
+                  nsfw: { type: boolean }
+    patch:
+      summary: Replace hub self-tags (admin)
+      description: >-
+        Max 12 tags, each 1–32 chars of `a-z0-9-` after normalisation.
+        Reserved words (verified, certified, official, partner, admin) are
+        rejected. Returns the normalised tag list.
+      tags: [Hub]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tags]
+              properties:
+                tags: { type: array, items: { type: string } }
+                nsfw: { type: boolean }
+
+  /admin/audit-log:
+    get:
+      summary: Cursor-paginated hub audit log (admin)
+      tags: [Moderation]
+      parameters:
+        - name: event_type
+          in: query
+          schema: { type: string }
+        - name: since
+          in: query
+          schema: { type: integer }
+          description: Unix timestamp lower bound
+        - name: until
+          in: query
+          schema: { type: integer }
+          description: Unix timestamp upper bound
+        - name: cursor
+          in: query
+          schema: { type: integer }
+          description: "`next_cursor` from the previous page"
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 200 }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        seq: { type: integer }
+                        event_type: { type: string }
+                        at: { type: integer }
+                        actor_pubkey: { type: string, nullable: true }
+                        target_pubkey: { type: string, nullable: true }
+                        channel_id: { type: string, nullable: true }
+                        payload: { type: object }
+                  next_cursor: { type: integer, nullable: true }
+
+  # ── Unread counts ─────────────────────────────────────────────────────────
+
+  /channels/unread:
+    get:
+      summary: Unread message counts for every visible channel
+      tags: [Channels]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    channel_id: { type: string }
+                    unread_count: { type: integer }
+
+  /channels/{channel_id}/read:
+    post:
+      summary: Mark a channel as read up to now
+      tags: [Channels]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+
+  # ── Message pins ──────────────────────────────────────────────────────────
+
+  /channels/{channel_id}/pins:
+    get:
+      summary: List pinned messages in a channel
+      tags: [Messages]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    message_id: { type: string }
+                    pinned_by: { type: string }
+                    pinned_at: { type: integer }
+                    message:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        content: { type: string }
+                        sender: { type: string }
+                        sender_name: { type: string, nullable: true }
+                        created_at: { type: integer }
+
+  /channels/{channel_id}/pins/{message_id}:
+    post:
+      summary: Pin a message (manage_messages)
+      tags: [Messages]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: message_id
+          in: path
+          required: true
+          schema: { type: string }
+    delete:
+      summary: Unpin a message (manage_messages)
+      tags: [Messages]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: message_id
+          in: path
+          required: true
+          schema: { type: string }
+
+  # ── File uploads ──────────────────────────────────────────────────────────
+
+  /channels/{channel_id}/upload:
+    post:
+      summary: Upload a file to a channel
+      description: >-
+        Multipart upload with the file in a `file` field. Max 25 MB
+        (512 KB for banner channels, which also only accept PNG/JPEG/GIF/WebP).
+        SVG is rejected. Allowed types otherwise: image/*, video/mp4,
+        application/pdf, text/plain.
+      tags: [Uploads]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  url: { type: string, description: "Path under /uploads/" }
+                  filename: { type: string }
+                  size_bytes: { type: integer }
+                  mime_type: { type: string }
+        "413":
+          description: File exceeds the size limit
+        "415":
+          description: Mime type not allowed
+
+  /uploads/{filename}:
+    get:
+      summary: Download an uploaded file
+      description: >-
+        Public — filenames are unguessable UUIDs. Always served with
+        `Content-Disposition: attachment`.
+      security: []
+      tags: [Uploads]
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: File bytes
+        "404":
+          description: File not found
+
+  # ── Content reporting ─────────────────────────────────────────────────────
+
+  /messages/{id}/report:
+    post:
+      summary: Report a message for moderator review
+      tags: [Moderation]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        "200":
+          description: Report recorded
+        "429":
+          description: Caller already reported this message
+
+  /admin/reports:
+    get:
+      summary: List message reports (admin)
+      tags: [Moderation]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, default: pending, enum: [pending, reviewed] }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    message_id: { type: string }
+                    message_content: { type: string, nullable: true }
+                    channel_id: { type: string }
+                    reporter_pubkey: { type: string }
+                    reason: { type: string }
+                    reported_at: { type: integer }
+                    status: { type: string }
+
+  /admin/reports/{id}/review:
+    post:
+      summary: Review a report — dismiss, delete the message, or ban the sender (admin)
+      tags: [Moderation]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [dismiss, delete_message, ban_user] }
+                note: { type: string }
+
+  # ── Search ────────────────────────────────────────────────────────────────
+
+  /search:
+    get:
+      summary: Full-text search across messages
+      description: >-
+        Searches the hub message index across all text channels the caller is
+        not banned from. Queries shorter than 2 characters return an empty
+        array.
+      tags: [Search]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    message_id: { type: string }
+                    channel_id: { type: string }
+                    channel_name: { type: string }
+                    sender: { type: string }
+                    sender_name: { type: string, nullable: true }
+                    content_preview: { type: string }
+                    created_at: { type: integer }
+
+  # ── Custom emojis ─────────────────────────────────────────────────────────
+
+  /emojis:
+    get:
+      summary: List custom emojis
+      security: []
+      tags: [Emojis]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    name: { type: string }
+                    url: { type: string, description: "Path to /emojis/{id}/image" }
+
+  /emojis/{id}/image:
+    get:
+      summary: Get the emoji image bytes
+      security: []
+      tags: [Emojis]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Image bytes with the stored mime type, cacheable for 24h
+
+  /admin/emojis:
+    post:
+      summary: Upload a custom emoji (admin)
+      tags: [Emojis]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, mime, data_b64]
+              properties:
+                name: { type: string }
+                mime: { type: string }
+                data_b64: { type: string, description: "Base64 image data, max ~90KB encoded" }
+      responses:
+        "201":
+          description: Emoji created
+
+  /admin/emojis/{id}:
+    delete:
+      summary: Delete a custom emoji (admin)
+      tags: [Emojis]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+
+  # ── Events / calendar ─────────────────────────────────────────────────────
+
+  /events:
+    get:
+      summary: List hub events with RSVP counts
+      tags: [Events]
+      parameters:
+        - name: upcoming
+          in: query
+          schema: { type: boolean, default: false }
+          description: Only events starting now or later
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    channel_id: { type: string }
+                    creator_pubkey: { type: string }
+                    title: { type: string }
+                    description: { type: string }
+                    starts_at: { type: integer }
+                    ends_at: { type: integer, nullable: true }
+                    location: { type: string, nullable: true }
+                    created_at: { type: integer }
+                    rsvp_counts:
+                      type: object
+                      properties:
+                        going: { type: integer }
+                        maybe: { type: integer }
+                        not_going: { type: integer }
+    post:
+      summary: Create an event (create_events)
+      description: Also posts a system card message into the target channel.
+      tags: [Events]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel_id, title, starts_at]
+              properties:
+                channel_id: { type: string }
+                title: { type: string }
+                description: { type: string }
+                starts_at: { type: integer, description: "Unix timestamp" }
+                ends_at: { type: integer }
+                location: { type: string }
+
+  /events/{event_id}:
+    get:
+      summary: Get an event with RSVP counts
+      tags: [Events]
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema: { type: string }
+    put:
+      summary: Update an event (creator or admin)
+      tags: [Events]
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                description: { type: string }
+                starts_at: { type: integer }
+                ends_at: { type: integer }
+                location: { type: string }
+    delete:
+      summary: Delete an event (creator or admin)
+      tags: [Events]
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /events/{event_id}/rsvp:
+    post:
+      summary: RSVP to an event (upserts the caller's status)
+      tags: [Events]
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [going, maybe, not_going] }
+
+  /events/{event_id}/rsvps:
+    get:
+      summary: List individual RSVPs for an event
+      tags: [Events]
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    user_pubkey: { type: string }
+                    status: { type: string }
+
+  # ── Polls ─────────────────────────────────────────────────────────────────
+
+  /channels/{channel_id}/polls:
+    post:
+      summary: Create a poll in a channel (send_messages)
+      description: Also posts a system card message into the channel. At least 2 options required.
+      tags: [Polls]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question, options]
+              properties:
+                question: { type: string }
+                options:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, text]
+                    properties:
+                      id: { type: string }
+                      text: { type: string }
+                ends_at: { type: integer, nullable: true }
+                max_choices: { type: integer, default: 1 }
+
+  /polls/{poll_id}:
+    get:
+      summary: Get a poll with vote totals and the caller's vote
+      tags: [Polls]
+      parameters:
+        - name: poll_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  channel_id: { type: string }
+                  creator_pubkey: { type: string }
+                  question: { type: string }
+                  options: { type: string, description: "JSON-encoded array of {id, text}" }
+                  ends_at: { type: integer, nullable: true }
+                  max_choices: { type: integer }
+                  created_at: { type: integer }
+                  totals:
+                    type: object
+                    additionalProperties: { type: integer }
+                    description: option_id → vote count
+                  your_vote:
+                    type: array
+                    items: { type: string }
+                    nullable: true
+    delete:
+      summary: Delete a poll (creator or admin)
+      tags: [Polls]
+      parameters:
+        - name: poll_id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /polls/{poll_id}/vote:
+    post:
+      summary: Cast or replace the caller's vote
+      tags: [Polls]
+      parameters:
+        - name: poll_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [option_ids]
+              properties:
+                option_ids:
+                  type: array
+                  items: { type: string }
+                  description: Must not exceed the poll's max_choices
+      responses:
+        "204":
+          description: Vote recorded; updated totals broadcast over WS
+        "410":
+          description: Poll has ended
+
+  # ── Forum ─────────────────────────────────────────────────────────────────
+
+  /channels/{channel_id}/posts:
+    get:
+      summary: List posts in a forum channel (pinned first, then by activity)
+      tags: [Forum]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: cursor
+          in: query
+          schema: { type: string }
+          description: Opaque cursor from the previous page
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 100 }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  posts:
+                    type: array
+                    items: { $ref: '#/components/schemas/PostSummary' }
+                  cursor: { type: string, description: "Omitted on the last page" }
+    post:
+      summary: Create a post (create_posts)
+      tags: [Forum]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, body]
+              properties:
+                title: { type: string }
+                body: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostDetail' }
+
+  /channels/{channel_id}/posts/search:
+    get:
+      summary: Full-text search within a forum channel
+      tags: [Forum]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        post_id: { type: string }
+                        title_snippet: { type: string }
+                        body_snippet: { type: string }
+                        is_reply: { type: boolean }
+                        reply_id: { type: string }
+                  cursor: { type: string }
+
+  /channels/{channel_id}/posts/{post_id}:
+    get:
+      summary: Get a post with a page of replies
+      tags: [Forum]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: post_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: after
+          in: query
+          schema: { type: string }
+          description: Reply ID cursor — return replies created after it
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 100 }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostDetail' }
+    patch:
+      summary: Edit a post's title and/or body (author or manage_posts)
+      tags: [Forum]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: post_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                body: { type: string }
+    delete:
+      summary: Delete a post — soft delete / tombstone (author or manage_posts)
+      tags: [Forum]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: post_id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /channels/{channel_id}/posts/{post_id}/replies:
+    post:
+      summary: Reply to a post (send_messages; locked posts require manage_posts)
+      tags: [Forum]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: post_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string }
+                reply_to_id: { type: string, description: "Optional parent reply within the same post" }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReplyView' }
+
+  /channels/{channel_id}/posts/{post_id}/replies/{reply_id}:
+    patch:
+      summary: Edit a reply (author or manage_posts)
+      tags: [Forum]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: post_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: reply_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string }
+    delete:
+      summary: Delete a reply — soft delete (author or manage_posts)
+      tags: [Forum]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: post_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: reply_id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /channels/{channel_id}/posts/{post_id}/pin:
+    post:
+      summary: Pin a post (manage_posts)
+      tags: [Forum]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: post_id
+          in: path
+          required: true
+          schema: { type: string }
+    delete:
+      summary: Unpin a post (manage_posts)
+      tags: [Forum]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: post_id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /channels/{channel_id}/posts/{post_id}/lock:
+    post:
+      summary: Lock a post against new replies (manage_posts)
+      tags: [Forum]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: post_id
+          in: path
+          required: true
+          schema: { type: string }
+    delete:
+      summary: Unlock a post (manage_posts)
+      tags: [Forum]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: post_id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /channels/{channel_id}/posts/{post_id}/read:
+    post:
+      summary: Mark a post's replies as read up to now
+      tags: [Forum]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: post_id
+          in: path
+          required: true
+          schema: { type: string }
+
+  # ── Channel-scoped moderation (pubkey field) ──────────────────────────────
+
+  /channels/{channel_id}/bans:
+    get:
+      summary: List channel bans (ban_members)
+      tags: [Moderation]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    channel_id: { type: string }
+                    pubkey: { type: string }
+                    banned_by: { type: string }
+                    banned_at: { type: string }
+    post:
+      summary: Ban a user from a channel (ban_members)
+      tags: [Moderation]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pubkey]
+              properties:
+                pubkey: { type: string }
+
+  /channels/{channel_id}/bans/{pubkey}:
+    delete:
+      summary: Remove a channel ban (ban_members)
+      tags: [Moderation]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: pubkey
+          in: path
+          required: true
+          schema: { type: string }
+
+  /channels/{channel_id}/voice-mutes:
+    get:
+      summary: List per-channel voice mutes (mute_members)
+      tags: [Moderation]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    channel_id: { type: string }
+                    pubkey: { type: string }
+                    muted_by: { type: string }
+                    muted_at: { type: string }
+    post:
+      summary: Voice-mute a user in a channel (mute_members)
+      tags: [Moderation]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pubkey]
+              properties:
+                pubkey: { type: string }
+
+  /channels/{channel_id}/voice-mutes/{pubkey}:
+    delete:
+      summary: Remove a per-channel voice mute (mute_members)
+      tags: [Moderation]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: pubkey
+          in: path
+          required: true
+          schema: { type: string }
+
+  /channels/{channel_id}/raise-hand:
+    post:
+      summary: Raise hand to request talk permission
+      tags: [Moderation]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  channel_id: { type: string }
+                  pubkey: { type: string }
+                  requested_at: { type: string }
+
+  /channels/{channel_id}/raise-hand/{pubkey}:
+    delete:
+      summary: Lower a hand (own hand, or anyone's with mute_members)
+      tags: [Moderation]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: pubkey
+          in: path
+          required: true
+          schema: { type: string }
+
+  /channels/{channel_id}/raise-hands:
+    get:
+      summary: List raised hands in a channel (oldest first)
+      tags: [Moderation]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+
+  # ── Badges (hub-to-hub attestations) ──────────────────────────────────────
+
+  /badges:
+    get:
+      summary: List badges this hub holds (admin)
+      tags: [Badges]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    issuer_pubkey: { type: string }
+                    issuer_url: { type: string }
+                    label: { type: string }
+                    payload: { $ref: '#/components/schemas/BadgePayload' }
+                    accepted_at: { type: string }
+
+  /badges/{id}:
+    delete:
+      summary: Delete a held badge (admin)
+      tags: [Badges]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /badges/pending:
+    get:
+      summary: List pending badge offers from other hubs (admin)
+      tags: [Badges]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    from_hub_pubkey: { type: string }
+                    from_hub_url: { type: string }
+                    label: { type: string }
+                    note: { type: string, nullable: true }
+                    payload: { $ref: '#/components/schemas/BadgePayload' }
+                    created_at: { type: string }
+
+  /badges/pending/{id}/accept:
+    post:
+      summary: Accept a pending badge offer after signature re-verification (admin)
+      tags: [Badges]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /badges/pending/{id}/decline:
+    post:
+      summary: Decline and delete a pending badge offer (admin)
+      tags: [Badges]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /admin/badges/issue:
+    post:
+      summary: Issue a badge to another hub (admin)
+      description: >-
+        Fetches the recipient hub's /info, signs the badge payload with this
+        hub's keypair, delivers it to the recipient's
+        /federation/badge-offer, and records it locally.
+      tags: [Badges]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recipient_hub_url, label]
+              properties:
+                recipient_hub_url: { type: string }
+                label: { type: string }
+                note: { type: string }
+                expires_days: { type: integer }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  recipient_hub_url: { type: string }
+                  recipient_hub_pubkey: { type: string }
+                  label: { type: string }
+                  payload: { $ref: '#/components/schemas/BadgePayload' }
+                  issued_at: { type: string }
+                  expires_at: { type: string, nullable: true }
+        "502":
+          description: Recipient hub unreachable
+
+  /admin/badges/issued:
+    get:
+      summary: List badges this hub has issued (admin)
+      tags: [Badges]
+
+  /admin/badges/issued/{id}/revoke:
+    delete:
+      summary: Revoke an issued badge (admin)
+      description: Sets `revoked_at`; the revocation appears in /federation/badge-revocations.
+      tags: [Badges]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /federation/badge-offer:
+    post:
+      summary: Receive a badge offer from another hub
+      description: Hub-to-hub. The Ed25519 signature over the payload is the credential; no Bearer token.
+      security: []
+      tags: [Badges]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [from_hub_pubkey, from_hub_url, label, payload, signature]
+              properties:
+                from_hub_pubkey: { type: string }
+                from_hub_url: { type: string }
+                label: { type: string }
+                note: { type: string, nullable: true }
+                payload: { type: string, description: "Canonical BadgePayload JSON string" }
+                signature: { type: string, description: "Hex Ed25519 signature over payload bytes" }
+
+  /federation/badge-revocations:
+    get:
+      summary: List badges this hub has revoked (public, polled by other hubs)
+      security: []
+      tags: [Badges]
+      parameters:
+        - name: since
+          in: query
+          schema: { type: string }
+          description: ISO-8601 timestamp — only revocations at or after this time
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    recipient_hub_pubkey: { type: string }
+                    label: { type: string }
+                    revoked_at: { type: string }
+
+  # ── Certifications ────────────────────────────────────────────────────────
+
+  /admin/certs:
+    get:
+      summary: List all cert issuances (admin)
+      tags: [Certifications]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    subject_pubkey: { type: string }
+                    pow_level: { type: integer, nullable: true }
+                    member_since: { type: integer }
+                    issued_at: { type: integer }
+                    expires_at: { type: integer }
+                    revoked_at: { type: integer, nullable: true }
+                    standing: { type: string, enum: [good, revoked] }
+                    payload: { $ref: '#/components/schemas/CertPayload' }
+
+  /admin/certs/{pubkey}:
+    post:
+      summary: Manually issue a cert for a user (admin)
+      tags: [Certifications]
+      parameters:
+        - name: pubkey
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Certification' }
+        "403":
+          description: User not approved or banned
+
+  /admin/certs/{pubkey}/revoke:
+    post:
+      summary: Revoke a user's certs (admin)
+      description: Marks existing certs revoked and re-issues a short-lived standing=revoked cert so pull-path verifiers see it.
+      tags: [Certifications]
+      parameters:
+        - name: pubkey
+          in: path
+          required: true
+          schema: { type: string }
+
+  /admin/settings/certs:
+    get:
+      summary: Get certification settings (admin)
+      tags: [Certifications]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cert_mode: { type: string, enum: [none, any, trusted] }
+                  cert_auto_issue: { type: boolean }
+                  cert_min_age_days: { type: integer }
+                  cert_validity_days: { type: integer }
+                  cert_trusted_issuers: { type: array, items: { type: string } }
+    patch:
+      summary: Update certification settings (admin)
+      description: All fields optional; string-typed values are stored as hub settings.
+      tags: [Certifications]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cert_auto_issue: { type: string }
+                cert_standing_days: { type: string }
+                cert_validity_days: { type: string }
+                cert_mode: { type: string, enum: [none, any, trusted] }
+                cert_trusted_issuers:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      pubkey: { type: string }
+                      url: { type: string }
+                      label: { type: string }
+                cert_require:
+                  type: object
+                  properties:
+                    min_pow_level: { type: integer }
+                    min_member_since_days: { type: integer }
+                cert_min_pow_level: { type: string }
+
+  /identity/{pubkey}/certs:
+    get:
+      summary: List valid certs for a user (public)
+      description: >-
+        Returns non-revoked, non-expired certs this hub issued for the user
+        plus cross-hub certs deposited into the user's portfolio. Used by
+        receiving hubs to pull certs directly from the issuer.
+      security: []
+      tags: [Certifications]
+      parameters:
+        - name: pubkey
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Certification' }
+
+  /certs/revocations:
+    get:
+      summary: List cert revocations (public, polled by other hubs)
+      security: []
+      tags: [Certifications]
+      parameters:
+        - name: since
+          in: query
+          schema: { type: integer }
+          description: Unix timestamp — only revocations at or after this time
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    subject_pubkey: { type: string }
+                    revoked_at: { type: integer }
+
+  # ── Games ─────────────────────────────────────────────────────────────────
+
+  /admin/games:
+    get:
+      summary: Full game inventory with enable state, channel scope, and capabilities (manage_games)
+      tags: [Games]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  games:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        name: { type: string }
+                        entry_url: { type: string }
+                        description: { type: string }
+                        thumbnail_url: { type: string }
+                        version: { type: string }
+                        author: { type: string }
+                        min_players: { type: integer }
+                        max_players: { type: integer }
+                        enabled: { type: boolean }
+                        enabled_by: { type: string, nullable: true }
+                        enabled_at: { type: string, nullable: true }
+                        channel_scope:
+                          type: array
+                          items: { type: string }
+                          description: Channel IDs the game is restricted to; empty = all channels
+                        capabilities: { type: array, items: { type: string } }
+    post:
+      summary: Install a game with an inline manifest (manage_games)
+      description: "`id` defaults to a hash of `entry_url`. Re-installing with the same id updates the manifest."
+      tags: [Games]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, entry_url]
+              properties:
+                name: { type: string }
+                entry_url: { type: string }
+                id: { type: string }
+                description: { type: string }
+                version: { type: string, default: "1.0.0" }
+                thumbnail_url: { type: string }
+                author: { type: string }
+                min_players: { type: integer, default: 1 }
+                max_players: { type: integer, default: 1 }
+      responses:
+        "201":
+          description: Installed game manifest
+
+  /admin/games/{id}/channels:
+    put:
+      summary: Replace the channel scope for a game (manage_games)
+      tags: [Games]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel_ids]
+              properties:
+                channel_ids:
+                  type: array
+                  items: { type: string }
+                  description: Empty array = available in all channels
+
+  /admin/games/{id}/permissions:
+    put:
+      summary: Replace the capability grants for a game (manage_games)
+      tags: [Games]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [capabilities]
+              properties:
+                capabilities:
+                  type: array
+                  items: { type: string, enum: [post_message, read_channel_history, list_channel_users] }
+                  description: Unknown capability names are silently dropped
+
+  /games:
+    get:
+      summary: List games enabled on this hub (player-facing)
+      tags: [Games]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  games:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        name: { type: string }
+                        entry_url: { type: string }
+                        description: { type: string }
+                        thumbnail_url: { type: string }
+                        version: { type: string }
+                        author: { type: string }
+                        min_players: { type: integer }
+                        max_players: { type: integer }
+
+  /games/{id}/enable:
+    post:
+      summary: Enable a game on this hub (manage_games)
+      description: On farm-attached hubs the manifest is fetched from the farm and cached; otherwise the game must already be installed locally.
+      tags: [Games]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+    delete:
+      summary: Disable a game and clear its channel scope (manage_games)
+      tags: [Games]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /games/sessions:
+    get:
+      summary: List live game sessions
+      tags: [Games]
+      parameters:
+        - name: channel_id
+          in: query
+          schema: { type: string }
+          description: Filter to one channel
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items: { $ref: '#/components/schemas/GameSessionV2' }
+
+  /games/sessions/{session_id}:
+    get:
+      summary: Get a live session
+      tags: [Games]
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GameSessionV2' }
+        "410":
+          description: Session has ended
+    delete:
+      summary: Force-end a session (host or admin)
+      tags: [Games]
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /games/sessions/{session_id}/join:
+    post:
+      summary: Join a session
+      tags: [Games]
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GameSessionV2' }
+        "409":
+          description: Session is full
+        "410":
+          description: Session has ended
+
+  /games/sessions/{session_id}/leave:
+    post:
+      summary: Leave a session (host role migrates if the host leaves)
+      tags: [Games]
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /games/{game_id}/sessions:
+    post:
+      summary: Create a session for a game (start_game)
+      tags: [Games]
+      parameters:
+        - name: game_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel_id]
+              properties:
+                channel_id: { type: string }
+                max_players: { type: integer, description: "Defaults to the game manifest's max_players" }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GameSessionV2' }
+
+  # ── Games (legacy channel-scoped sessions) ────────────────────────────────
+
+  /channels/{channel_id}/game-sessions:
+    post:
+      summary: Create a game session in a channel — legacy shape (start_game)
+      tags: [Games]
+      parameters:
+        - name: channel_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [game_id, channel_id]
+              properties:
+                game_id: { type: string }
+                channel_id: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GameSessionV1' }
+
+  /game-sessions/{session_id}:
+    get:
+      summary: Get a legacy session
+      tags: [Games]
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GameSessionV1' }
+    delete:
+      summary: End a legacy session (host or admin)
+      tags: [Games]
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /game-sessions/{session_id}/join:
+    post:
+      summary: Join a legacy session
+      tags: [Games]
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /game-sessions/{session_id}/state:
+    post:
+      summary: Patch the session's opaque state JSON (host or admin)
+      description: Top-level keys of `patch` are merged into the stored state and the patch is broadcast over WS.
+      tags: [Games]
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [patch]
+              properties:
+                patch: { type: object }
+
+  /game-sessions/{session_id}/shared-kv/{key}:
+    get:
+      summary: Read a shared key-value entry for a session
+      tags: [Games]
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: key
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id: { type: string }
+                  key: { type: string }
+                  value: { type: string }
+                  updated_at: { type: string }
+    post:
+      summary: Set a shared key-value entry (any member, session must be open)
+      tags: [Games]
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: key
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [value]
+              properties:
+                value: { type: string }
+
+  # ── Recovery contacts / key rotation ──────────────────────────────────────
+
+  /recovery/contacts:
+    get:
+      summary: Get the caller's recovery contacts and threshold
+      tags: [Recovery]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  owner_pubkey: { type: string }
+                  contacts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        pubkey: { type: string }
+                        added_at: { type: integer }
+                  threshold: { type: integer }
+    put:
+      summary: Replace the caller's recovery contact list
+      description: Max 5 contacts; threshold must be between 1 and the contact count; the caller cannot be their own contact.
+      tags: [Recovery]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contacts, threshold]
+              properties:
+                contacts: { type: array, items: { type: string } }
+                threshold: { type: integer }
+
+  /recovery/contacts/{pubkey}:
+    delete:
+      summary: Remove one recovery contact
+      tags: [Recovery]
+      parameters:
+        - name: pubkey
+          in: path
+          required: true
+          schema: { type: string }
+
+  /recovery/rotate-key:
+    post:
+      summary: Open a key-rotation request with inline attestations
+      description: >-
+        Called by the NEW key — no Bearer token required. Attestations from
+        configured recovery contacts are validated; once the count reaches the
+        owner's threshold the request flips to `ready_for_review` for admin
+        action.
+      security: []
+      tags: [Recovery]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [old_pubkey, new_pubkey, attestations]
+              properties:
+                old_pubkey: { type: string }
+                new_pubkey: { type: string }
+                reason: { type: string }
+                attestations:
+                  type: array
+                  items:
+                    type: object
+                    required: [attester, signature]
+                    properties:
+                      attester: { type: string }
+                      signature: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  old_pubkey: { type: string }
+                  new_pubkey: { type: string }
+                  status: { type: string, enum: [pending, ready_for_review] }
+                  created_at: { type: integer }
+                  attestation_count: { type: integer }
+
+  /recovery/requests:
+    get:
+      summary: List the caller's own rotation requests
+      tags: [Recovery]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    new_pubkey: { type: string }
+                    status: { type: string }
+                    created_at: { type: integer }
+                    attestation_count: { type: integer }
+                    threshold: { type: integer }
+
+  /admin/recovery/pending:
+    get:
+      summary: List rotation requests awaiting admin review (admin)
+      tags: [Recovery]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    old_pubkey: { type: string }
+                    new_pubkey: { type: string }
+                    reason: { type: string, nullable: true }
+                    status: { type: string }
+                    created_at: { type: integer }
+                    attestation_count: { type: integer }
+
+  /admin/recovery/{id}/approve:
+    post:
+      summary: Approve a rotation request (admin)
+      description: Transfers roles to the new key and revokes all sessions for the old key; the user re-authenticates with the new key.
+      tags: [Recovery]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /admin/recovery/{id}/deny:
+    post:
+      summary: Deny a rotation request (admin)
+      tags: [Recovery]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+
+  # ── Incoming webhooks ─────────────────────────────────────────────────────
+
+  /admin/webhooks:
+    post:
+      summary: Create an incoming webhook for a channel (admin)
+      description: The returned `webhook_url` embeds the secret token and is shown **once** — only its hash is stored.
+      tags: [Webhooks]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel_id, display_name]
+              properties:
+                channel_id: { type: string }
+                display_name: { type: string }
+                avatar_url: { type: string }
+                rate_limit: { type: integer, default: 5 }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  webhook_url: { type: string, description: "Full URL including the secret token" }
+                  display_name: { type: string }
+
+  /admin/webhooks/{id}:
+    delete:
+      summary: Deactivate a webhook (admin)
+      tags: [Webhooks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+
+  /webhooks/{id}/{token}:
+    post:
+      summary: Post a message via an incoming webhook
+      description: No Authorization header — the token in the URL is the credential (compared in constant time against the stored hash).
+      security: []
+      tags: [Webhooks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: { type: string }
+                username: { type: string, description: "Overrides the webhook's display name" }
+                avatar_url: { type: string }
+                embeds: { type: object }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, description: "Created message ID" }
+        "401":
+          description: Invalid webhook token
+
+  # ── Bots (external bot system) ────────────────────────────────────────────
+
+  /bots:
+    get:
+      summary: List external bots on this hub (any member)
+      tags: [Bots]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    pubkey: { type: string }
+                    name: { type: string }
+                    avatar_url: { type: string }
+                    description: { type: string }
+                    last_seen_at: { type: integer }
+                    webhook_url: { type: string }
+                    commands:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          name: { type: string }
+                          description: { type: string }
+    post:
+      summary: Invite an external bot by pubkey (manage_roles or admin)
+      tags: [Bots]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pubkey]
+              properties:
+                pubkey: { type: string, description: "64-hex-char Ed25519 public key" }
+                note: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invite_token: { type: string }
+
+  /bots/{pubkey}:
+    delete:
+      summary: Remove an external bot (admin)
+      tags: [Bots]
+      parameters:
+        - name: pubkey
+          in: path
+          required: true
+          schema: { type: string }
+
+  /bots/accept-invite:
+    post:
+      summary: Bot accepts an invite by signing the invite token
+      security: []
+      tags: [Bots]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pubkey, signature_over_token, bot_meta]
+              properties:
+                pubkey: { type: string }
+                signature_over_token: { type: string, description: "Hex Ed25519 signature over the invite token" }
+                bot_meta:
+                  type: object
+                  required: [name]
+                  properties:
+                    name: { type: string }
+                    avatar_url: { type: string }
+                    webhook_url: { type: string }
+                    description: { type: string }
+                    homepage_url: { type: string }
+                    commands: { type: array, items: { type: object } }
+                    capabilities: { type: array, items: { type: string } }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: accepted }
+        "410":
+          description: Invite token has expired
+
+  /bots/me:
+    get:
+      summary: Bot fetches its own profile and commands (bot identity only)
+      tags: [Bots]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pubkey: { type: string }
+                  name: { type: string }
+                  avatar_url: { type: string }
+                  description: { type: string }
+                  webhook_url: { type: string }
+                  homepage_url: { type: string }
+                  capabilities: { type: array, items: { type: string } }
+                  commands: { type: array, items: { type: object } }
+        "403":
+          description: Caller is not a bot identity
+
+  /bots/me/profile:
+    put:
+      summary: Bot replaces its own profile (bot identity only)
+      tags: [Bots]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                avatar_url: { type: string }
+                webhook_url: { type: string }
+                description: { type: string }
+                homepage_url: { type: string }
+                capabilities: { type: array, items: { type: string } }
+
+  /bots/me/commands:
+    put:
+      summary: Bot replaces its slash-command list (bot identity only)
+      tags: [Bots]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [commands]
+              properties:
+                commands:
+                  type: array
+                  items:
+                    type: object
+                    required: [name, description]
+                    properties:
+                      name: { type: string }
+                      description: { type: string }
+                      args: { type: string }
+                      scope: { type: string }
+                      privileged: { type: boolean }
+                      cooldown_seconds: { type: integer }
+
+  /bots/me/subscriptions:
+    put:
+      summary: Bot replaces its event subscriptions (bot identity only)
+      tags: [Bots]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subscriptions]
+              properties:
+                subscriptions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      event: { type: string }
+                      channel_id: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: integer }
+
+  # ── Group DM membership / sender keys ─────────────────────────────────────
+
+  /conversations/{conversation_id}/members:
+    post:
+      summary: Add a member to a group conversation (members only; not 1-on-1 DMs)
+      tags: [DMs]
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [public_key]
+              properties:
+                public_key: { type: string }
+
+  /conversations/{conversation_id}/members/{pubkey}:
+    delete:
+      summary: Leave a group conversation (callers may only remove themselves)
+      tags: [DMs]
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: pubkey
+          in: path
+          required: true
+          schema: { type: string }
+
+  /conversations/{conversation_id}/sender-keys:
+    get:
+      summary: Fetch wrapped group sender keys addressed to the caller
+      tags: [DMs]
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    sender_pubkey: { type: string }
+                    sender_key_version: { type: integer }
+                    iteration: { type: integer }
+                    wrapped_key_hex: { type: string }
+                    wrap_nonce_hex: { type: string }
+                    created_at: { type: integer }
+    put:
+      summary: Distribute the caller's group sender key (group conversations only)
+      tags: [DMs]
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sender_key_version, recipients, signature_hex]
+              properties:
+                sender_key_version: { type: integer }
+                recipients:
+                  type: array
+                  items:
+                    type: object
+                    required: [recipient_pubkey, wrapped_key_hex, wrap_nonce_hex, iteration]
+                    properties:
+                      recipient_pubkey: { type: string }
+                      wrapped_key_hex: { type: string }
+                      wrap_nonce_hex: { type: string }
+                      iteration: { type: integer }
+                signature_hex: { type: string, description: "Ed25519 signature over canonical bytes" }
+
+  # ── DM block set ──────────────────────────────────────────────────────────
+
+  /identity/dm-blocks:
+    get:
+      summary: Get the caller's DM-block set
+      tags: [Identity]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pubkeys: { type: array, items: { type: string } }
+    put:
+      summary: Replace the caller's DM-block set
+      tags: [Identity]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pubkeys]
+              properties:
+                pubkeys: { type: array, items: { type: string } }
+
+  # ── Alliances (hub-to-hub join + push invite) ─────────────────────────────
+
+  /alliances/{alliance_id}/join:
+    post:
+      summary: Remote hub joins an alliance with an invite token
+      description: Hub-to-hub. The invite token (this hub's signature over the alliance id) is the credential; no Bearer token.
+      security: []
+      tags: [Alliances]
+      parameters:
+        - name: alliance_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [invite_token, hub_url]
+              properties:
+                invite_token: { type: string }
+                hub_url: { type: string }
+
+  /alliances/{alliance_id}/push-invite:
+    post:
+      summary: Push a direct alliance invite to another hub (admin)
+      tags: [Alliances]
+      parameters:
+        - name: alliance_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target_hub_url, own_hub_url]
+              properties:
+                target_hub_url: { type: string }
+                own_hub_url: { type: string }
+                message: { type: string, nullable: true }
+
+  # ── Join links ────────────────────────────────────────────────────────────
+
+  /join/{code}:
+    get:
+      summary: Preview an invite (public)
+      security: []
+      tags: [Invites]
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hub_name: { type: string }
+                  member_count: { type: integer }
+                  code: { type: string }
+        "404":
+          description: Invite not found
+        "410":
+          description: Invite expired or fully used
+    post:
+      summary: Redeem an invite (requires session token)
+      description: Increments the invite's use count and auto-approves the caller, bypassing the approval queue.
+      tags: [Invites]
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Joined
+        "410":
+          description: Invite expired or fully used
+
+  # ── User profiles ─────────────────────────────────────────────────────────
+
+  /users/{pubkey}/profile:
+    get:
+      summary: Get a user's hub profile (roles + badges)
+      tags: [Users]
+      parameters:
+        - name: pubkey
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  public_key: { type: string }
+                  display_name: { type: string, nullable: true }
+                  avatar: { type: string, nullable: true }
+                  joined_at: { type: integer }
+                  roles:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        name: { type: string }
+                        color: { type: string, nullable: true }
+                  badges:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        label: { type: string }
+
+  # ── Federation (discovery + ban list) ─────────────────────────────────────
+
+  /federation/listing:
+    get:
+      summary: Hub discovery metadata (public)
+      description: Always returns 200 with all fields, even when `listed` is false, so clients can probe any hub URL.
+      security: []
+      tags: [Federation]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: { type: string }
+                  description: { type: string, nullable: true }
+                  public_key: { type: string }
+                  hub_url: { type: string }
+                  tags: { type: array, items: { type: string } }
+                  member_count_approx: { type: integer, description: "Rounded down to the nearest 10" }
+                  listed: { type: boolean }
+
+  /federation/banlist:
+    get:
+      summary: Signed export of this hub's ban list (public)
+      description: Subscribing hubs poll this feed; the Ed25519 signature is the authority.
+      security: []
+      tags: [Federation]
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payload:
+                    type: object
+                    properties:
+                      issuer_pubkey: { type: string }
+                      issued_at: { type: integer }
+                      entries:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            master_pubkey: { type: string }
+                            reason: { type: string, nullable: true }
+                            added_at: { type: integer }
+                  signature: { type: string }
+
 tags:
   - name: Health
   - name: Auth
@@ -1773,3 +4435,22 @@ tags:
   - name: Federation
     description: Hub-to-hub federation endpoints.
   - name: WebSocket
+  - name: Voice
+  - name: Badges
+    description: Hub-to-hub badge attestations (issue, accept, revoke).
+  - name: Certifications
+    description: Signed user certifications and admission policy.
+  - name: Events
+    description: Hub calendar events with RSVPs.
+  - name: Polls
+  - name: Forum
+    description: Threaded posts in forum-type channels.
+  - name: Games
+    description: Game install/enable (Tier 1) and live sessions (Tier 2 + legacy).
+  - name: Recovery
+    description: Social-recovery contacts and key rotation.
+  - name: Webhooks
+    description: Incoming webhooks for posting messages from external services.
+  - name: Search
+  - name: Emojis
+  - name: Uploads
