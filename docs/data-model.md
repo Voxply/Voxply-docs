@@ -19,8 +19,16 @@ schema — read the migrations file for column-level detail.
   category channel is unified text + voice (see [decisions.md](decisions.md)).
 - `messages` — local channel messages (text history)
 - `reactions` — emoji × message × user
-- (attachments are stored inline as a JSON column on `messages`,
-  not a side table)
+- `upload_files` — metadata for files uploaded via
+  `POST /channels/:channel_id/upload` (multipart, 25 MB cap; bytes live
+  on disk under `VOXPLY_UPLOADS_DIR`, default `./uploads/`, served back
+  at `GET /uploads/:filename`). Clients reference an upload by URL via
+  the `RemoteAttachment` wire type. Channels can point at an upload as
+  their banner via `channels.banner_file_id`.
+- Small attachments can also ride **inline** as a JSON column on
+  `messages` (`Attachment` wire type: base64 bytes, 3 MB cap summed per
+  message — see `hub/src/routes/chat_models.rs` in Voxply-server). The
+  upload path is the one for anything bigger.
 - (mention tracking is computed from message bodies, not a separate
   table)
 
@@ -43,6 +51,11 @@ There's no persistent record of who was in voice when.
 
 ### Notifications & prefs
 - `notification_settings` — three-state per scope (all / mentions / silent)
+
+This list is a map of the core concerns, not an inventory — later
+features added more tables (`channel_pins`, `polls`/`poll_votes`,
+`hub_events`/`event_rsvps`, forum `posts`, `post_reads`, recovery and
+pairing tables, …). The migrations file is the authoritative list.
 
 ## Conventions
 

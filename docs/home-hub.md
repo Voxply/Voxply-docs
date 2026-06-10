@@ -282,7 +282,7 @@ Voxply-server; paths under `desktop/` live in Voxply-desktop.
   inbox endpoints distinct from the federation DM endpoints.
 - `hub/src/dm_worker.rs` (Voxply-server) — list-walking failover, plus
   mirror-forward step for DMs accepted by any home hub.
-- `hub/src/migrations.rs` (Voxply-server) — `subkey_certs`,
+- `hub/src/db/migrations.rs` (Voxply-server) — `subkey_certs`,
   `revocations`, `pairing_offers`, `prefs_blobs`,
   `home_hub_designations`, `dm_inbox_canonical`, `dm_mirror_forwards`.
 - `hub/src/federation/handlers.rs` (Voxply-server) — accept

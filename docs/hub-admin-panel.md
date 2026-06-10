@@ -1,12 +1,18 @@
-# Hub admin tooling
+# Hub admin tooling — Archived
+
+> **Superseded: the hub web admin panel (`/admin/panel`) was removed.**
+> Hub management belongs in the desktop client; hub ownership is set at
+> hub-creation time through the client wizard. See
+> [decisions.md](decisions.md) ("Hub admin panel removed — hub
+> management moves to desktop client") and
+> [admin-panel-auth.md](admin-panel-auth.md) (also archived). The
+> `voxply-hub admin` CLI and the farm console survive this removal;
+> this doc is kept for the historical design of all three surfaces.
 
 Three operator-facing administration surfaces, all sitting on top of
 the admin functions a hub already exposes. None of them is a new source
 of truth — they are skins over existing per-hub state plus, for the farm
 console, a thin new heartbeat channel.
-
-> Status: designed, not built. Wishlist items in
-> [`../ROADMAP.md`](../ROADMAP.md) under "Admin tooling".
 
 The three surfaces answer three different operator situations:
 

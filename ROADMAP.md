@@ -93,7 +93,7 @@ items live in the wiki — see
   Proximity voice is already a general platform primitive; only the
   persistent-world layer is undesigned.
 
-- **E2E v2 — Double Ratchet** — forward secrecy / Signal-style ratchet upgrade from the shipped static-ECDH (Phase 1) and sender-key (Phase 2) schemes. Not yet designed beyond the concept. See [`e2e-encryption.md`](docs/e2e-encryption.md).
+- **E2E v2 — Double Ratchet** — forward secrecy / Double Ratchet upgrade from the shipped static-ECDH (Phase 1) and sender-key (Phase 2) schemes. Not yet designed beyond the concept. See [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
 
@@ -139,10 +139,14 @@ items live in the wiki — see
   (TOTP setup/confirm/disable). Hub server side (from prior session) already had
   8 endpoints, 3 new DB tables, session cookies, role-gating, and login HTML.
   Design in [`admin-panel-auth.md`](docs/admin-panel-auth.md).
+  *Superseded: hub web admin panel removed — see [decisions.md](docs/decisions.md)
+  ("Hub admin panel removed"). The farm-side pieces (server agent, TOTP on the
+  farm console) remain.*
 
 - **TOML config files for hub and farm** — `hub.toml` / `farm.toml` next to the binary replace scattered env vars. Load order: defaults → config file → `VOXPLY_*` env vars (highest priority). `hub.toml.example` and `farm.toml.example` document every option. Hub operator guide updated.
 
 - **Predictable hub ownership** — removed "first user to connect becomes admin" behaviour. Server operators now set the owner explicitly via `voxply-hub admin users set-owner <pubkey>` (CLI) or through the web admin panel at `/admin/panel` → Ownership tab. The web panel gained a new Ownership section with a pubkey form. `GET/POST /admin/owner` endpoints added, protected by the existing web admin token.
+  *Superseded: the `/admin/panel` web panel was removed — see [decisions.md](docs/decisions.md). Ownership is now set at hub-creation time through the client wizard, or via the CLI.*
 
 - **Android CI fully fixed** — workflow had been failing on every push since the repo was created; root causes: `tags:` indentation error (YAML treated it as an event, not a push filter), stale lockfiles in voxply-desktop + voxply-web, npm version mismatch requiring `npm install` over `npm ci`, missing `@tauri-apps/cli` + `tauri` script, `gen/android/` never initialised (`tauri android init` added to CI), and `intl-messageformat` peer dep not being installed. All fixed; CI now builds signed APKs on every push to main.
 
@@ -237,7 +241,7 @@ items live in the wiki — see
 - **Multi-stream screen share overlay** — floating, draggable, resizable `ScreenShareOverlay`
   replaces the inline viewer; multiple co-op streams tile in a CSS grid. Hub cap removed —
   unlimited concurrent sharers per channel. Design in [`decisions.md`](docs/decisions.md).
-- **E2E group DMs** — sender-key scheme (Signal-style); hub endpoints + Tauri commands +
+- **E2E group DMs** — sender-key scheme; hub endpoints + Tauri commands +
   desktop client all complete. Design in [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 - **Whisper UI** — `useWhisper` hook with inbound event tracking and
@@ -251,6 +255,8 @@ items live in the wiki — see
 - **Hub admin tooling** — web admin panel at `/admin/panel` (token-gated,
   embedded HTML), `voxply-hub admin` CLI subcommands, farm heartbeat +
   fleet console. Design in [`hub-admin-panel.md`](docs/hub-admin-panel.md).
+  *Superseded: the `/admin/panel` web panel was removed — see [decisions.md](docs/decisions.md)
+  ("Hub admin panel removed"). The admin CLI and farm console remain.*
 - **Hub moderation enhancements** — federated ban lists (`GET /federation/banlist`,
   6h background sync), auto-mod webhook (500ms, fail-open, HMAC-SHA256),
   content reporting (`POST /messages/:id/report`, admin review queue).

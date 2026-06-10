@@ -98,6 +98,6 @@ becomes the owner/admin.
 - **No accounts.** Your identity is a local key pair; nothing is registered
   with a central authority.
 - **E2E encryption on DMs.** 1-to-1 and group DMs are end-to-end encrypted
-  using a Signal-style sender-key scheme. The hub relays ciphertext only.
+  using a sender-key scheme. The hub relays ciphertext only.
 - **Hub data.** All community data lives on the hub operator's server.
   Choose a hub you trust, or run your own.

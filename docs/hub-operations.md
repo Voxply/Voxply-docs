@@ -78,9 +78,9 @@ correct. The WAL path stays open as a v2 if a no-downtime requirement
 materializes for farm operators.
 
 **Implementation side** (Voxply-server): new subcommand arms in
-`hub/src/main.rs` alongside `migrate`; a small `hub/src/backup.rs`
-module for archive build/extract and the meta-file verify. No new DB
-tables, no route changes.
+`hub/src/main.rs` alongside `migrate`; the archive build/extract and
+meta-file verify also live in `hub/src/main.rs` (no separate module
+was needed). No new DB tables, no route changes.
 
 **Not in scope for v1**: scheduled/automatic backups (operators use
 `cron` + the CLI), remote/object-storage destinations, and incremental

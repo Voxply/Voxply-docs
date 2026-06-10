@@ -585,7 +585,7 @@ Voxply-android.
   welcome screen, and the recovery-contact owner/contact/requester UI.
 - `hub/src/routes/recovery.rs` (new, Voxply-server) — contact designation,
   rotation request, attestation, and admin review/decide routes.
-- `hub/src/migrations.rs` (Voxply-server) — `recovery_settings`,
+- `hub/src/db/migrations.rs` (Voxply-server) — `recovery_settings`,
   `recovery_contacts`, `recovery_rotation_requests`,
   `recovery_attestations`.
 - `hub/src/permissions.rs` (Voxply-server) — admin recovery routes gate on

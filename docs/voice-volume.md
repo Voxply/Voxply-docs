@@ -21,8 +21,8 @@ they join voice in a channel. The client maps `sender_id → pubkey` via a
 new `voice_roster` WS message (delivered when the user joins voice and on
 each roster change).
 
-**Why a sender_id is needed**: the current hub relay (`hub/src/udp_relay.rs`
-or equivalent in Voxply-server) fans out signed Opus frames but the fan-out
+**Why a sender_id is needed**: the current hub relay (the UDP voice
+loop in `hub/src/main.rs`, Voxply-server) fans out signed Opus frames but the fan-out
 copy does not carry an explicit sender identifier the receiver can act on
 without re-parsing the signature. Adding an explicit handle in the packet
 header is the clean contract.

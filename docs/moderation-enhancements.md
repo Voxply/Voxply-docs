@@ -10,7 +10,7 @@ operator owns, and (3) a member-driven report queue. None introduces a
 global source of truth; each keeps the decision local to the operator.
 
 Authoritative code lives in `Voxply-server`
-(`hub/src/routes/moderation.rs`, `hub/src/routes/federation.rs`,
+(`hub/src/routes/moderation.rs`, `hub/src/banlist_worker.rs`,
 admin routes). Client surfaces live in `Voxply-desktop` (mirrored in
 `Voxply-web` and `Voxply-android`). Repo names are called out per piece
 below so the backend-engineer and frontend-engineer agents don't drift.
@@ -99,8 +99,9 @@ and keeps the positive and negative reputation channels separate.
 
 - *Hub* (Voxply-server): publisher endpoint `GET /federation/banlist`
   (unauthenticated, signature is the authority — same pattern as
-  `/info` badge serving) in `hub/src/routes/federation.rs`; the 6-hour
-  sync job; the `/auth/verify` gate change; migration for
+  `/info` badge serving) in `hub/src/routes/moderation.rs`; the 6-hour
+  sync job in `hub/src/banlist_worker.rs`; the `/auth/verify` gate
+  change; migration for
   `federated_bans` and the `banlist_sources` + per-source policy +
   publish-enabled settings.
 - *Client* (Voxply-desktop, mirrored web/Android): admin UI to add/remove
