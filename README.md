@@ -12,6 +12,10 @@ belongs to you — no accounts, no e-mail, no phone number, no company in
 the middle. DMs are end-to-end encrypted; hubs only ever relay
 ciphertext. Everything is open source under AGPL-3.0.
 
+Looking for an open-source, self-hostable alternative to Discord or
+TeamSpeak? See the [feature comparison](COMPARISON.md) for how Voxply
+stacks up — including its honest limitations.
+
 ## Get started
 
 - **Use Voxply** — download the
@@ -66,6 +70,8 @@ ciphertext. Everything is open source under AGPL-3.0.
   design decisions, glossary, and a find-by-feature map.
 - [`ROADMAP.md`](ROADMAP.md) — what's next, known issues, undesigned
   wishlist, and explicit "won't do" decisions.
+- [`COMPARISON.md`](COMPARISON.md) — feature-by-feature comparison with
+  Discord, Slack, Matrix, TeamSpeak, and Mumble.
 - [`openapi.yaml`](openapi.yaml) — full REST API spec (OpenAPI 3.0) for
   client implementors; the WebSocket side is in
   [docs/ws-protocol.md](docs/ws-protocol.md).
