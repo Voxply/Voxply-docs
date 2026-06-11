@@ -12,10 +12,11 @@ The full history of shipped work lives in
   highest-impact divergences from the [2026-06-11 audit](code-audit-2026-06-11.md)
   so the browser client is credible for a public demo and the
   [comparison](COMPARISON.md) "browser client" row can return to ✅.
-  Priority order: admin & moderation panel hitting nonexistent routes (W13),
-  screen-share viewing (W8), in-channel search (W16), reconnect re-auth (W10).
+  Priority order: screen-share viewing (W8), in-channel search (W16),
+  reconnect re-auth (W10).
   Reactions, typing, missing CSS (W12/W3/W4/W25), message bleed/hub identity
-  (W1/W2), and server error surface (W6) already done.
+  (W1/W2), server error surface (W6), and admin/moderation panel routes (W13)
+  already done.
 - [ ] **Networked voice — Phase 1** — make voice work across a network
   (today the relay only works when client and hub share a machine). Design
   is ready: token-gated source-address learning, see
@@ -233,7 +234,7 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
 
 ## ⚠️ Known issues
 
-- **2026-06-11 audit: web client incomplete port** — 25 divergences found. W12/W3/W4/W25 fixed (reactions 405, typing both ways, 15 CSS class families). W1/W2/W6 fixed (message bleed, hub misattribution, server error surface). Remaining: admin panel fake routes (W13), dead screen-share (W8), and 16 other items. Blocks a credible public web demo.
+- **2026-06-11 audit: web client incomplete port** — 25 divergences found. W12/W3/W4/W25 fixed (reactions 405, typing both ways, 15 CSS class families). W1/W2/W6 fixed (message bleed, hub misattribution, server error surface). W13 fixed (admin/moderation panel all hitting /admin/* invented routes — corrected to /hub/*, /moderation/*). Remaining: dead screen-share (W8), in-channel search (W16), and 15 other items. Blocks a credible public web demo.
 - **2026-06-11 audit: networked voice broken** — hub relay registers all clients as 127.0.0.1; voice only works client+hub on one machine. Needs source-address learning.
 - **2026-06-11 audit: federated-DM security** — endpoint accepts spoofed senders from any logged-in user.
 - Full audit with all 46 findings (file:line and effort): [`code-audit-2026-06-11.md`](code-audit-2026-06-11.md).
