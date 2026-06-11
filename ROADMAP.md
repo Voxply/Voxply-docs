@@ -36,13 +36,11 @@ The full history of shipped work lives in
 
 ## 📌 Wishlist (undesigned)
 
-- **Project visibility push** — remaining: real screenshots in the READMEs
-  (demo-seed tool now exists to populate a hub for this), a hosted demo hub,
-  directory listings, launch post.
+- **Project visibility push** — remaining: a hosted demo hub, directory listings, launch post.
   Needed both for adoption and for the code-signing re-application.
   *(2026-06-10: all six READMEs rewritten as landing pages with badges,
   cross-links, and a `docker compose` quick-start.
-  2026-06-11: demo-seed tool added.)*
+  2026-06-11: demo-seed tool added; real screenshots + join-flow GIF added to READMEs.)*
 - **Gaming Tier 3** — MMO + persistent shared world; stretch goal. Proximity
   voice is already a platform primitive; only the persistent-world layer is
   undesigned.
@@ -51,6 +49,9 @@ The full history of shipped work lives in
   [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **Real screenshots + join-flow GIF in READMEs; web client fixes; demo-seed tool (2026-06-11)** —
+  screenshots and join-flow GIFs added to main/desktop/web/hub READMEs; web client desktop layout CSS fix, message ordering fix, onboarding style improvements, voice roster bootstrap via `GET /voice/participants`; demo-seed tool populates a fresh hub with 8 identities, 5 channels, ~30 messages, a poll, and emoji reactions.
 
 - **Web onboarding styling + voice roster bootstrap (2026-06-11)** — web
   client onboarding screens (identity create/recover, join-hub) now match
@@ -217,6 +218,7 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
 - **Forum: reactions + attachments on posts** — not yet supported. See
   [`forum.md`](docs/forum.md).
 - **Poll announcement sender bug** — all-zeros key materializes phantom hub member (no name/roles). Sender should be poll creator.
+- **Member presence tied to latest session only** — a user's older live WS session shows offline after a newer one disconnects.
 
 ## 💤 Won't do
 
