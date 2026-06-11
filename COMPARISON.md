@@ -15,7 +15,7 @@ feature. Kept factual and up to date as features land.
 | **No account required** | ✅ keypair identity | ❌ email + account | ❌ email + account | ⚠️ optional guest | ❌ account | ❌ account |
 | **Voice channels** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Text channels** | ✅ | ✅ | ✅ | ✅ | ⚠️ basic | ⚠️ basic |
-| **Screen share** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Screen share** | ✅ desktop (web in progress) | ✅ | ✅ | ✅ | ❌ | ❌ |
 | **E2E encrypted DMs (1:1)** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
 | **E2E encrypted group DMs** | ✅ sender-key | ❌ | ❌ | ✅ | ❌ | ❌ |
 | **Multi-device** | ✅ QR pairing | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -24,7 +24,7 @@ feature. Kept factual and up to date as features land.
 | **Bots & webhooks** | ✅ | ✅ | ✅ | ✅ | ⚠️ limited | ❌ |
 | **In-community games / activities** | ✅ | ✅ Activities | ❌ | ❌ | ❌ | ❌ |
 | **Desktop client (native)** | ✅ Tauri | ✅ Electron | ✅ Electron | ✅ Electron | ✅ | ✅ |
-| **Browser client** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Browser client** | ⚠️ functional, parity in progress | ✅ | ✅ | ✅ | ❌ | ❌ |
 | **Mobile (iOS / Android)** | ⚠️ Android beta, no iOS | ✅ | ✅ | ✅ | ✅ | ⚠️ 3rd party |
 | **Free — no premium tier** | ✅ always free | ⚠️ Nitro upsell | ⚠️ message limits | ✅ | ⚠️ slot limits | ✅ |
 | **Data owned by the community** | ✅ | ❌ | ❌ | ✅ (self-hosted) | ✅ (self-hosted) | ✅ (self-hosted) |
@@ -62,7 +62,8 @@ The hub is a single static Linux binary (~30 MB musl). The desktop client is Tau
 | Windows installer unsigned | SmartScreen warning until Authenticode cert is procured (SignPath OSS application submitted) |
 | macOS DMG unsigned | Gatekeeper warning until Apple Developer signing is set up |
 | No push notifications | Clients must be open to receive messages |
-| No voice encryption | Voice relay is unencrypted (hub relays Opus packets) |
+| Voice is LAN/local only today | The hub voice relay does not yet learn real client network addresses, so voice works when client and hub share a network/machine; cross-internet voice and voice encryption are the next voice-stack work |
+| Web client parity | The browser client is functional but behind the desktop client on some features (admin panel, screen-share viewing, in-channel search); active remediation in progress |
 
 ---
 
@@ -72,4 +73,4 @@ features as of the date below, and implies no affiliation with or
 endorsement by any of the products mentioned. Spotted an error? Please
 open an issue.*
 
-*Last updated: 2026-06-10 — v0.2.0*
+*Last updated: 2026-06-11 — v0.2.0*

@@ -215,6 +215,10 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
 
 ## ⚠️ Known issues
 
+- **2026-06-11 audit: web client incomplete port** — 25 divergences found (message bleed, broken reactions/typing, admin panel hits nonexistent routes, dead screen-share, 41 orphaned CSS classes). Blocks a credible public web demo.
+- **2026-06-11 audit: networked voice broken** — hub relay registers all clients as 127.0.0.1; voice only works client+hub on one machine. Needs source-address learning.
+- **2026-06-11 audit: federated-DM security** — endpoint accepts spoofed senders from any logged-in user.
+- Full audit with all 46 findings (file:line and effort): [`code-audit-2026-06-11.md`](code-audit-2026-06-11.md).
 - **Windows installer unsigned** — SmartScreen warning; workaround "More info →
   Run anyway". See the code-signing blocker above.
 - **Cross-farm cert relay** — certifications work per-hub; revocations don't
@@ -226,7 +230,6 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
   [`future-features.md`](docs/future-features.md).
 - **Forum: reactions + attachments on posts** — not yet supported. See
   [`forum.md`](docs/forum.md).
-- **Poll announcement sender bug** — all-zeros key materializes phantom hub member (no name/roles). Sender should be poll creator.
 - **Member presence tied to latest session only** — a user's older live WS session shows offline after a newer one disconnects.
 
 ## 💤 Won't do
