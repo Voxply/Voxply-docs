@@ -11,9 +11,9 @@ The full history of shipped work lives in
 - [ ] **Validate the aarch64 hub binary** — release CI now builds
   `voxply-hub-linux-aarch64` (musl); untested until the next release runs and
   someone boots it on real ARM hardware.
-- [ ] **ContentArea.tsx splits** — desktop (1,383 lines), web (1,157), android
-  (979). Split desktop's canonical copy into subcomponents first, then port
-  the same shape to the forks to avoid divergence.
+- [ ] **ContentArea.tsx splits — web + android ports** — desktop split is done
+  (see Recently shipped); web (1,157 lines) and android (979) forks need the
+  same `components/content/` shape applied.
 - [ ] **Remaining App.tsx decomposition** — desktop (~3,460 lines) and android
   (~3,040) still hold the message/DM/WS wiring. The DM/conversation cluster is
   entangled with the WS handler memo and typing-indicator refs — needs an
@@ -55,6 +55,15 @@ The full history of shipped work lives in
   [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **ContentArea.tsx desktop split (2026-06-11)** — behavior-preserving split
+  of the 1,383-line `ContentArea.tsx` into 9 files under
+  `components/content/`: `MessageHelpers`, `ReconnectBanner`, `DmView`,
+  `ForumView`, `ChannelHeader`, `MessageRow`, `ChannelMessageList`,
+  `ChannelComposer`, `AllianceView`. `ContentArea.tsx` is now 688 lines (a
+  thin composition root); largest extracted file is `MessageRow.tsx` at 369
+  lines. Props interface and export signature unchanged — callers unaffected.
+  tsc clean, vitest 71/71, vite build succeeds.
 
 - **Signing-service removal + spec CI gate (2026-06-11)** — all
   signing-service steps and the policy file removed from the desktop repo
