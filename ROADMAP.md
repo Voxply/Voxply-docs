@@ -15,7 +15,7 @@ The full history of shipped work lives in
   Priority order: screen-share viewing (W8), in-channel search (W16),
   reconnect re-auth (W10).
   Reactions, typing, missing CSS (W12/W3/W4/W25), message bleed/hub identity
-  (W1/W2), server error surface (W6), and admin/moderation panel routes (W13)
+  (W1/W2), server error surface (W6), and admin/moderation panel routes (W13/W26)
   already done.
 - [ ] **Networked voice — Phase 1** — make voice work across a network
   (today the relay only works when client and hub share a machine). Design
@@ -234,7 +234,8 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
 
 ## ⚠️ Known issues
 
-- **2026-06-11 audit: web client incomplete port** — 25 divergences found. W12/W3/W4/W25 fixed (reactions 405, typing both ways, 15 CSS class families). W1/W2/W6 fixed (message bleed, hub misattribution, server error surface). W13 fixed (admin/moderation panel all hitting /admin/* invented routes — corrected to /hub/*, /moderation/*). Remaining: dead screen-share (W8), in-channel search (W16), and 15 other items. Blocks a credible public web demo.
+- **demo-seed exports recovery phrases that don't recover the seeded identity (W27)** — credentials unusable for login; re-seed/screenshot logins blocked.
+- **2026-06-11 audit: web client incomplete port** — 25 divergences found. W12/W3/W4/W25 fixed (reactions 405, typing both ways, 15 CSS class families). W1/W2/W6 fixed (message bleed, hub misattribution, server error surface). W13/W26 fixed (admin panel permission check + routes corrected). Remaining: dead screen-share (W8), in-channel search (W16), and 15 other items. Blocks a credible public web demo.
 - **2026-06-11 audit: networked voice broken** — hub relay registers all clients as 127.0.0.1; voice only works client+hub on one machine. Needs source-address learning.
 - **2026-06-11 audit: federated-DM security** — endpoint accepts spoofed senders from any logged-in user.
 - Full audit with all 46 findings (file:line and effort): [`code-audit-2026-06-11.md`](code-audit-2026-06-11.md).

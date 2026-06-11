@@ -182,6 +182,8 @@ undersell the real state.
   (user-identity/user-actions/voice-status-bar), reaction-picker-overlay,
   pinned-message-row, hover-submenu, bot-token-*, event-card, poll-card,
   screen-share-main-wrap. Port the blocks from desktop styles.css. **M**
+- **W26 [bug-now] admin panel unreachable for everyone** — web `isAdmin`/`canManageGames` (App.tsx) checked for a `manage_hub` permission that does not exist in the hub (`permissions.rs` uses `admin` as the wildcard superuser). Result: 'Hub settings' never rendered, the whole HubAdminPage was unreachable by any user including the owner. FIXED 2026-06-12 (commit 213772c): check `admin` like desktop does. **S**
+- **W27 [bug-now] demo-seed exports non-functional recovery phrases** — the `recovery_phrase` written to demo-credentials.json by tools/demo-seed does not round-trip to the keypair the seeder actually seeded (seeded owner Nova was pubkey b3fc8e26…, but the exported phrase recovers to a different, nameless keypair). Exported credentials cannot log into the seeded identities. Hub-side/tool bug, blocks demo-hub re-seed + screenshot logins. NOT yet fixed. **M**
 
 ### Cross-cutting
 - Nearly every REST bug (W12-W16) was masked by blanket `catch {}` /
