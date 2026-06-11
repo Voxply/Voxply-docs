@@ -11,11 +11,6 @@ The full history of shipped work lives in
 - [ ] **Validate the aarch64 hub binary** — release CI now builds
   `voxply-hub-linux-aarch64` (musl); untested until the next release runs and
   someone boots it on real ARM hardware.
-- [ ] **openapi coverage checker as a CI gate** — the spec now documents all
-  201 hub routes and `docs/scripts/check-openapi-coverage.mjs` verifies it;
-  wire the script into CI (docs repo workflow with a sparse hub checkout, or
-  a hub-repo workflow with a sparse docs checkout) so new routes can't ship
-  undocumented.
 - [ ] **ContentArea.tsx splits** — desktop (1,383 lines), web (1,157), android
   (979). Split desktop's canonical copy into subcomponents first, then port
   the same shape to the forks to avoid divergence.
@@ -60,6 +55,13 @@ The full history of shipped work lives in
   [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **Signing-service removal + spec CI gate (2026-06-11)** — all
+  signing-service steps and the policy file removed from the desktop repo
+  (code-signing is now a Blocked item until popularity; installers ship
+  unsigned with the README workaround); hub CI now fails when a registered
+  route is missing from `openapi.yaml` (sparse-checkout of the docs repo +
+  `scripts/check-openapi-coverage.mjs`, currently 201/201 documented).
 
 - **Desktop `lib.rs` module split (2026-06-11)** — behavior-preserving split of
   the 9,844-line desktop `src-tauri/src/lib.rs` into 28 domain modules (bots,
