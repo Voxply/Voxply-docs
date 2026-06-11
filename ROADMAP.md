@@ -12,9 +12,10 @@ The full history of shipped work lives in
   `voxply-hub-linux-aarch64` (musl); untested until the next release runs and
   someone boots it on real ARM hardware.
 - [ ] **Remaining App.tsx decomposition** — desktop (~3,260 lines) and android
-  (~3,040) still hold the channel-message/WS wiring. DM cluster extracted on
-  desktop; android `useDms` parity in progress. Channel message send, WS
-  listener registration, and alliance cluster remain in both roots.
+  (~2,900) hold the channel-message/WS wiring. DM cluster extracted on both
+  (desktop `useDms` 348 lines; android parity port preserves its
+  plaintext-group divergences). Channel message send, WS listener
+  registration, and alliance cluster remain in both roots.
 
 ## 🤔 Design questions
 
