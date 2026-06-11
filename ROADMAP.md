@@ -215,7 +215,7 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
 
 ## ⚠️ Known issues
 
-- **2026-06-11 audit: web client incomplete port** — 25 divergences found (message bleed, broken reactions/typing, admin panel hits nonexistent routes, dead screen-share, 41 orphaned CSS classes). Blocks a credible public web demo.
+- **2026-06-11 audit: web client incomplete port** — 25 divergences found. W12/W3/W4/W25 fixed (reactions 405, typing both ways, 15 CSS class families). Remaining: message bleed (W1/W2), admin panel fake routes (W13), dead screen-share (W8), and 17 other items. Blocks a credible public web demo.
 - **2026-06-11 audit: networked voice broken** — hub relay registers all clients as 127.0.0.1; voice only works client+hub on one machine. Needs source-address learning.
 - **2026-06-11 audit: federated-DM security** — endpoint accepts spoofed senders from any logged-in user.
 - Full audit with all 46 findings (file:line and effort): [`code-audit-2026-06-11.md`](code-audit-2026-06-11.md).
