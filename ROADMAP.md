@@ -18,10 +18,6 @@ The full history of shipped work lives in
   (~3,040) still hold the message/DM/WS wiring. The DM/conversation cluster is
   entangled with the WS handler memo and typing-indicator refs — needs an
   interface redesign before it can move into a hook.
-- [ ] **`ws/connection.rs` dispatch loop** — 1,910 lines left after the ws.rs
-  module split; the `tokio::select!` loop's shared per-connection locals can't
-  cross module boundaries without redesign (e.g. a per-connection state struct
-  passed to per-message handler fns). Design before splitting further.
 
 ## 🤔 Design questions
 
@@ -55,6 +51,16 @@ The full history of shipped work lives in
   [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **ws/connection.rs dispatch refactor (2026-06-11)** — introduced `ConnState`
+  (voice_channel, subscribed, pending_chunk, component_rate_limit,
+  my_conversations, replay_buffer, is_replaying, public_key, is_bot) and a
+  `DispatchResult` enum; extracted all match-arm logic into per-domain handlers
+  under `routes/ws/handlers/`: `voice.rs` (816 lines), `screen.rs` (617),
+  `game.rs` (305), `chat.rs` (120), `bot.rs` (84). `connection.rs` is now 605
+  lines (was 1,910). Wire behaviour, lock-acquisition order, voice_relay_active
+  bookkeeping, and `leave_voice_for_test` preserved exactly. All 250+ tests
+  green; cargo check/clippy/fmt clean.
 
 - **ContentArea.tsx desktop split (2026-06-11)** — behavior-preserving split
   of the 1,383-line `ContentArea.tsx` into 9 files under
