@@ -14,10 +14,10 @@ The full history of shipped work lives in
 - [ ] **ContentArea.tsx splits — web + android ports** — desktop split is done
   (see Recently shipped); web (1,157 lines) and android (979) forks need the
   same `components/content/` shape applied.
-- [ ] **Remaining App.tsx decomposition** — desktop (~3,460 lines) and android
-  (~3,040) still hold the message/DM/WS wiring. The DM/conversation cluster is
-  entangled with the WS handler memo and typing-indicator refs — needs an
-  interface redesign before it can move into a hook.
+- [ ] **Remaining App.tsx decomposition** — desktop (~3,260 lines) and android
+  (~3,040) still hold the channel-message/WS wiring. DM cluster extracted (see
+  Recently shipped). Channel message send, WS listener registration, and
+  alliance cluster remain in App.tsx.
 
 ## 🤔 Design questions
 
@@ -100,6 +100,16 @@ The full history of shipped work lives in
   `openapi.yaml` now documents **all 201 hub routes** (103 were missing —
   badges, certs, events, polls, forum, games, recovery, webhooks, etc.),
   verified by the new `docs/scripts/check-openapi-coverage.mjs`.
+
+- **App.tsx decomposition batch 3 (2026-06-11)** — extracted DM cluster
+  (view/conversations/selectedConversation/dmMessages/unreadDms/
+  encryptionWarning state + loadConversations/selectConversation/startDmWith/
+  handleSendDm/dm-WS/dm-member-changed handlers) into
+  `desktop/src/hooks/useDms.ts`. App.tsx: 3461 → 3259 lines (−202). Interface:
+  narrow ref/getter/callback params; onDmEvent + onDmMemberChanged callbacks
+  for the WS useEffect; selectedConversationForTypingRef stays in App as a
+  shared seam with useTypingIndicators. tsc clean, vitest 71/71, vite build.
+  Android parity pending.
 
 - **App.tsx decomposition batch 2 (2026-06-11)** — extracted `useHubAdmin`,
   `useFriends`, and `useSettingsProfile` from App.tsx into
