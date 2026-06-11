@@ -8,9 +8,6 @@ The full history of shipped work lives in
 
 ## 🔨 Next up
 
-- [ ] **Hub route module splits wave 2** — behavior-preserving directory-module
-  conversions for `dms.rs`, `bots.rs`, `alliances.rs`, `moderation.rs`; no file
-  over ~800 lines; zero route-path or public-API changes. *(in progress)*
 - [ ] **Validate the aarch64 hub binary** — release CI now builds
   `voxply-hub-linux-aarch64` (musl); untested until the next release runs and
   someone boots it on real ARM hardware.
@@ -63,6 +60,20 @@ The full history of shipped work lives in
   [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **Desktop `lib.rs` module split (2026-06-11)** — behavior-preserving split of
+  the 9,844-line desktop `src-tauri/src/lib.rs` into 28 domain modules (bots,
+  lobby, farm, games, events_polls, discovery, certs, screen_share, updater,
+  etc.); `lib.rs` is now ~350 lines. Zero TS-side changes required — Tauri
+  command names are unchanged. `cargo clippy -D warnings`, `cargo fmt --check`,
+  and all 38 tests green.
+
+- **Hub route module splits wave 2 (2026-06-11)** — behavior-preserving
+  directory-module conversions for `dms.rs` (1,305 lines → 4 files),
+  `bots.rs` (1,236 → 5 files), `alliances.rs` (1,119 → 5 files), and
+  `moderation.rs` (1,016 → 5 files); no file over ~800 lines; zero route-path
+  or public-API changes. `cargo check --workspace`, `cargo test -p voxply-hub`,
+  `cargo clippy -D warnings`, and `cargo fmt --check` all clean.
 
 - **Big-file refactor wave 1 + complete API spec (2026-06-11)** — behavior-
   preserving module splits: hub `routes/ws.rs` (2,101 → 4 files) and
