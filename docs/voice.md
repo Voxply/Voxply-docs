@@ -56,6 +56,16 @@ frames from users currently in voice on a channel and fans them out to
 the other connected users on that channel. Frames are not transcoded;
 the hub is just an SFU-style relay.
 
+**Address learning (networked voice Phase 1, hub v0.2.2):** the relay
+learns each participant's real address from a token-gated UDP bind, not
+from anything the client reports. `voice_joined` carries a single-use
+`udp_register_token` (30 s TTL); the client sends `VXRG` + token to the
+voice port (retrying until the hub acks with `VXRA`), and the hub binds
+the packet's actual source address. Audio is never relayed to or from an
+address that has not completed this bind — which also closes the
+spoofed-source reflection vector. Design and rationale:
+[voice-networking-design.md](voice-networking-design.md).
+
 > Note: there's no separate "voice channel" type. Every Voxply channel
 > is both text and voice — joining voice is something a user does
 > *in* a channel, not a property of the channel itself. See

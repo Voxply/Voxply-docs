@@ -134,7 +134,7 @@ video enabled).
 | field | type | notes |
 |---|---|---|
 | `channel_id` | string | |
-| `udp_port` | integer (u16) | local UDP port the client uses for voice packets |
+| `udp_port` | integer (u16) | legacy; ignored since hub v0.2.2 (the hub learns the real source address via the `udp_register_token` bind — see [`voice_joined`](#voice_joined)) |
 
 #### `voice_leave`
 
@@ -557,6 +557,7 @@ Direct reply to a successful `voice_join`.
 | `channel_id` | string | |
 | `hub_udp_port` | integer (u16) | UDP port the hub listens on for voice packets |
 | `participants` | array of [VoiceParticipant](#voiceparticipant) | current participants (including you) |
+| `udp_register_token` | string | 64 hex chars, single-use, 30 s TTL. Send `b"VXRG"` + the 64 ASCII chars (68 bytes) to `hub_udp_port`; the hub binds your real source address and replies `b"VXRA"` (4 bytes). Retry every ~500 ms until acked — **no audio is relayed to or from you until this bind completes**. Added in hub v0.2.2 (networked voice Phase 1). |
 
 #### `voice_participant_joined`
 Broadcast to the voice channel (not echoed to the joiner).
