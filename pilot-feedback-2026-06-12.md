@@ -37,10 +37,11 @@ hub is the test bed once implemented.
 
 - **D3 — Leave-voice button is a bare red square**; needs a proper
   icon/affordance.
-- **D5b — Composer layout proposal**: move actions next to **Send** and
-  collapse into a single **"+"** menu (attachment + poll; emoji likely stays
-  separate as a high-frequency action — see composer patterns in comparable
-  chat apps).
+- **D5b — Composer layout proposal (decided 2026-06-12)**: place the action
+  buttons **inside the text input box, right-aligned** (Discord-style) so
+  they read as part of the composer: a single **"+"** menu collapsing
+  attachment + poll, and emoji kept as its own in-box button (high-frequency
+  action). Send stays outside/adjacent.
 - **D6 — Voice channel switching**: joining another voice channel while
   connected should implicitly leave the current one (no explicit
   "leave voice" press first). Today it requires manual leave.

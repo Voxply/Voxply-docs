@@ -17,12 +17,17 @@ The full history of shipped work lives in
   Reactions, typing, missing CSS (W12/W3/W4/W25), message bleed/hub identity
   (W1/W2), server error surface (W6), and admin/moderation panel routes (W13/W26)
   already done.
-- [ ] **Networked voice — Phase 1** — make voice work across a network
-  (today the relay only works when client and hub share a machine). Design
-  is ready: token-gated source-address learning, see
-  [voice-networking-design.md](docs/voice-networking-design.md). Removes the
-  "voice is LAN/local only" limitation from the comparison. Phase 2 (voice
-  encryption) is a separate later initiative.
+- [ ] **Networked voice — Phase 1** *(IN PROGRESS 2026-06-12)* — make voice
+  work across a network (today the relay registers all clients as 127.0.0.1).
+  Design is ready: token-gated source-address learning, see
+  [voice-networking-design.md](docs/voice-networking-design.md). Confirmed
+  live on the pilot hub: signaling works, audio silent both ways. Test bed:
+  `voxply.videogamezone.eu`. Phase 2 (voice encryption) is separate.
+- [ ] **Desktop voice/composer UI cleanup pass** — after voice Phase 1:
+  composer actions inside the textbox Discord-style with a "+" menu (D5a/b),
+  consolidated call-control bar (D9), leave-voice affordance (D3), implicit
+  voice-channel switching (D6), camera picker (D2), screen-share list fixes
+  (D4). See [pilot-feedback-2026-06-12.md](pilot-feedback-2026-06-12.md).
 - [ ] **Hub security & correctness from the audit** — federated-DM sender
   spoofing (H4). H2/H3 (presence refcount + bot_sessions per-session) and
   H5/H6 (rate-limiter trusted-proxy + IPv6 canonicalization) done. See
