@@ -33,6 +33,11 @@ The full history of shipped work lives in
   (nginx vhost, compose file, runbook). Gated on the v0.2.1 release (CORS +
   `--doctor` must reach the published image) or a dev-built image transfer;
   server-side needs docker-group access, vhost install, UDP 3001 open.
+- [ ] **Desktop release pipeline is broken** — `release.yml` in
+  Voxply-desktop is invalid (runs fail in 0 s with "workflow file issue") and
+  the v0.2.0 release has zero assets, so there is no downloadable installer at
+  all. Fix the workflow, bump, and cut v0.2.1 with installers. Note it shares
+  the auto-tag→release token flaw (see Known issues).
 - [ ] **Fix the aarch64 hub binary build** — first real release run (v0.2.1,
   2026-06-12) failed: `aarch64-linux-gnu-gcc` link error in the musl
   cross-build (aws-lc-sys/ring object files). The x86_64 binary and Docker
