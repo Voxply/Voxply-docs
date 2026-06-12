@@ -17,12 +17,10 @@ The full history of shipped work lives in
   Reactions, typing, missing CSS (W12/W3/W4/W25), message bleed/hub identity
   (W1/W2), server error surface (W6), and admin/moderation panel routes (W13/W26)
   already done.
-- [ ] **Networked voice — Phase 1** *(IN PROGRESS 2026-06-12)* — make voice
-  work across a network (today the relay registers all clients as 127.0.0.1).
-  Design is ready: token-gated source-address learning, see
-  [voice-networking-design.md](docs/voice-networking-design.md). Confirmed
-  live on the pilot hub: signaling works, audio silent both ways. Test bed:
-  `voxply.videogamezone.eu`. Phase 2 (voice encryption) is separate.
+- [ ] **Networked voice — Phase 1 client side** — server side shipped
+  2026-06-12 (see Recently shipped). Desktop/web/android clients still need to
+  send the VXRG register packet after `voice_joined` and retry until they
+  receive VXRA. Phase 2 (voice encryption) is separate.
 - [ ] **Desktop voice/composer UI cleanup pass** — after voice Phase 1:
   composer actions inside the textbox Discord-style with a "+" menu (D5a/b),
   consolidated call-control bar (D9), leave-voice affordance (D3), implicit
@@ -89,6 +87,20 @@ The full history of shipped work lives in
   [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **Networked voice Phase 1 — token-gated source-address learning (2026-06-12)**
+  — hub relay no longer registers clients as 127.0.0.1. On `voice_join` the hub
+  mints a 32-byte single-use UDP register token (delivered in the `voice_joined`
+  WS reply as `udp_register_token`). The client sends a VXRG packet
+  (`b"VXRG"` + 64-char hex token) to the hub's voice UDP port; the hub binds the
+  packet's **real** source address into `voice_addr_map` and replies VXRA. The
+  relay's fan-out is now gated on `voice_addr_map` membership, enforcing the
+  hard invariant that audio is never sent to an unregistered address. Pending
+  binds expire after 30 s and are purged opportunistically. Consumed tokens are
+  stored per address for idempotent re-ack on UDP retry. leave_voice removes
+  both pending and consumed records. Five new integration tests (7a–7e) in
+  `hub/tests/voice_relay_flow.rs`; full workspace green.
+  Desktop/web/android client changes needed next (see Next up above).
 
 - **H5/H6 rate-limiter trusted-proxy + IPv6 canonicalization (2026-06-12)** —
   `rate_limit.rs` gains a `VOXPLY_TRUSTED_PROXY` setting (default false). When
@@ -304,7 +316,10 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
   Pin the nonce/difficulty or retry-loop the assertion.
 - **demo-seed exports recovery phrases that don't recover the seeded identity (W27)** — credentials unusable for login; re-seed/screenshot logins blocked.
 - **2026-06-11 audit: web client incomplete port** — 25 divergences found. W12/W3/W4/W25 fixed (reactions 405, typing both ways, 15 CSS class families). W1/W2/W6 fixed (message bleed, hub misattribution, server error surface). W13/W26 fixed (admin panel permission check + routes corrected). W16 fixed (in-channel search now hits `GET /channels/{id}/messages?q=` with 200ms debounce). W10 fixed (WS reconnect triggers full reauth after 3 consecutive failures instead of looping forever on a dead token). Remaining: dead screen-share (W8) and 13 other items. Blocks a credible public web demo.
-- **2026-06-11 audit: networked voice broken** — hub relay registers all clients as 127.0.0.1; voice only works client+hub on one machine. Needs source-address learning.
+- **2026-06-11 audit: networked voice broken (H7 — server side fixed)** — hub
+  relay now learns real source addresses via VXRG token-gated UDP registration
+  (shipped 2026-06-12). Voice still silent until desktop/web/android clients
+  send the VXRG register packet after `voice_joined`.
 - **2026-06-11 audit: federated-DM security** — endpoint accepts spoofed senders from any logged-in user.
 - Full audit with all 46 findings (file:line and effort): [`code-audit-2026-06-11.md`](code-audit-2026-06-11.md).
 - **Windows installer unsigned** — SmartScreen warning; workaround "More info →
