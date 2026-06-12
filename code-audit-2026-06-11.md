@@ -108,6 +108,17 @@ undersell the real state.
 - H18 (`--doctor` socket release) and H19 (sync fs in async handlers,
   microsecond stalls) reviewed and judged fine / leave-as-is.
 
+### Follow-ons surfaced during the 2026-06-12 security remediation
+- **H22 [security — needs audit] `/federation/badge-offer` is unauthenticated** —
+  no session/peer guard; relies solely on Ed25519 signature verification of
+  the payload body. May be an intentional signed-push design, but it's the
+  one `/federation/*` route with no caller auth — warrants a dedicated pass.
+- **H23 [security] `preview.rs` SSRF guard not proxy-aware** —
+  `is_private_ip` and the link-preview fetch path key on the raw socket IP,
+  not the resolved client IP. Under `VOXPLY_TRUSTED_PROXY`, the real client
+  address should flow through the same `resolve_ip` path the rate limiter
+  now uses. Surfaced while fixing H5/H6. **S-M**
+
 ---
 
 ## WEB CLIENT (Voxply-web) — 25 findings
