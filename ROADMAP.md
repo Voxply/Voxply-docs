@@ -17,38 +17,49 @@ The full history of shipped work lives in
   Reactions, typing, missing CSS (W12/W3/W4/W25), message bleed/hub identity
   (W1/W2), server error surface (W6), and admin/moderation panel routes (W13/W26)
   already done.
-- [ ] **Networked voice — Phase 1 client side** — server side shipped
-  2026-06-12 (see Recently shipped). Desktop/web/android clients still need to
-  send the VXRG register packet after `voice_joined` and retry until they
-  receive VXRA. Phase 2 (voice encryption) is separate.
-- [ ] **Desktop voice/composer UI cleanup pass** — after voice Phase 1:
-  composer actions inside the textbox Discord-style with a "+" menu (D5a/b),
-  consolidated call-control bar (D9), leave-voice affordance (D3), implicit
-  voice-channel switching (D6), camera picker (D2), screen-share list fixes
-  (D4). See [pilot-feedback-2026-06-12.md](pilot-feedback-2026-06-12.md).
+- [ ] **Networked voice — Phase 1, remaining clients** — server + desktop
+  client shipped 2026-06-12/13 (hub v0.2.2+, desktop v0.2.3+); first
+  cross-internet voice test pending on the pilot hub. Android needs the
+  VXRG/VXRA port (TS/types mechanical; the voice engine differs). Web
+  hard-blocks voice entirely (separate, larger question). Phase 2
+  (voice encryption) is separate.
+- [ ] **Desktop voice/composer UI cleanup pass** — composer D5b SHIPPED on
+  web 2026-06-13 (reference implementation, Playwright-verified; port to
+  desktop next). Remaining: consolidated call-control bar (D9), leave-voice
+  affordance (D3), implicit voice-channel switching (D6), camera picker (D2),
+  screen-share list fixes (D4). See
+  [pilot-feedback-2026-06-12.md](pilot-feedback-2026-06-12.md) and
+  [design-review-2026-06-13.md](design-review-2026-06-13.md).
 - [ ] **Hub security & correctness from the audit** — federated-DM sender
   spoofing (H4). H2/H3 (presence refcount + bot_sessions per-session) and
   H5/H6 (rate-limiter trusted-proxy + IPv6 canonicalization) done. See
   [code-audit-2026-06-11.md](code-audit-2026-06-11.md).
-- [ ] **First external operator pilot (videogamezone.eu)** — hub v0.2.1 LIVE
-  at `https://voxply.videogamezone.eu` since 2026-06-12 (runbook:
-  `pilot-videogamezone/`); first packaged-desktop install verified against it.
-  Remaining: friend onboards + ownership transfer (`admin users set-owner`),
-  doc-test feedback, two-operator federation test. Voice test blocked on
-  Networked voice Phase 1 (relay still registers all clients as 127.0.0.1).
+- [ ] **First external operator pilot (videogamezone.eu)** — hub v0.2.3 LIVE
+  at `https://voxply.videogamezone.eu` (runbook: `pilot-videogamezone/`),
+  now also serving the web client at its own URL with same-origin
+  auto-connect. Remaining: first cross-internet voice test (everything
+  shipped, just needs two humans on v0.2.3+ clients), friend onboards +
+  ownership transfer (`admin users set-owner`), doc-test feedback,
+  two-operator federation test.
 - [ ] **CI never builds production bundles** — both 2026-06-12 packaging bugs
   (tsc `.js` pollution shadowing sources; duplicate React via `file:` deps)
   shipped invisible because client CI only typechecks and unit-tests. Add an
   `npm run build` job per client repo (desktop, web, android forks).
-- [ ] **Desktop release pipeline is broken** — `release.yml` in
-  Voxply-desktop is invalid (runs fail in 0 s with "workflow file issue") and
-  the v0.2.0 release has zero assets, so there is no downloadable installer at
-  all. Fix the workflow, bump, and cut v0.2.1 with installers. Note it shares
-  the auto-tag→release token flaw (see Known issues).
+- [ ] **Fix macOS desktop build: xcap 0.0.14 fails to compile** — upstream
+  E0282 type-inference error on current stable rustc
+  (`xcap-0.0.14/src/macos/boxed.rs:22`); blocks the DMG and therefore the
+  updater manifest (the manifest job needs all three platforms). Options:
+  bump xcap, pin the macOS toolchain, or make the manifest job tolerate a
+  missing platform. Until fixed, releases ship Windows+Linux only and
+  `latest.json` is never published (auto-updater stays dormant).
 - [ ] **Fix the aarch64 hub binary build** — first real release run (v0.2.1,
   2026-06-12) failed: `aarch64-linux-gnu-gcc` link error in the musl
   cross-build (aws-lc-sys/ring object files). The x86_64 binary and Docker
   images are unaffected.
+- [ ] **Pin Voxply-web by release tag in the hub image build** — the hub's
+  Docker web-builder stage currently checks out Voxply-web@default-branch;
+  policy per [decisions.md](docs/decisions.md) is pin-by-release-tag, but the
+  web repo has no release tags yet. Start tagging web releases, then pin.
 - [ ] **Remaining App.tsx decomposition** — desktop (~3,260 lines) and android
   (~2,900) hold the channel-message/WS wiring. DM cluster extracted on both
   (desktop `useDms` 348 lines; android parity port preserves its
@@ -318,11 +329,13 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
   [pilot-feedback-2026-06-12.md](pilot-feedback-2026-06-12.md).
 - **auto-tag can never trigger the release workflow** — `auto-tag.yml` pushes
   tags with the default `GITHUB_TOKEN`, and GitHub does not fire workflows from
-  events created by that token, so `release.yml` silently never runs (first
-  observed on v0.2.1; tag had to be re-pushed manually). Fix options: push the
-  tag with a PAT/deploy key, or have auto-tag invoke release via
-  `workflow_call`. Also: `main` has no required status checks — PR #1
-  auto-merged with a red build check; consider requiring "Build check".
+  events created by that token. Working practice since 2026-06-13: push the
+  version tag manually on the develop head BEFORE merging (tag-first flow) so
+  auto-tag finds it taken and the user-pushed tag triggers the release.
+  Proper fix: PAT/deploy-key for auto-tag, or `workflow_call`. Debris: desktop
+  tag `v0.2.2` is a bot-created ghost (no release; superseded by v0.2.3/4) —
+  delete when convenient. Also: `main` has no required status checks in any
+  repo — consider requiring "Build check".
 - **First user to join a fresh hub silently becomes owner** —
   `assign_initial_roles` (hub `auth/handlers.rs`) grants `builtin-owner` to the
   first registrant when no owner exists, contradicting the operator guide
@@ -330,10 +343,6 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
   `VOXPLY_OWNER_PUBKEY` deployments where the operator joins later: any
   stranger who joins first takes the hub. Found live on the videogamezone
   pilot hub (2026-06-12). Decide the intended behavior, align code + docs.
-- **Flaky test: `auth_rejected_when_pow_level_below_minimum` (pow_flow)** —
-  probabilistic: a below-minimum PoW can accidentally meet the target and
-  return 200 instead of 403 (seen on 0f9c97d: one CI run green, twin run red).
-  Pin the nonce/difficulty or retry-loop the assertion.
 - **demo-seed exports recovery phrases that don't recover the seeded identity (W27)** — credentials unusable for login; re-seed/screenshot logins blocked.
 - **2026-06-11 audit: web client incomplete port** — 25 divergences found. W12/W3/W4/W25 fixed (reactions 405, typing both ways, 15 CSS class families). W1/W2/W6 fixed (message bleed, hub misattribution, server error surface). W13/W26 fixed (admin panel permission check + routes corrected). W16 fixed (in-channel search now hits `GET /channels/{id}/messages?q=` with 200ms debounce). W10 fixed (WS reconnect triggers full reauth after 3 consecutive failures instead of looping forever on a dead token). Remaining: dead screen-share (W8) and 13 other items. Blocks a credible public web demo.
 - **2026-06-11 audit: networked voice broken (H7 — server side fixed)** — hub
