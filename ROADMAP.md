@@ -276,6 +276,13 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
   tag with a PAT/deploy key, or have auto-tag invoke release via
   `workflow_call`. Also: `main` has no required status checks — PR #1
   auto-merged with a red build check; consider requiring "Build check".
+- **First user to join a fresh hub silently becomes owner** —
+  `assign_initial_roles` (hub `auth/handlers.rs`) grants `builtin-owner` to the
+  first registrant when no owner exists, contradicting the operator guide
+  ("fresh hub has no owner until assigned") and undermining
+  `VOXPLY_OWNER_PUBKEY` deployments where the operator joins later: any
+  stranger who joins first takes the hub. Found live on the videogamezone
+  pilot hub (2026-06-12). Decide the intended behavior, align code + docs.
 - **Flaky test: `auth_rejected_when_pow_level_below_minimum` (pow_flow)** —
   probabilistic: a below-minimum PoW can accidentally meet the target and
   return 200 instead of 403 (seen on 0f9c97d: one CI run green, twin run red).
