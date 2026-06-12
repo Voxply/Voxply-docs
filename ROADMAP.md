@@ -296,6 +296,10 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
 
 ## ⚠️ Known issues
 
+- **2026-06-13 design review: web client top-10** — composer rebuilt to D5b
+  spec (in progress); polls were dead code in web; mixed-locale UI; hex-string
+  identity onboarding; message-row anatomy; voice-UI contradictions. Most apply
+  to desktop too. See [design-review-2026-06-13.md](design-review-2026-06-13.md).
 - **2026-06-12 pilot feedback: 10 desktop client issues (D1–D10)** — from the
   first real multi-user session: whisper menu overflow, no camera picker,
   broken screen-share device list, composer misalignment + "+"-menu proposal,
