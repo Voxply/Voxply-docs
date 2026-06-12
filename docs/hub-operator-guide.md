@@ -1,9 +1,12 @@
 # Hub Operator Guide
 
-Practical reference for running a Voxply hub in production. For architecture
-background, see [architecture.md](architecture.md) and
-[threat-model.md](threat-model.md). For the full build and systemd setup, see
-[hosting.md](hosting.md).
+Practical reference for **operating** a Voxply hub that's already running:
+configuration, ownership, backup/restore, upgrades, hardening, and
+observability. For how to **deploy** one in the first place (Docker
+Compose + Caddy, Docker behind an existing proxy, bare binary + systemd,
+build from source — with TLS, firewall, and web-client serving per
+method), see [hosting.md](hosting.md). For architecture background, see
+[architecture.md](architecture.md) and [threat-model.md](threat-model.md).
 
 ---
 
@@ -35,9 +38,21 @@ log_format      = "text"         # "text" or "json"
 # otlp_endpoint = "http://localhost:4317"
 ```
 
-Every option also has a `VOXPLY_<OPTION_NAME>` env var equivalent (e.g. `VOXPLY_HTTP_PORT`, `VOXPLY_TLS_CERT`).
+Every option also has a `VOXPLY_<OPTION_NAME>` env var equivalent (e.g. `VOXPLY_HTTP_PORT`, `VOXPLY_TLS_CERT`). `voxply-hub --help` prints the full table generated directly from the binary — treat it as authoritative.
 
 The hub binds to `0.0.0.0` on both ports. Data files (`hub.db`, `hub_identity.json`) are written to the process working directory; set `WorkingDirectory=` in your service unit to control where they land.
+
+### CORS
+
+The REST API ships with CORS fully open (`*`) by default. This is safe: every protected endpoint requires a bearer token and there is no cookie-based credential, so there is no CSRF surface. Any origin can read public data or authenticate with its own keypair.
+
+To restrict origins (tightly-controlled deployments only):
+
+```
+VOXPLY_CORS_ORIGINS=https://app.example.com,https://dashboard.example.com
+```
+
+If you restrict origins, add the serving origin of any browser client (including a hub that self-serves the web client) to the list. WebSocket connections (`/ws`) are not subject to CORS.
 
 ---
 

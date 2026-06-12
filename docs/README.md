@@ -21,9 +21,9 @@ If you're new, read in this order:
 
 ### Running a hub
 
-- [hosting.md](hosting.md) — practical guide: systemd, TLS, backups, upgrades
+- [hosting.md](hosting.md) — **deployment methods**: Docker Compose + Caddy, Docker behind an existing proxy, bare binary + systemd, build from source; TLS, firewall/UDP, web-client serving, backups, upgrades per method
 - [hub-operations.md](hub-operations.md) — operator features: backup/restore, data retention, Prometheus `/metrics`, hub key rotation (built)
-- [hub-operator-guide.md](hub-operator-guide.md) — env vars, bootstrap, backup/restore, upgrade path, hardening
+- [hub-operator-guide.md](hub-operator-guide.md) — **operating** a running hub: config reference, ownership, bootstrap, backup/restore, upgrade path, hardening
 - [packaging.md](packaging.md) — cross-platform packaging, code signing, auto-update, CI/CD, hub Docker image
 - [performance.md](performance.md) — load test plan for WS broadcast, search, voice relay; suspected ceilings and "good enough" thresholds (designed, not started)
 

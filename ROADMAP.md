@@ -21,12 +21,6 @@ The full history of shipped work lives in
   2026-06-12 (see Recently shipped). Desktop/web/android clients still need to
   send the VXRG register packet after `voice_joined` and retry until they
   receive VXRA. Phase 2 (voice encryption) is separate.
-- [ ] **Hub optionally self-serves the web client** *(IN PROGRESS 2026-06-13)* —
-  `VOXPLY_WEB_CLIENT_DIR` serves built web-client assets at `/` (SPA fallback
-  gated on `Accept: text/html`); Docker image bakes a version-matched build;
-  served client auto-targets its origin via `window.__VOXPLY_HOME_HUB__`.
-  Decision + rationale in [decisions.md](docs/decisions.md). Requested by the
-  pilot operator.
 - [ ] **Desktop voice/composer UI cleanup pass** — after voice Phase 1:
   composer actions inside the textbox Discord-style with a "+" menu (D5a/b),
   consolidated call-control bar (D9), leave-voice affordance (D3), implicit
@@ -93,6 +87,22 @@ The full history of shipped work lives in
   [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **Hub optionally self-serves the web client (2026-06-13)** — new
+  `VOXPLY_WEB_CLIENT_DIR` setting (env var + hub.toml). When set, the hub
+  serves a pre-built SPA at `/` via tower-http `ServeDir` with a custom
+  fallback handler: unmatched paths with `Accept: text/html` get `index.html`
+  (SPA deep links work); unmatched paths without `Accept: text/html` get a
+  plain 404 (API error semantics preserved). index.html is cached at startup
+  with `<script>window.__VOXPLY_HOME_HUB__=window.location.origin;</script>`
+  injected before `</head>` so the client defaults to its serving hub.
+  --doctor and startup banner extended. The official Docker image gains a
+  `node:22-slim` web-builder stage (Voxply-web checked out to `web-client-src/`
+  in CI via the release workflow; a `web-client-src*` wildcard COPY tolerates
+  absence for local builds); `VOXPLY_WEB_CLIENT_DIR=/web-client` is the default
+  in the image. Release workflow checks out Voxply-web before `docker build`.
+  7 integration tests in `hub/tests/web_client_flow.rs`; full workspace green.
+  Decision + rationale in [decisions.md](docs/decisions.md).
 
 - **Networked voice Phase 1 — token-gated source-address learning (2026-06-12)**
   — hub relay no longer registers clients as 127.0.0.1. On `voice_join` the hub
