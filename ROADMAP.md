@@ -27,12 +27,16 @@ The full history of shipped work lives in
   spoofing (H4). H2/H3 (presence refcount + bot_sessions per-session) and
   H5/H6 (rate-limiter trusted-proxy + IPv6 canonicalization) done. See
   [code-audit-2026-06-11.md](code-audit-2026-06-11.md).
-- [ ] **First external operator pilot (videogamezone.eu)** — friend runs his
-  own hub on his OVH VPS; first real doc test, first two-operator federation
-  test, feeds the visibility push. Drafts ready in `pilot-videogamezone/`
-  (nginx vhost, compose file, runbook). Gated on the v0.2.1 release (CORS +
-  `--doctor` must reach the published image) or a dev-built image transfer;
-  server-side needs docker-group access, vhost install, UDP 3001 open.
+- [ ] **First external operator pilot (videogamezone.eu)** — hub v0.2.1 LIVE
+  at `https://voxply.videogamezone.eu` since 2026-06-12 (runbook:
+  `pilot-videogamezone/`); first packaged-desktop install verified against it.
+  Remaining: friend onboards + ownership transfer (`admin users set-owner`),
+  doc-test feedback, two-operator federation test. Voice test blocked on
+  Networked voice Phase 1 (relay still registers all clients as 127.0.0.1).
+- [ ] **CI never builds production bundles** — both 2026-06-12 packaging bugs
+  (tsc `.js` pollution shadowing sources; duplicate React via `file:` deps)
+  shipped invisible because client CI only typechecks and unit-tests. Add an
+  `npm run build` job per client repo (desktop, web, android forks).
 - [ ] **Desktop release pipeline is broken** — `release.yml` in
   Voxply-desktop is invalid (runs fail in 0 s with "workflow file issue") and
   the v0.2.0 release has zero assets, so there is no downloadable installer at
