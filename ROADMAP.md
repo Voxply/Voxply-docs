@@ -273,6 +273,12 @@ Older entries: [`docs/shipped-log.md`](docs/shipped-log.md).
 
 ## ⚠️ Known issues
 
+- **2026-06-12 pilot feedback: 10 desktop client issues (D1–D10)** — from the
+  first real multi-user session: whisper menu overflow, no camera picker,
+  broken screen-share device list, composer misalignment + "+"-menu proposal,
+  voice-channel switching UX, missing role-assignment paths, immutable banner
+  spacers, call-control sprawl, no Activity view. Details and owner proposals:
+  [pilot-feedback-2026-06-12.md](pilot-feedback-2026-06-12.md).
 - **auto-tag can never trigger the release workflow** — `auto-tag.yml` pushes
   tags with the default `GITHUB_TOKEN`, and GitHub does not fire workflows from
   events created by that token, so `release.yml` silently never runs (first
