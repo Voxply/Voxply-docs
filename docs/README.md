@@ -8,7 +8,7 @@ you the rationale and points you to the right files.
 
 If you're new, read in this order:
 
-1. [architecture.md](architecture.md) — what runs where, the six repos and the crates inside Voxply-server
+1. [architecture.md](architecture.md) — what runs where, the four repos and the crates inside Voxply-server
 2. [identity.md](identity.md) — keypairs, recovery, auth
 3. [federation.md](federation.md) — how hubs talk to each other
 4. [alliances.md](alliances.md) — multi-hub groups (Voxply's differentiator)

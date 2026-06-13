@@ -1,7 +1,8 @@
 # Architecture
 
-Voxply is six repositories. The hub backend lives in one Rust workspace;
-each client and the discovery service is its own repo.
+Voxply is four repositories. The hub backend lives in one Rust
+workspace; all clients live in one pnpm-workspace monorepo; the docs and
+the discovery service are each their own repo.
 
 ## The repository map
 
@@ -9,11 +10,16 @@ each client and the discovery service is its own repo.
 Voxply              ── docs, ROADMAP.md, openapi.yaml (this repo)
 Voxply-server       ── Rust workspace: hub/, seed/, identity/, farm/,
                        server/, voxply-store/, voxply-store-sqlite/ crates
-Voxply-desktop      ── Tauri 2 + React desktop client: desktop/, voice/
-Voxply-android      ── Tauri 2 Android wrapper: android/
-Voxply-web          ── Browser React client: web/
+Voxply-client       ── pnpm + Cargo monorepo for every client:
+                       apps/desktop (Tauri 2 + React), apps/web (Vite + React),
+                       apps/android (Tauri mobile shell), voice/ (Rust crate),
+                       packages/core|i18n|ui|platform (shared TS)
 Voxply-discovery    ── Next.js hub discovery service
 ```
+
+The clients were previously three separate repos (Voxply-desktop,
+Voxply-web, Voxply-android); they were consolidated into the single
+Voxply-client monorepo. Older docs may still reference the split repos.
 
 ## The Voxply-server workspace
 
@@ -74,12 +80,12 @@ networking, no storage. The hub consumes it directly, and it is the
 **canonical wire-format authority**: signing bytes, key encodings, and
 verification rules are defined by this crate. Non-Rust clients do not
 link it — the Tauri shells carry their own `identity.rs`
-(Voxply-desktop, Voxply-android) and the browser clients carry
-TypeScript implementations (Voxply-web `web/src/identity/`,
-Voxply-android `voxply-web/src/identity/`) — so each reimplementation
-must match the crate byte-for-byte, validated against shared test
-vectors. A wire-format spec with test vectors is being added at
-`docs/wire-format.md` in Voxply-server.
+(Voxply-client `apps/desktop` and `apps/android`) and the browser
+clients carry TypeScript implementations (Voxply-client
+`packages/core/src/identity/`) —
+so each reimplementation must match the crate byte-for-byte, validated
+against shared test vectors. A wire-format spec with test vectors is
+being added at `docs/wire-format.md` in Voxply-server.
 
 - Lib entry: `identity/src/lib.rs` (Voxply-server)
 - Recovery phrases: `identity/src/recovery.rs` (Voxply-server)
@@ -96,26 +102,25 @@ community contribution). Rationale in [decisions.md](decisions.md)
 ("Database abstraction: trait-based store crate split") and design in
 [store-trait-design.md](store-trait-design.md).
 
-### `voice/` crate (in Voxply-desktop)
+### `voice/` crate (in Voxply-client)
 
 Audio pipeline: capture → denoise (RNNoise) → encode (Opus) → transport
-→ decode → playback. Used by the desktop client and (in some flows) the
-hub voice relay.
+→ decode → playback. Used by the desktop and Android Tauri shells.
 
-- Pipeline orchestration: `voice/src/pipeline.rs` (Voxply-desktop)
-- Codec: `voice/src/codec.rs` (Voxply-desktop)
-- UDP transport: `voice/src/transport.rs` (Voxply-desktop)
-- Wire protocol: `voice/src/protocol.rs` (Voxply-desktop)
+- Pipeline orchestration: `voice/src/pipeline.rs` (Voxply-client)
+- Codec: `voice/src/codec.rs` (Voxply-client)
+- UDP transport: `voice/src/transport.rs` (Voxply-client)
+- Wire protocol: `voice/src/protocol.rs` (Voxply-client)
 
 See [voice.md](voice.md) for the full data flow.
 
-### `desktop/` (in Voxply-desktop)
+### `apps/desktop/` (in Voxply-client)
 
 Tauri 2 (Rust shell) + React 19 (UI). The Rust side handles file I/O,
 voice, and OS integration; the React side is everything you see.
 
-- React entry: `desktop/src/main.tsx` → `App.tsx` (Voxply-desktop)
-- Tauri commands (Rust ↔ JS bridge): `desktop/src-tauri/src/lib.rs` (Voxply-desktop)
+- React entry: `apps/desktop/src/main.tsx` → `App.tsx` (Voxply-client)
+- Tauri commands (Rust ↔ JS bridge): `apps/desktop/src-tauri/src/lib.rs` (Voxply-client)
 
 See [client.md](client.md) for the structure.
 

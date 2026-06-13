@@ -8,13 +8,6 @@ The full history of shipped work lives in
 
 ## 🔨 Next up
 
-- [ ] **Client monorepo consolidation** — merge Voxply-desktop / -web /
-  -android into one pnpm-workspace repo (`packages/core|ui|platform|i18n`
-  + `apps/*`); hub server stays separate. Kills the double-React `file:`
-  hazard, the dual-checkout release, and the cross-repo Vite alias.
-  Stage 1 canary = invite-link parser (`#invite=`) extracted to
-  `packages/core`, shipping the feature once for all clients (web is NOT
-  hotfixed separately). Plan: [client-monorepo.md](docs/client-monorepo.md).
 - [ ] **Web client remediation (demo-blockers first)** — close the
   highest-impact divergences from the [2026-06-11 audit](code-audit-2026-06-11.md)
   so the browser client is credible for a public demo and the
@@ -48,10 +41,6 @@ The full history of shipped work lives in
   shipped, just needs two humans on v0.2.3+ clients), friend onboards +
   ownership transfer (`admin users set-owner`), doc-test feedback,
   two-operator federation test.
-- [ ] **CI never builds production bundles** — both 2026-06-12 packaging bugs
-  (tsc `.js` pollution shadowing sources; duplicate React via `file:` deps)
-  shipped invisible because client CI only typechecks and unit-tests. Add an
-  `npm run build` job per client repo (desktop, web, android forks).
 - [ ] **Fix macOS desktop build: xcap 0.0.14 fails to compile** — upstream
   E0282 type-inference error on current stable rustc
   (`xcap-0.0.14/src/macos/boxed.rs:22`); blocks the DMG and therefore the
@@ -63,10 +52,11 @@ The full history of shipped work lives in
   2026-06-12) failed: `aarch64-linux-gnu-gcc` link error in the musl
   cross-build (aws-lc-sys/ring object files). The x86_64 binary and Docker
   images are unaffected.
-- [ ] **Pin Voxply-web by release tag in the hub image build** — the hub's
-  Docker web-builder stage currently checks out Voxply-web@default-branch;
-  policy per [decisions.md](docs/decisions.md) is pin-by-release-tag, but the
-  web repo has no release tags yet. Start tagging web releases, then pin.
+- [ ] **Update hub Docker web-builder to check out Voxply-client** — the hub's
+  Docker web-builder stage currently checks out Voxply-web@default-branch; it
+  now needs to check out Voxply-client and build `apps/web` instead. Requires a
+  cross-repo PR in Voxply-server. Start tagging `web-v*` releases from
+  Voxply-client first.
 - [ ] **Remaining App.tsx decomposition** — desktop (~3,260 lines) and android
   (~2,900) hold the channel-message/WS wiring. DM cluster extracted on both
   (desktop `useDms` 348 lines; android parity port preserves its
@@ -105,6 +95,19 @@ The full history of shipped work lives in
   [`e2e-encryption.md`](docs/e2e-encryption.md).
 
 ## 🚀 Recently shipped
+
+- **Client monorepo consolidation — all 5 stages complete (2026-06-13)** —
+  Voxply-desktop, Voxply-web, and Voxply-android collapsed into the single
+  Voxply-client pnpm + Cargo monorepo across 5 commits:
+  Stage 0 (scaffold), Stage 1 (`packages/core` + unified invite parser
+  `parseHubInput`), Stage 2 (fold `@voxply/utils` + noble crypto into core),
+  Stage 3 (`packages/ui` + 10 shared components + single `styles.css`),
+  Stage 4 (`packages/platform` interface + android fork collapse into
+  `apps/android/android`), Stage 5 (CI consolidated — `build.yml` with
+  path-gated per-app jobs and real vite builds; `release-desktop.yml`
+  with dual-checkout removed; `release-web.yml` and `release-android.yml`
+  added). Double-React `file:` hazard eliminated, cross-repo Vite alias
+  eliminated, dual-checkout release eliminated.
 
 - **Hub optionally self-serves the web client (2026-06-13)** — new
   `VOXPLY_WEB_CLIENT_DIR` setting (env var + hub.toml). When set, the hub

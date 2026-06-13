@@ -23,7 +23,7 @@ stacks up — including its honest limitations.
 ## Get started
 
 - **Use Voxply** — download the
-  [desktop app](https://github.com/Voxply/Voxply-desktop/releases)
+  [desktop app](https://github.com/Voxply/Voxply-client/releases)
   (Windows / macOS / Linux), or read
   [getting-started.md](docs/getting-started.md).
 - **Host a community** — run your own hub in 2 minutes with Docker:
@@ -61,10 +61,8 @@ stacks up — including its honest limitations.
 | Repo | Local path | Contents |
 |---|---|---|
 | [Voxply](https://github.com/Voxply/Voxply) *(this repo)* | `docs/` | Architecture docs, ROADMAP, design decisions, API spec |
-| [Voxply-server](https://github.com/Voxply/Voxply-server) | `hub/` | Hub server, farm tooling, seed server, identity crate |
-| [Voxply-desktop](https://github.com/Voxply/Voxply-desktop) | `desktop/` | Tauri + React desktop client, voice crate |
-| [Voxply-web](https://github.com/Voxply/Voxply-web) | `web/` | Browser client |
-| [Voxply-android](https://github.com/Voxply/Voxply-android) | `android/` | Tauri Android client |
+| [Voxply-server](https://github.com/Voxply/Voxply-server) | `server/` | Hub server, farm tooling, seed server, identity crate |
+| [Voxply-client](https://github.com/Voxply/Voxply-client) | `clients/` | All clients (desktop / web / Android) + shared packages + voice crate |
 | [Voxply-discovery](https://github.com/Voxply/Voxply-discovery) | `discovery/` | Optional public hub directory |
 
 ## Documentation
