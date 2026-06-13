@@ -52,11 +52,6 @@ The full history of shipped work lives in
   2026-06-12) failed: `aarch64-linux-gnu-gcc` link error in the musl
   cross-build (aws-lc-sys/ring object files). The x86_64 binary and Docker
   images are unaffected.
-- [ ] **Update hub Docker web-builder to check out Voxply-client** — the hub's
-  Docker web-builder stage currently checks out Voxply-web@default-branch; it
-  now needs to check out Voxply-client and build `apps/web` instead. Requires a
-  cross-repo PR in Voxply-server. Start tagging `web-v*` releases from
-  Voxply-client first.
 - [ ] **Remaining App.tsx decomposition** — desktop (~3,260 lines) and android
   (~2,900) hold the channel-message/WS wiring. DM cluster extracted on both
   (desktop `useDms` 348 lines; android parity port preserves its
