@@ -1,7 +1,7 @@
-server {
+﻿server {
 #redirect su https
    listen         80;
-   server_name voxply.videogamezone.eu;
+   server_name wavvon.videogamezone.eu;
    return     301 https://$server_name$request_uri;
 }
 
@@ -22,9 +22,9 @@ server {
     # HSTS (ngx_http_headers_module is required) (63072000 seconds)
     add_header Strict-Transport-Security "max-age=63072000" always;
     client_max_body_size 10M;
-    server_name voxply.videogamezone.eu;
+    server_name wavvon.videogamezone.eu;
 
-    # Voxply hub: REST + WebSocket on one upstream. Voice is UDP 3001,
+    # Wavvon hub: REST + WebSocket on one upstream. Voice is UDP 3001,
     # straight to the container — it does not pass through nginx.
     location / {
         proxy_pass http://127.0.0.1:3000;
