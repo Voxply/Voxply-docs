@@ -1,4 +1,4 @@
-﻿# Wavvon hub — pilot deployment on web.videogamezone.eu
+# Wavvon hub — pilot deployment on web.videogamezone.eu
 # Lives in ~/wavvon on the server; managed entirely by the anachim user
 # (docker group), no root needed for day-to-day operation.
 #

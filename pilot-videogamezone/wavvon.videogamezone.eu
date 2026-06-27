@@ -1,4 +1,4 @@
-﻿server {
+server {
 #redirect su https
    listen         80;
    server_name wavvon.videogamezone.eu;

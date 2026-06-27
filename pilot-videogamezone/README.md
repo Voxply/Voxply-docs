@@ -1,4 +1,4 @@
-﻿# Wavvon pilot on web.videogamezone.eu — runbook
+# Wavvon pilot on web.videogamezone.eu — runbook
 
 First external hub operator pilot. The hub belongs to the friend (owner);
 we provide the artifacts and support. Companion docs: `docs/docs/hosting.md`,
